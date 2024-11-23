@@ -1,0 +1,11 @@
+services:
+  server:
+    container_name: cascade-server
+    image: cascade-server:latest
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+    environment:
+      - CONFIG_PATH=./config/dev.yaml
+    ports:
+      - "6969:6969"

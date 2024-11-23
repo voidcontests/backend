@@ -1,3 +1,6 @@
-# ignore config files
+# Ignore config files
 config/*.yaml
 .env
+
+# Ignore output
+.bin
