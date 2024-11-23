@@ -1,0 +1,11 @@
+env: "local" # local, dev or prod
+
+http:
+  address: ":6969"
+  timeout: 4s
+  idle_timeout: 60s
+
+ton_proof:
+  payload_signature_key: "somesecretkey"
+  payload_lifetime_seconds: "300s"
+  proof_lifetime_seconds: "300s"
