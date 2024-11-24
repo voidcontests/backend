@@ -28,7 +28,7 @@ deploy() {
 		git checkout "$2"
 	fi
 
-	echo -e "Deploying server from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
+	echo -e "Deploying ${bold}cascadecontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
 
 	echo -e "Pulling latest image..."
 	docker pull jus1d/cascade-server:latest
