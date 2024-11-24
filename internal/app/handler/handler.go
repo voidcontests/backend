@@ -19,15 +19,6 @@ type Handler struct {
 	tonconnectTestnet *tonconnect.Server
 }
 
-type APIError struct {
-	Status  int
-	Message string
-}
-
-func (e *APIError) Error() string {
-	return e.Message
-}
-
 func New(config *config.Config, mainnet, testnet *tonconnect.Server) *Handler {
 	return &Handler{
 		config:            config,
@@ -49,7 +40,9 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 	var err error
 	payload, err := h.tonconnectMainnet.GeneratePayload()
 	if err != nil {
-		return err
+		return c.JSON(http.StatusInternalServerError, echo.Map{
+			"message": "internal server error",
+		})
 	}
 
 	return c.JSON(http.StatusInternalServerError, echo.Map{
@@ -66,16 +59,17 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	b, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		// TODO: Is this really internal server error
-		return err
+		return c.JSON(http.StatusInternalServerError, echo.Map{
+			"message": "internal server error",
+		})
 	}
 
 	var tp ton.Proof
 	err = json.Unmarshal(b, &tp)
 	if err != nil {
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "invalid request body",
-		}
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "invalid request body",
+		})
 	}
 
 	var tcs *tonconnect.Server
@@ -85,7 +79,9 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	case ton.TestnetID:
 		tcs = h.tonconnectTestnet
 	default:
-		c.String(http.StatusBadRequest, "undefined network")
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"message": "invalid network",
+		})
 	}
 
 	proof := tonconnect.Proof{
@@ -101,15 +97,16 @@ func (h *Handler) CheckProof(c echo.Context) error {
 
 	verified, _, err := tcs.CheckProof(ctx, &proof, tcs.CheckPayload, tonconnect.StaticDomain(proof.Proof.Domain))
 	if err != nil || !verified {
-		return &APIError{
-			Status:  http.StatusUnauthorized,
-			Message: "tonproof verification failed",
-		}
+		return c.JSON(http.StatusUnauthorized, echo.Map{
+			"message": "tonproof verification failed",
+		})
 	}
 
 	token, err := jwt.GenerateToken(tp.Address, h.tonconnectMainnet.GetSecret())
 	if err != nil {
-		return err
+		return c.JSON(http.StatusInternalServerError, echo.Map{
+			"message": "internal server error",
+		})
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{
