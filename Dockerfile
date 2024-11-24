@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o ./.bin/server cmd/server/main.go
+RUN go build -o .bin/server cmd/server/main.go
 
 # Lightweight docker container with binaries only
 FROM alpine:latest
