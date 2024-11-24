@@ -37,24 +37,27 @@ if [ "$1" == "deploy" ]; then
 
 	echo -e "Deploying ${bold}cascadecontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
 
-	echo -e "Pulling latest image..."
+	echo "Pulling latest image..."
 	docker pull jus1d/cascade-server:latest
 
-	echo -e "Starting docker compose..."
+	echo "Stopping docker compose..."
+	docker compose down
+
+	echo "Starting docker compose..."
 	docker compose up -d
 
-	echo -e "Server running"
+	echo "Server running"
 elif [ "$1" == "push" ]; then
-    echo -e "Pulling latest changes..."
+    echo "Pulling latest changes..."
 	git pull
 
-	echo -e "Build a docker image"
+	echo "Build a docker image"
 	docker build -t jus1d/cascade-server:latest .
 
-	echo -e "Push built docker image to docker containers registry"
+	echo "Push built docker image to docker containers registry"
 	docker push jus1d/cascade-server:latest
 
-	echo -e "Build docker image successfully pushed to docker containers registry"
+	echo "Build docker image successfully pushed to docker containers registry"
 elif [ "$1" == "run" ]; then
     # if [ ! -e "$out" ]; then
     #     build
