@@ -44,6 +44,14 @@ elif [ "$1" == "push" ]; then
 	docker push jus1d/cascade-server:latest
 
 	echo -e "Build docker image successfully pushed to docker containers registry"
+elif [ "$1" == "run" ]; then
+    if [ -n "$2" ]; then
+        config_path="./config/$2.yaml"
+    else
+        config_path="./config/local.yaml"
+	fi
+
+    CONFIG_PATH="${config_path}" ./.bin/server
 elif [ "$1" == "help" ]; then
     help
 else
