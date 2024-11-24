@@ -23,14 +23,7 @@ help() {
     echo -e "    ${bold}help${normal}               Print this help messages to standard output"
 }
 
-build() {
-    echo "Building..."
-	go build -o ${out} cmd/server/main.go
-
-	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
-}
-
-if [ "$1" == "deploy" ]; then
+deploy() {
     if [ -n "$2" ]; then
 		git checkout "$2"
 	fi
@@ -44,7 +37,9 @@ if [ "$1" == "deploy" ]; then
 	docker compose up -d
 
 	echo -e "Server running"
-elif [ "$1" == "push" ]; then
+}
+
+push_to_registry() {
     echo -e "Pulling latest changes..."
 	git pull
 
@@ -55,7 +50,9 @@ elif [ "$1" == "push" ]; then
 	docker push jus1d/cascade-server:latest
 
 	echo -e "Build docker image successfully pushed to docker containers registry"
-elif [ "$1" == "run" ]; then
+}
+
+run() {
     if [ ! -e "$out" ]; then
         build
     fi
@@ -66,7 +63,22 @@ elif [ "$1" == "run" ]; then
         env="local"
 	fi
 
-    CONFIG_PATH="./config/${env}.yaml" ./.bin/server
+	CONFIG_PATH="./config/${env}.yaml" ./.bin/server
+}
+
+build() {
+    echo "Building..."
+	go build -o ${out} cmd/server/main.go
+
+	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
+}
+
+if [ "$1" == "deploy" ]; then
+    deploy
+elif [ "$1" == "push" ]; then
+    push_to_registry
+elif [ "$1" == "run" ]; then
+    run
 elif [ "$1" == "help" ]; then
     help
 else
