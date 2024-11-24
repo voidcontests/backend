@@ -6,6 +6,7 @@ import (
 	"github.com/cascadecontests/backend/internal/app/handler"
 	"github.com/cascadecontests/backend/internal/config"
 	"github.com/cascadecontests/backend/pkg/requestid"
+	"github.com/cascadecontests/backend/pkg/requestlog"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo/tonconnect"
 )
@@ -23,7 +24,21 @@ func New(config *config.Config, mainnet, testnet *tonconnect.Server) *Router {
 func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
+	router.HTTPErrorHandler = func(err error, c echo.Context) {
+		if apiErr, ok := err.(*handler.APIError); ok {
+			c.JSON(apiErr.Status, echo.Map{
+				"message": apiErr.Message,
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, echo.Map{
+			"message": "internal server error",
+		})
+	}
+
 	router.Use(requestid.New)
+	router.Use(requestlog.Completed)
 
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
