@@ -45,14 +45,15 @@ func MustLoad() *Config {
 		os.Exit(1)
 	}
 
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	var err error
+	if _, err = os.Stat(configPath); os.IsNotExist(err) {
 		slog.Error("config file does not exist", slog.String("path", configPath))
 		os.Exit(1)
 	}
 
 	var config Config
 
-	if err := cleanenv.ReadConfig(configPath, &config); err != nil {
+	if err = cleanenv.ReadConfig(configPath, &config); err != nil {
 		slog.Error("cannot read config", sl.Err(err))
 		os.Exit(1)
 	}

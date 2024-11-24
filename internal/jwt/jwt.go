@@ -20,6 +20,7 @@ func GenerateToken(address, secret string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	signedToken, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", err

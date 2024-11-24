@@ -37,7 +37,7 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 	// 0                                        32
 	// |                payload                 |
 
-	log.Print("call generate payload")
+	var err error
 	payload, err := h.tonconnectMainnet.GeneratePayload()
 	if err != nil {
 		return err

@@ -75,7 +75,8 @@ func (a *App) Run() {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
+		var err error
+		if err = server.ListenAndServe(); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				slog.Error("failed to start server", sl.Err(err))
 				os.Exit(1)
