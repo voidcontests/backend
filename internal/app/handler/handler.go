@@ -52,7 +52,7 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusInternalServerError, echo.Map{
+	return c.JSON(http.StatusOK, echo.Map{
 		"payload": payload,
 	})
 }

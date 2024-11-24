@@ -12,6 +12,15 @@ import (
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		slog.Info("request handler",
+			slog.String("id", requestid.Get(c)),
+			slog.String("method", c.Request().Method),
+			slog.String("uri", c.Request().URL.Path),
+			slog.String("client_ip", c.RealIP()),
+			slog.String("host", c.Request().Host),
+			slog.String("user_agent", c.Request().UserAgent()),
+		)
+
 		start := time.Now()
 
 		err := next(c)
