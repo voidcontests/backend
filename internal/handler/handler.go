@@ -5,11 +5,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/cascadecontests/backend/internal/config"
+	"github.com/cascadecontests/backend/internal/jwt"
 	"github.com/cascadecontests/backend/internal/ton"
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo/tonconnect"
 )
@@ -49,25 +48,6 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 	})
 }
 
-type TonProof struct {
-	Address string `json:"address"`
-	Network string `json:"network"`
-	Proof   struct {
-		Timestamp int64 `json:"timestamp"`
-		Domain    struct {
-			Value string `json:"value"`
-		} `json:"domain"`
-		Signature string `json:"signature"`
-		Payload   string `json:"payload"`
-		StateInit string `json:"state_init"`
-	} `json:"proof"`
-}
-
-type jwtCustomClaims struct {
-	Address string `json:"address"`
-	jwt.StandardClaims
-}
-
 func (h *Handler) CheckProof(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -79,7 +59,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return err
 	}
 
-	var tp TonProof
+	var tp ton.Proof
 	err = json.Unmarshal(b, &tp)
 	if err != nil {
 		return err
@@ -111,22 +91,12 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "tonproof verification failed")
 	}
 
-	claims := &jwtCustomClaims{
-		tp.Address,
-		jwt.StandardClaims{
-			ExpiresAt: time.Now().AddDate(100, 0, 0).Unix(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(h.tonconnectMainnet.GetSecret()))
+	token, err := jwt.GenerateToken(tp.Address, h.tonconnectMainnet.GetSecret())
 	if err != nil {
 		return err
 	}
 
-	log.Printf("token: %s", signedToken)
-
 	return c.JSON(http.StatusOK, echo.Map{
-		"token": signedToken,
+		"token": token,
 	})
 }
