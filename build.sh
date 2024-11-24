@@ -53,9 +53,11 @@ push_to_registry() {
 }
 
 run() {
-    if [ ! -e "$out" ]; then
-        build
-    fi
+    # if [ ! -e "$out" ]; then
+    #     build
+    # fi
+
+    build
 
     if [ -n "$2" ]; then
         env="$2"
