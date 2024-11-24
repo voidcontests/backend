@@ -13,10 +13,12 @@ normal='\033[0m'
 
 help() {
     echo -e "${underl}Usage:${normal}\n"
-    echo -e "    ${bold}$0${normal} ${underl}command${normal}\n"
+    echo -e "    ${bold}$0${normal} [${underl}command${normal}]\n"
     echo -e "Here is a list of available commands\n"
-    echo -e "    ${bold}deploy${normal} [${underl}master${normal}|${underl}develop${normal}]    Run deploy script from current branch or master"
+    echo -e "    ${bold}deploy${normal} [${underl}branch${normal}]    Run deploy script from current or provided branch"
     echo -e "    ${bold}push${normal}               Build docker image and push to container registry"
+    echo -e "    ${bold}run${normal} [${underl}env${normal}]          Run binary with provided environment (local - default)"
+    echo -e "    ${bold}help${normal}               Print this help messages to standard output"
 }
 
 if [ "$1" == "deploy" ]; then
@@ -46,12 +48,12 @@ elif [ "$1" == "push" ]; then
 	echo -e "Build docker image successfully pushed to docker containers registry"
 elif [ "$1" == "run" ]; then
     if [ -n "$2" ]; then
-        config_path="./config/$2.yaml"
+        env="$2"
     else
-        config_path="./config/local.yaml"
+        env="local"
 	fi
 
-    CONFIG_PATH="${config_path}" ./.bin/server
+    CONFIG_PATH="./config/${env}.yaml" ./.bin/server
 elif [ "$1" == "help" ]; then
     help
 else
