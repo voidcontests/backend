@@ -51,5 +51,18 @@ func (r *Router) InitRoutes() *echo.Echo {
 		}
 	}
 
+	router.HTTPErrorHandler = func(err error, c echo.Context) {
+		if apiErr, ok := err.(*handler.APIError); ok {
+			c.JSON(apiErr.Status, echo.Map{
+				"error": apiErr.Message,
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, echo.Map{
+			"error": "internal server error",
+		})
+	}
+
 	return router
 }

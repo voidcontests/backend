@@ -19,6 +19,15 @@ type Handler struct {
 	tonconnectTestnet *tonconnect.Server
 }
 
+type APIError struct {
+	Status  int
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
+
 func New(config *config.Config, mainnet, testnet *tonconnect.Server) *Handler {
 	return &Handler{
 		config:            config,
@@ -56,13 +65,17 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	var err error
 	b, err := io.ReadAll(c.Request().Body)
 	if err != nil {
+		// TODO: Is this really internal server error
 		return err
 	}
 
 	var tp ton.Proof
 	err = json.Unmarshal(b, &tp)
 	if err != nil {
-		return err
+		return &APIError{
+			Status:  http.StatusBadRequest,
+			Message: "invalid request body",
+		}
 	}
 
 	var tcs *tonconnect.Server
@@ -88,7 +101,10 @@ func (h *Handler) CheckProof(c echo.Context) error {
 
 	verified, _, err := tcs.CheckProof(ctx, &proof, tcs.CheckPayload, tonconnect.StaticDomain(proof.Proof.Domain))
 	if err != nil || !verified {
-		return c.String(http.StatusBadRequest, "tonproof verification failed")
+		return &APIError{
+			Status:  http.StatusUnauthorized,
+			Message: "tonproof verification failed",
+		}
 	}
 
 	token, err := jwt.GenerateToken(tp.Address, h.tonconnectMainnet.GetSecret())
