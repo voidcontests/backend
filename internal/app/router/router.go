@@ -3,8 +3,8 @@ package router
 import (
 	"net/http"
 
+	"github.com/cascadecontests/backend/internal/app/handler"
 	"github.com/cascadecontests/backend/internal/config"
-	"github.com/cascadecontests/backend/internal/handler"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo/tonconnect"
 )

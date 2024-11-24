@@ -9,10 +9,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cascadecontests/backend/internal/app/router"
 	"github.com/cascadecontests/backend/internal/config"
 	"github.com/cascadecontests/backend/internal/lib/logger/prettyslog"
 	"github.com/cascadecontests/backend/internal/lib/logger/sl"
-	"github.com/cascadecontests/backend/internal/router"
 	"github.com/cascadecontests/backend/internal/ton"
 	"github.com/tonkeeper/tongo/liteapi"
 	"github.com/tonkeeper/tongo/tonconnect"

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/cascadecontests/backend/internal/app"
 	"github.com/cascadecontests/backend/internal/config"
+	"github.com/cascadecontests/backend/internal/pkg/app"
 )
 
 func main() {

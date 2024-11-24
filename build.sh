@@ -11,6 +11,8 @@ blue='\033[0;34m'
 yellow='\033[0;33m'
 normal='\033[0m'
 
+out=".bin/server"
+
 help() {
     echo -e "${underl}Usage:${normal}\n"
     echo -e "    ${bold}$0${normal} [${underl}command${normal}]\n"
@@ -19,6 +21,13 @@ help() {
     echo -e "    ${bold}push${normal}               Build docker image and push to container registry"
     echo -e "    ${bold}run${normal} [${underl}env${normal}]          Run binary with provided environment (local - default)"
     echo -e "    ${bold}help${normal}               Print this help messages to standard output"
+}
+
+build() {
+    echo "Building..."
+	go build -o ${out} cmd/server/main.go
+
+	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
 }
 
 if [ "$1" == "deploy" ]; then
@@ -47,6 +56,10 @@ elif [ "$1" == "push" ]; then
 
 	echo -e "Build docker image successfully pushed to docker containers registry"
 elif [ "$1" == "run" ]; then
+    if [ ! -e "$out" ]; then
+        build
+    fi
+
     if [ -n "$2" ]; then
         env="$2"
     else
@@ -57,8 +70,5 @@ elif [ "$1" == "run" ]; then
 elif [ "$1" == "help" ]; then
     help
 else
-	out=".bin/server"
-	go build -o ${out} cmd/server/main.go
-
-	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
+    build
 fi
