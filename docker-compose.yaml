@@ -1,7 +1,7 @@
 services:
   server:
     container_name: cascade-server
-    image: cascade-server:latest
+    image: jus1d/cascade-server:latest
     restart: unless-stopped
     volumes:
       - ./config:/app/config
