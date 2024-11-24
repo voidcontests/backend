@@ -4,3 +4,6 @@ config/*.yaml
 
 # Ignore output
 .bin
+
+# Ignore TODO
+TODO
