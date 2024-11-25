@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/cascadecontests/backend/internal/config"
 	"github.com/cascadecontests/backend/internal/jwt"
 	"github.com/cascadecontests/backend/internal/ton"
+	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 )
 
@@ -52,6 +55,8 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 		return err
 	}
 
+	slog.Debug("payload generated", slog.String("payload", payload))
+
 	return c.JSON(http.StatusOK, echo.Map{
 		"payload": payload,
 	})
@@ -78,6 +83,8 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		}
 	}
 
+	slog.Debug("tonproof request structure", slog.Any("ton.Proof", tp))
+
 	var tcs *tonconnect.Server
 	switch tp.Network {
 	case ton.MainnetID:
@@ -102,6 +109,8 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		},
 	}
 
+	slog.Debug("proof structure", slog.Any("tonconnect.Proof", proof))
+
 	verified, _, err := tcs.CheckProof(ctx, &proof, tcs.CheckPayload, tonconnect.StaticDomain(proof.Proof.Domain))
 	if err != nil || !verified {
 		return &APIError{
@@ -115,7 +124,43 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return err
 	}
 
+	slog.Debug("token generated", slog.String("token", token))
+
 	return c.JSON(http.StatusOK, echo.Map{
 		"token": token,
 	})
+}
+
+func (h *Handler) GetAccount(c echo.Context) error {
+	user := c.Get("user").(*jwtgo.Token)
+	claims := user.Claims.(*jwt.CustomClaims)
+
+	// TODO: Fix deprecated method (tonfo.ParseAccountID -> tongo.ParseAddress)
+	accountID, err := tongo.ParseAccountID(claims.Address)
+	if err != nil {
+		return &APIError{
+			Status:  http.StatusBadRequest,
+			Message: "can't parse account",
+		}
+	}
+
+	net := ton.Networks[c.QueryParam("network")]
+	if net == nil {
+		return &APIError{
+			Status:  http.StatusBadRequest,
+			Message: "undefined network",
+		}
+	}
+
+	account, err := ton.GetAccountInfo(c.Request().Context(), accountID, net)
+	if err != nil {
+		return &APIError{
+			Status:  http.StatusBadRequest,
+			Message: "can't get account info",
+		}
+	}
+
+	slog.Info("account info", slog.Any("account", account))
+
+	return c.JSON(http.StatusOK, account)
 }

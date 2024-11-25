@@ -47,6 +47,8 @@ func (a *App) Run() {
 
 	slog.Info("starting API server...", slog.String("env", a.config.Env))
 
+	slog.Debug("connecting to liteapi mainnet server")
+
 	var err error
 	ton.Networks[ton.MainnetID], err = liteapi.NewClientWithDefaultMainnet()
 	if err != nil {
@@ -54,11 +56,15 @@ func (a *App) Run() {
 		return
 	}
 
+	slog.Debug("connecting to liteapi testnet server")
+
 	ton.Networks[ton.TestnetID], err = liteapi.NewClientWithDefaultMainnet()
 	if err != nil {
 		slog.Error("failed init testnet liteapi client", sl.Err(err))
 		return
 	}
+
+	slog.Debug("successfully connected to liteapi servers")
 
 	// TODO: handle errors
 	mainnet, _ := tonconnect.NewTonConnect(ton.Mainnet(), a.config.TonProof.PayloadSignatureKey, tonconnect.WithLifeTimePayload(a.config.TonProof.PayloadLifetimeSeconds.Nanoseconds()), tonconnect.WithLifeTimeProof(int64(a.config.TonProof.ProofLifetimeSeconds.Nanoseconds())))

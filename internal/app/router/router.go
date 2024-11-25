@@ -1,13 +1,17 @@
 package router
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/cascadecontests/backend/internal/app/handler"
 	"github.com/cascadecontests/backend/internal/config"
+	"github.com/cascadecontests/backend/internal/jwt"
+	"github.com/cascadecontests/backend/internal/lib/logger/sl"
 	"github.com/cascadecontests/backend/pkg/requestid"
 	"github.com/cascadecontests/backend/pkg/requestlog"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/tonkeeper/tongo/tonconnect"
 )
 
@@ -25,6 +29,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
+		slog.Error("error occurred", sl.Err(err))
 		if apiErr, ok := err.(*handler.APIError); ok {
 			c.JSON(apiErr.Status, echo.Map{
 				"message": apiErr.Message,
@@ -66,6 +71,12 @@ func (r *Router) InitRoutes() *echo.Echo {
 		{
 			tonproof.POST("/payload", r.handler.GeneratePayload)
 			tonproof.POST("/check", r.handler.CheckProof)
+
+			// TODO: Migrate to `echo-jwt` middleware
+			tonproof.GET("/account", r.handler.GetAccount, middleware.JWTWithConfig(middleware.JWTConfig{
+				Claims:     &jwt.CustomClaims{},
+				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
+			}))
 		}
 	}
 
