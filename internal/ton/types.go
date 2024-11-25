@@ -13,3 +13,13 @@ type Proof struct {
 		StateInit string `json:"state_init"`
 	} `json:"proof"`
 }
+
+type Account struct {
+	Address struct {
+		Bounceable    string `json:"bounceable"`
+		NonBounceable string `json:"non_bounceable"`
+		Raw           string `json:"raw"`
+	} `json:"address"`
+	Balance int64  `json:"balance"`
+	Status  string `json:"status"`
+}
