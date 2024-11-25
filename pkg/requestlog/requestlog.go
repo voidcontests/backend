@@ -12,7 +12,7 @@ import (
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		slog.Info("request handler",
+		slog.Debug("request handled",
 			slog.String("id", requestid.Get(c)),
 			slog.String("method", c.Request().Method),
 			slog.String("uri", c.Request().URL.Path),
