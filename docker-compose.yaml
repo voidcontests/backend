@@ -1,7 +1,20 @@
 services:
+  postgres:
+    container_name: void-postgres
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+      - ./.db/postgres/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD
+    ports:
+      - "5432:5432"
+
   server:
     container_name: void-server
     image: jus1d/void-server:latest
+    depends_on:
+      - postgres
     restart: unless-stopped
     volumes:
       - ./config:/app/config

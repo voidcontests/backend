@@ -18,7 +18,7 @@ help() {
     echo -e "    ${bold}$0${normal} [${underl}command${normal}]\n"
     echo -e "Here is a list of available commands\n"
     echo -e "    ${bold}deploy${normal} [${underl}branch${normal}]    Run deploy script from current or provided branch"
-    echo -e "    ${bold}push${normal}               Build docker image and push to container registry"
+    echo -e "    ${bold}image${normal} [push]       Build docker image and (optional) push to container registry"
     echo -e "    ${bold}run${normal} [${underl}env${normal}]          Run binary with provided environment (local - default)"
     echo -e "    ${bold}help${normal}               Print this help messages to standard output"
 }
@@ -30,7 +30,24 @@ build() {
 	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
 }
 
-if [ "$1" == "deploy" ]; then
+if [ "$1" == "image" ]; then
+    GIT_COMMIT=$(git rev-parse --short HEAD)
+
+    echo -e "Current git commit is ${bold}$GIT_COMMIT${reset}"
+
+    echo "Building a docker image"
+    docker build -t jus1d/void-server:latest .
+
+    if [ "$2" == "push" ]; then
+        docker tag jus1d/void-server:latest jus1d/void-server:$GIT_COMMIT
+
+        echo "Push built docker image to docker containers registry"
+        docker push jus1d/void-server:$GIT_COMMIT
+    	docker push jus1d/void-server:latest
+
+    	echo "Built docker image was successfully pushed to docker containers registry"
+    fi
+elif [ "$1" == "deploy" ]; then
     if [ -n "$2" ]; then
 		git checkout "$2"
 	fi
@@ -47,17 +64,6 @@ if [ "$1" == "deploy" ]; then
 	docker compose up -d
 
 	echo "Server running"
-elif [ "$1" == "push" ]; then
-    echo "Pulling latest changes..."
-	git pull
-
-	echo "Build a docker image"
-	docker build -t jus1d/void-server:latest .
-
-	echo "Push built docker image to docker containers registry"
-	docker push jus1d/void-server:latest
-
-	echo "Build docker image successfully pushed to docker containers registry"
 elif [ "$1" == "run" ]; then
     # if [ ! -e "$out" ]; then
     #     build
