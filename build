@@ -23,8 +23,8 @@ help() {
     echo -e "    ${bold}help${normal}               Print this help messages to standard output"
 }
 
-build() {
-    echo "Building..."
+build_executable() {
+    echo "Building executable..."
 	go build -o ${out} cmd/server/main.go
 
 	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
@@ -33,19 +33,19 @@ build() {
 if [ "$1" == "image" ]; then
     GIT_COMMIT=$(git rev-parse --short HEAD)
 
-    echo -e "Current git commit is ${bold}$GIT_COMMIT${reset}"
-
-    echo "Building a docker image"
+    echo -e "Building a docker image from commit ${bold}$GIT_COMMIT${normal}"
     docker build -t jus1d/void-server:latest .
 
     if [ "$2" == "push" ]; then
         docker tag jus1d/void-server:latest jus1d/void-server:$GIT_COMMIT
 
-        echo "Push built docker image to docker containers registry"
-        docker push jus1d/void-server:$GIT_COMMIT
-    	docker push jus1d/void-server:latest
+        tags=("$GIT_COMMIT" "latest")
+        for tag in "${tags[@]}"; do
+            echo -e "Pushing ${bold}jus1d/void-server:$tag${normal} to hub"
+            docker push jus1d/void-server:"$tag"
+        done
 
-    	echo "Built docker image was successfully pushed to docker containers registry"
+    	echo "Built docker image was successfully pushed to dockerhub"
     fi
 elif [ "$1" == "deploy" ]; then
     if [ -n "$2" ]; then
@@ -65,11 +65,7 @@ elif [ "$1" == "deploy" ]; then
 
 	echo "Server running"
 elif [ "$1" == "run" ]; then
-    # if [ ! -e "$out" ]; then
-    #     build
-    # fi
-
-    build
+    build_executable
 
     if [ -n "$2" ]; then
         env="$2"
