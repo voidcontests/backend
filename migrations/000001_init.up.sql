@@ -6,7 +6,7 @@ CREATE TABLE contests (
     creator_address VARCHAR(64) NOT NULL,
     start_time TIMESTAMP NOT NULL,
     duration INTERVAL NOT NULL,
-    max_slots INTEGER NOT NULL,
+    slots INTEGER NOT NULL,
     -- applied_participants INTEGER DEFAULT 0 NOT NULL,
     is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
