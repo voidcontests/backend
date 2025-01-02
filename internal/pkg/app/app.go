@@ -15,6 +15,8 @@ import (
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/backend/internal/repository/postgres"
 	"github.com/voidcontests/backend/internal/ton"
 )
 
@@ -70,7 +72,16 @@ func (a *App) Run() {
 	mainnet, _ := tonconnect.NewTonConnect(ton.Mainnet(), a.config.TonProof.PayloadSignatureKey, tonconnect.WithLifeTimePayload(a.config.TonProof.PayloadLifetimeSeconds.Nanoseconds()), tonconnect.WithLifeTimeProof(int64(a.config.TonProof.ProofLifetimeSeconds.Nanoseconds())))
 	testnet, _ := tonconnect.NewTonConnect(ton.Testnet(), a.config.TonProof.PayloadSignatureKey, tonconnect.WithLifeTimePayload(a.config.TonProof.PayloadLifetimeSeconds.Nanoseconds()), tonconnect.WithLifeTimeProof(int64(a.config.TonProof.ProofLifetimeSeconds.Nanoseconds())))
 
-	r := router.New(a.config, mainnet, testnet)
+	db, err := postgres.New(&a.config.Postgres)
+	if err != nil {
+		slog.Error("could not connect to postgresql", sl.Err(err))
+		return
+	}
+
+	slog.Info("successfully connected to postgresql")
+
+	repo := repository.New(db)
+	r := router.New(a.config, repo, mainnet, testnet)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,

@@ -13,18 +13,21 @@ import (
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
+	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/internal/ton"
 )
 
 type Handler struct {
 	config            *config.Config
+	repo              *repository.Repository
 	tonconnectMainnet *tonconnect.Server
 	tonconnectTestnet *tonconnect.Server
 }
 
-func New(config *config.Config, mainnet, testnet *tonconnect.Server) *Handler {
+func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Handler {
 	return &Handler{
-		config:            config,
+		config:            c,
+		repo:              r,
 		tonconnectMainnet: mainnet,
 		tonconnectTestnet: testnet,
 	}

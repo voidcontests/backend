@@ -20,6 +20,7 @@ type Config struct {
 	Env      string   `yaml:"env" env-required:"true"`
 	Server   Server   `yaml:"http" env-required:"true"`
 	TonProof TonProof `yaml:"ton_proof" env-required:"true"`
+	Postgres Postgres `yaml:"postgres" env-required:"true"`
 }
 
 type Server struct {
@@ -32,6 +33,15 @@ type TonProof struct {
 	PayloadSignatureKey    string        `yaml:"payload_signature_key" env-required:"true"`
 	PayloadLifetimeSeconds time.Duration `yaml:"payload_lifetime_seconds" env-default:"300s"`
 	ProofLifetimeSeconds   time.Duration `yaml:"proof_lifetime_seconds" env-default:"300s"`
+}
+
+type Postgres struct {
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	User     string `yaml:"user"`
+	Name     string `yaml:"name"`
+	Password string `yaml:"password"`
+	ModeSSL  string `yaml:"sslmode"`
 }
 
 // MustLoad loads config to a new Config instance and return it

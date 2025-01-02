@@ -11,6 +11,7 @@ import (
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/requestlog"
 )
@@ -20,9 +21,9 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(config *config.Config, mainnet, testnet *tonconnect.Server) *Router {
-	h := handler.New(config, mainnet, testnet)
-	return &Router{config: config, handler: h}
+func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Router {
+	h := handler.New(c, r, mainnet, testnet)
+	return &Router{config: c, handler: h}
 }
 
 func (r *Router) InitRoutes() *echo.Echo {

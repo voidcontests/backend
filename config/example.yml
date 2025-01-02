@@ -9,3 +9,11 @@ ton_proof:
   payload_signature_key: "somesecretkey"
   payload_lifetime_seconds: "300s"
   proof_lifetime_seconds: "300s"
+
+postgres:
+  host: "localhost"
+  port: "1337"
+  user: "postgres"
+  name: "postgres"
+  password: "my-unhackable-password"
+  sslmode: "disable"
