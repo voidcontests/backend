@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/cascadecontests/backend/internal/app/handler"
-	"github.com/cascadecontests/backend/pkg/requestid"
 	"github.com/labstack/echo/v4"
+	"github.com/voidcontests/backend/internal/app/handler"
+	"github.com/voidcontests/backend/pkg/requestid"
 )
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {

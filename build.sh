@@ -35,10 +35,10 @@ if [ "$1" == "deploy" ]; then
 		git checkout "$2"
 	fi
 
-	echo -e "Deploying ${bold}cascadecontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
+	echo -e "Deploying ${bold}voidcontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
 
 	echo "Pulling latest image..."
-	docker pull jus1d/cascade-server:latest
+	docker pull jus1d/void-server:latest
 
 	echo "Stopping docker compose..."
 	docker compose down
@@ -52,10 +52,10 @@ elif [ "$1" == "push" ]; then
 	git pull
 
 	echo "Build a docker image"
-	docker build -t jus1d/cascade-server:latest .
+	docker build -t jus1d/void-server:latest .
 
 	echo "Push built docker image to docker containers registry"
-	docker push jus1d/cascade-server:latest
+	docker push jus1d/void-server:latest
 
 	echo "Build docker image successfully pushed to docker containers registry"
 elif [ "$1" == "run" ]; then

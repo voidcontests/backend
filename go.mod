@@ -1,4 +1,4 @@
-module github.com/cascadecontests/backend
+module github.com/voidcontests/backend
 
 go 1.23.0
 

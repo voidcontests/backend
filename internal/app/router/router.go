@@ -4,15 +4,15 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/cascadecontests/backend/internal/app/handler"
-	"github.com/cascadecontests/backend/internal/config"
-	"github.com/cascadecontests/backend/internal/jwt"
-	"github.com/cascadecontests/backend/internal/lib/logger/sl"
-	"github.com/cascadecontests/backend/pkg/requestid"
-	"github.com/cascadecontests/backend/pkg/requestlog"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/tonkeeper/tongo/tonconnect"
+	"github.com/voidcontests/backend/internal/app/handler"
+	"github.com/voidcontests/backend/internal/config"
+	"github.com/voidcontests/backend/internal/jwt"
+	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/pkg/requestid"
+	"github.com/voidcontests/backend/pkg/requestlog"
 )
 
 type Router struct {

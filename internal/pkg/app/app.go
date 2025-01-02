@@ -9,13 +9,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/cascadecontests/backend/internal/app/router"
-	"github.com/cascadecontests/backend/internal/config"
-	"github.com/cascadecontests/backend/internal/lib/logger/prettyslog"
-	"github.com/cascadecontests/backend/internal/lib/logger/sl"
-	"github.com/cascadecontests/backend/internal/ton"
 	"github.com/tonkeeper/tongo/liteapi"
 	"github.com/tonkeeper/tongo/tonconnect"
+	"github.com/voidcontests/backend/internal/app/router"
+	"github.com/voidcontests/backend/internal/config"
+	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
+	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/ton"
 )
 
 type App struct {

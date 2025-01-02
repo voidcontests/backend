@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/cascadecontests/backend/internal/config"
-	"github.com/cascadecontests/backend/internal/jwt"
-	"github.com/cascadecontests/backend/internal/ton"
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
+	"github.com/voidcontests/backend/internal/config"
+	"github.com/voidcontests/backend/internal/jwt"
+	"github.com/voidcontests/backend/internal/ton"
 )
 
 type Handler struct {
