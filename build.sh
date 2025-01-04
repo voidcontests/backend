@@ -72,7 +72,15 @@ elif [ "$1" == "run" ]; then
         env="local"
 	fi
 
+	if [ $env == "local" ]; then
+	   echo "Start docker containers with environment"
+	   docker compose -f ./docker-compose.local.yaml up -d
+	fi
+
 	CONFIG_PATH="./config/${env}.yaml" ./.bin/server
+
+	echo "Shutting down environment containers"
+	docker compose down
 elif [ "$1" == "help" ]; then
     help
 else

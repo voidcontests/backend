@@ -10,15 +10,15 @@ services:
     ports:
       - "5432:5432"
 
-  # server:
-  #   container_name: void-server
-  #   image: jus1d/void-server:latest
-  #   depends_on:
-  #     - postgres
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./config:/app/config
-  #   environment:
-  #     - CONFIG_PATH=./config/dev.yaml
-  #   ports:
-  #     - "6969:6969"
+  server:
+    container_name: void-server
+    image: jus1d/void-server:latest
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+    environment:
+      - CONFIG_PATH=./config/dev.yaml
+    ports:
+      - "6969:6969"

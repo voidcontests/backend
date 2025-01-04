@@ -1,0 +1,11 @@
+services:
+  postgres:
+    container_name: void-postgres
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+      - ./.db/postgres/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD
+    ports:
+      - "5432:5432"
