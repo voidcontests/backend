@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # colors
 bold='\033[0;1m'
 italic='\033[0;3m'

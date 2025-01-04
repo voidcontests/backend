@@ -60,7 +60,7 @@ func (a *App) Run() {
 
 	slog.Debug("connecting to liteapi testnet server")
 
-	ton.Networks[ton.TestnetID], err = liteapi.NewClientWithDefaultMainnet()
+	ton.Networks[ton.TestnetID], err = liteapi.NewClientWithDefaultTestnet()
 	if err != nil {
 		slog.Error("failed init testnet liteapi client", sl.Err(err))
 		return
