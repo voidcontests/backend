@@ -138,8 +138,7 @@ func (h *Handler) GetAccount(c echo.Context) error {
 	user := c.Get("user").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
-	// TODO: Fix deprecated method (tonfo.ParseAccountID -> tongo.ParseAddress)
-	accountID, err := tongo.ParseAccountID(claims.Address)
+	address, err := tongo.ParseAddress(claims.Address)
 	if err != nil {
 		return &APIError{
 			Status:  http.StatusBadRequest,
@@ -155,7 +154,7 @@ func (h *Handler) GetAccount(c echo.Context) error {
 		}
 	}
 
-	account, err := ton.GetAccountInfo(c.Request().Context(), accountID, net)
+	account, err := ton.GetAccountInfo(c.Request().Context(), address.ID, net)
 	if err != nil {
 		return &APIError{
 			Status:  http.StatusBadRequest,

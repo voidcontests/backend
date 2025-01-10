@@ -45,7 +45,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	router.Use(requestid.New)
 	router.Use(requestlog.Completed)
-	router.Pre(middleware.AddTrailingSlash())
+	router.Pre(middleware.RemoveTrailingSlash())
 
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
@@ -91,12 +91,12 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		contests := api.Group("/contests")
 		{
-			contests.GET("/", r.handler.GetContests)
+			contests.GET("", r.handler.GetContests)
 		}
 
 		problems := api.Group("/problems")
 		{
-			problems.GET("/", r.handler.GetProblems)
+			problems.GET("", r.handler.GetProblems)
 		}
 	}
 
