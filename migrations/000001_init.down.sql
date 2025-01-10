@@ -1,3 +1,3 @@
-DROP TABLE contests;
-
 DROP TABLE problems;
+
+DROP TABLE contests;

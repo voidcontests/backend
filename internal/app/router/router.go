@@ -82,7 +82,10 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		contest := api.Group("/contest")
 		{
-			contest.POST("/create", r.handler.CreateContest)
+			contest.POST("/create", r.handler.CreateContest, middleware.JWTWithConfig(middleware.JWTConfig{
+				Claims:     &jwt.CustomClaims{},
+				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
+			}))
 		}
 	}
 

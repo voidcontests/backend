@@ -1,10 +1,12 @@
 package requestbody
 
+import "time"
+
 type Contest struct {
 	Title        string    `json:"title"`
 	Description  string    `json:"description"`
 	Problems     []Problem `json:"problems"`
-	StartingAt   string    `json:"starting_at"`
+	StartingAt   time.Time `json:"starting_at"`
 	DurationMins int32     `json:"duration_mins"`
 	IsDraft      bool      `json:"is_draft"`
 }
