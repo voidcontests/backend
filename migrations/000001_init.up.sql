@@ -2,12 +2,9 @@ CREATE TABLE contests (
     id SERIAL PRIMARY KEY,
     title VARCHAR(64) NOT NULL,
     description VARCHAR(512) DEFAULT '' NOT NULL,
-    problem_ids []INTEGER DEFAULT '{}',
     creator_address VARCHAR(64) NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    duration INTERVAL NOT NULL,
-    slots INTEGER NOT NULL,
-    -- applied_participants INTEGER DEFAULT 0 NOT NULL,
+    starting_at TIMESTAMP NOT NULL,
+    duration_mins INTEGER NOT NULL,
     is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
@@ -15,11 +12,11 @@ CREATE TABLE contests (
 CREATE TABLE problems
 (
     id SERIAL PRIMARY KEY,
+    contest_id INTEGER NOT NULL REFERENCES contests(id),
     title VARCHAR(64) NOT NULL,
-    task TEXT DEFAULT '' NOT NULL,
+    statement TEXT DEFAULT '' NOT NULL,
+    difficulty VARCHAR(10) NOT NULL,
     writer_address VARCHAR(64) NOT NULL,
-    -- kind ? -- TODO: maybe create an enum for problem kind like (single-answer, multi-answer, code)
-    -- difficulty ???
     input TEXT NOT NULL,
     answer TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL

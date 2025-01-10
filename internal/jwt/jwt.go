@@ -30,7 +30,7 @@ func GenerateToken(address, secret string) (string, error) {
 	return signedToken, nil
 }
 
-func Parse(token, secret string) (id string, err error) {
+func Parse(token, secret string) (address string, err error) {
 	jsonwebtoken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -46,7 +46,7 @@ func Parse(token, secret string) (id string, err error) {
 	if !ok || !jsonwebtoken.Valid {
 		return "", fmt.Errorf("token.ParseToID: can't parse invalid jsonwebtoken")
 	}
-	address := claims.Address
+	address = claims.Address
 
 	return address, nil
 }

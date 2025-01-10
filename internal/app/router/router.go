@@ -79,6 +79,11 @@ func (r *Router) InitRoutes() *echo.Echo {
 				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
 			}))
 		}
+
+		contest := api.Group("/contest")
+		{
+			contest.POST("/create", r.handler.CreateContest)
+		}
 	}
 
 	return router

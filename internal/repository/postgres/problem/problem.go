@@ -15,10 +15,15 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, title string, task string, writerAddress string, input string, answer string) (*entity.Problem, error) {
-	return nil, nil
-}
+func (p *Postgres) Create(ctx context.Context, contestID int32, title string, statement string, difficulty string, writerAddress string, input string, answer string) (*entity.Problem, error) {
+	var err error
+	var problem entity.Problem
 
-func (p *Postgres) Get(ctx context.Context, problemID int32) (*entity.Problem, error) {
-	return nil, nil
+	query := `INSERT INTO problems (contest_id, title, statement, difficulty, writer_address, input, answer) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`
+	err = p.db.GetContext(ctx, &problem, query, contestID, title, statement, difficulty, writerAddress, input, answer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &problem, nil
 }

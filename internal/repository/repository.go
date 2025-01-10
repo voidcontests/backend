@@ -11,14 +11,11 @@ import (
 )
 
 type Contest interface {
-	Create(ctx context.Context, title string, description string, problemIDs []int32, creatorAddress string, startTime time.Time, duration time.Duration, slots int32, isDraft bool) (*entity.Contest, error)
-	Get(ctx context.Context, contestID int32) (*entity.Contest, error)
-	PublishDraft(ctx context.Context, contestID int32) (*entity.Contest, error)
+	Create(ctx context.Context, title string, description string, creatorAddress string, startingAt time.Time, durationMins int32, isDraft bool) (*entity.Contest, error)
 }
 
 type Problem interface {
-	Create(ctx context.Context, title string, task string, writerAddress string, input string, answer string) (*entity.Problem, error)
-	Get(ctx context.Context, problemID int32) (*entity.Problem, error)
+	Create(ctx context.Context, contestID int32, title string, statement string, difficulty string, writerAddress string, input string, answer string) (*entity.Problem, error)
 }
 
 type Repository struct {
