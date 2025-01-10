@@ -28,3 +28,16 @@ func (p *Postgres) Create(ctx context.Context, title string, description string,
 
 	return &contest, nil
 }
+
+func (p *Postgres) GetAll(ctx context.Context) ([]entity.Contest, error) {
+	var err error
+	var contests []entity.Contest
+
+	query := `SELECT * FROM contests`
+	err = p.db.SelectContext(ctx, &contests, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return contests, nil
+}

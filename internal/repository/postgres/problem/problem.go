@@ -27,3 +27,16 @@ func (p *Postgres) Create(ctx context.Context, contestID int32, title string, st
 
 	return &problem, nil
 }
+
+func (p *Postgres) GetAll(ctx context.Context) ([]entity.Problem, error) {
+	var err error
+	var problems []entity.Problem
+
+	query := `SELECT * FROM problems`
+	err = p.db.SelectContext(ctx, &problems, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
+}

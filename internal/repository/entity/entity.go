@@ -3,14 +3,14 @@ package entity
 import "time"
 
 type Contest struct {
-	ID             int32         `json:"id" db:"id"`
-	Title          string        `json:"title" db:"title"`
-	Description    string        `json:"description" db:"description"`
-	CreatorAddress string        `json:"creator_address" db:"creator_address"`
-	StartingAt     time.Time     `json:"start" db:"starting_at"`
-	Duration       time.Duration `json:"duration" db:"duration_mins"`
-	IsDraft        bool          `json:"is_draft" db:"is_draft"`
-	CreatedAt      time.Time     `json:"created_at" db:"created_at"`
+	ID             int32     `json:"id" db:"id"`
+	Title          string    `json:"title" db:"title"`
+	Description    string    `json:"description" db:"description"`
+	CreatorAddress string    `json:"creator_address" db:"creator_address"`
+	StartingAt     time.Time `json:"start" db:"starting_at"`
+	DurationMins   int32     `json:"duration_mins" db:"duration_mins"`
+	IsDraft        bool      `json:"is_draft" db:"is_draft"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 }
 
 type Problem struct {
