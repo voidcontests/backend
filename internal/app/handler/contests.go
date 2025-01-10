@@ -11,6 +11,10 @@ import (
 )
 
 func (h *Handler) GetContests(c echo.Context) error {
+	// TODO: do not return all contests:
+	// - return only active contests
+	// - return by chunks
+
 	log := slog.With(slog.String("op", "handler.GetContests"), slog.String("request_id", requestid.Get(c)))
 
 	contests, err := h.repo.Contest.GetAll(c.Request().Context())

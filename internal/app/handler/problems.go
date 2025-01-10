@@ -11,6 +11,8 @@ import (
 )
 
 func (h *Handler) GetProblems(c echo.Context) error {
+	// TODO: return problems splitted by chunks
+
 	log := slog.With(slog.String("op", "handler.GetProblems"), slog.String("request_id", requestid.Get(c)))
 
 	problems, err := h.repo.Problem.GetAll(c.Request().Context())
