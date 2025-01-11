@@ -1,6 +1,8 @@
-package responsebody
+package response
 
-import "github.com/voidcontests/backend/internal/repository/entity"
+import (
+	"github.com/voidcontests/backend/internal/repository/entity"
+)
 
 type Contests struct {
 	Amount   int              `json:"amount"`

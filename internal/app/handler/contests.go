@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/responsebody"
+	"github.com/voidcontests/backend/internal/app/handler/response"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/pkg/requestid"
 )
@@ -23,7 +23,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "internal server error")
 	}
 
-	return c.JSON(http.StatusCreated, responsebody.Contests{
+	return c.JSON(http.StatusOK, response.Contests{
 		Amount:   len(contests),
 		Contests: contests,
 	})

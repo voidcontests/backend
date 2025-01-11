@@ -6,7 +6,7 @@ import (
 
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/requestbody"
+	"github.com/voidcontests/backend/internal/app/handler/request"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -18,7 +18,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
-	var body requestbody.Contest
+	var body request.Contest
 	if err := c.Bind(&body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return c.String(http.StatusBadRequest, "bad request")

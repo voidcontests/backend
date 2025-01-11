@@ -1,4 +1,4 @@
-package requestbody
+package request
 
 import "time"
 
