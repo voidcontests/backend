@@ -47,6 +47,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router.Use(requestlog.Completed)
 	router.Pre(middleware.RemoveTrailingSlash())
 
+	// TODO: use custom validator with e.Validator
+
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
 		router.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -81,16 +83,13 @@ func (r *Router) InitRoutes() *echo.Echo {
 			}))
 		}
 
-		contest := api.Group("/contest")
+		contests := api.Group("/contests")
 		{
-			contest.POST("/create", r.handler.CreateContest, middleware.JWTWithConfig(middleware.JWTConfig{
+			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(middleware.JWTConfig{
 				Claims:     &jwt.CustomClaims{},
 				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
 			}))
-		}
 
-		contests := api.Group("/contests")
-		{
 			contests.GET("", r.handler.GetContests)
 		}
 
