@@ -67,6 +67,12 @@ func (r *Router) InitRoutes() *echo.Echo {
 		})
 	}
 
+	jwtopts := middleware.JWTConfig{
+		Claims:     &jwt.CustomClaims{},
+		SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
+		ContextKey: "account",
+	}
+
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
@@ -77,20 +83,13 @@ func (r *Router) InitRoutes() *echo.Echo {
 			tonproof.POST("/check", r.handler.CheckProof)
 
 			// TODO: Migrate to `echo-jwt` middleware
-			tonproof.GET("/account", r.handler.GetAccount, middleware.JWTWithConfig(middleware.JWTConfig{
-				Claims:     &jwt.CustomClaims{},
-				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
-			}))
+			tonproof.GET("/account", r.handler.GetAccount, middleware.JWTWithConfig(jwtopts))
 		}
 
 		contests := api.Group("/contests")
 		{
-			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(middleware.JWTConfig{
-				Claims:     &jwt.CustomClaims{},
-				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
-			}))
-
 			contests.GET("", r.handler.GetContests)
+			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(jwtopts))
 		}
 
 		problems := api.Group("/problems")

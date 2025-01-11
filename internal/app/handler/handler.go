@@ -135,7 +135,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 }
 
 func (h *Handler) GetAccount(c echo.Context) error {
-	user := c.Get("user").(*jwtgo.Token)
+	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
 	address, err := tongo.ParseAddress(claims.Address)

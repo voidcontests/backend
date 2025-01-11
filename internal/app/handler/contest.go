@@ -15,7 +15,7 @@ import (
 func (h *Handler) CreateContest(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateContest"), slog.String("request_id", requestid.Get(c)))
 
-	user := c.Get("user").(*jwtgo.Token)
+	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
 	var body requestbody.Contest
