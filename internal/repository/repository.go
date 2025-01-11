@@ -12,6 +12,8 @@ import (
 
 type Contest interface {
 	Create(ctx context.Context, title string, description string, creatorAddress string, startingAt time.Time, durationMins int32, isDraft bool) (*entity.Contest, error)
+	GetProblemset(ctx context.Context, contestID int32) ([]entity.Problem, error)
+	GetByID(ctx context.Context, id int32) (*entity.Contest, error)
 	GetAll(ctx context.Context) ([]entity.Contest, error)
 }
 

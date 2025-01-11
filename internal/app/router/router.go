@@ -90,6 +90,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 		{
 			contests.GET("", r.handler.GetContests)
 			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(jwtopts))
+			contests.GET("/:id", r.handler.GetContestByID)
 		}
 
 		problems := api.Group("/problems")
