@@ -3,17 +3,20 @@ package response
 import (
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/repository/entity"
 )
 
-type Contests struct {
-	Amount   int              `json:"amount"`
-	Contests []entity.Contest `json:"contests"`
+func WithMessage(c echo.Context, code int, message string) error {
+	return c.JSON(code, map[string]string{"message": message})
 }
 
-type Problems struct {
-	Amount   int              `json:"amount"`
-	Problems []entity.Problem `json:"problems"`
+type Problem struct {
+	ID            int32  `json:"id"`
+	ContestID     int32  `json:"contest_id"`
+	Title         string `json:"title"`
+	Difficulty    string `json:"difficulty"`
+	WriterAddress string `json:"writer_address"`
 }
 
 type Contest struct {

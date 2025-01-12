@@ -25,14 +25,14 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	var body request.Contest
 	if err := c.Bind(&body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
-		return c.String(http.StatusBadRequest, "bad request")
+		return response.WithMessage(c, http.StatusBadRequest, "bad request")
 	}
 
 	// TODO: start transaction here
 	contest, err := h.repo.Contest.Create(c.Request().Context(), body.Title, body.Description, claims.Address, body.StartingAt, body.DurationMins, body.IsDraft)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
-		return c.String(http.StatusInternalServerError, "internal server error")
+		return err
 	}
 
 	// TODO: insert up to 10? problems in one query
@@ -40,7 +40,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		_, err := h.repo.Problem.Create(c.Request().Context(), contest.ID, p.Title, p.Statement, p.Difficulty, contest.CreatorAddress, p.Input, p.Answer)
 		if err != nil {
 			log.Error("can't create workout", sl.Err(err))
-			return c.String(http.StatusInternalServerError, "internal server error")
+			return err
 		}
 	}
 
@@ -54,19 +54,21 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	contestID, err := strconv.Atoi(id)
 	if err != nil {
 		log.Debug("`id` param is not an integer", slog.String("id", id), sl.Err(err))
-		return c.String(http.StatusBadRequest, "`id` should be integer")
+		return response.WithMessage(c, http.StatusBadRequest, "`id` should be integer")
 	}
 
 	contest, err := h.repo.Contest.GetByID(c.Request().Context(), int32(contestID))
 	if errors.Is(repoerr.ErrContestNotFound, err) {
-		return c.String(http.StatusNotFound, "contest not found")
+		return response.WithMessage(c, http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
+		log.Error("can't get contest by id", sl.Err(err))
 		return err
 	}
 
 	problems, err := h.repo.Contest.GetProblemset(c.Request().Context(), contest.ID)
 	if err != nil {
+		log.Error("can't get contest problemset", sl.Err(err))
 		return err
 	}
 
@@ -93,11 +95,10 @@ func (h *Handler) GetContests(c echo.Context) error {
 	contests, err := h.repo.Contest.GetAll(c.Request().Context())
 	if err != nil {
 		log.Error("can't get contests", sl.Err(err))
-		return c.String(http.StatusInternalServerError, "internal server error")
+		return err
 	}
 
-	return c.JSON(http.StatusOK, response.Contests{
-		Amount:   len(contests),
-		Contests: contests,
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": contests,
 	})
 }

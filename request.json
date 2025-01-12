@@ -1,0 +1,23 @@
+{
+	"title": "Introduction",
+	"description": "This is an introduction contest, to make a deal with platform's mechanics",
+	"problems": [
+		{
+			"title": "Reading",
+			"statement": "Your input file contains `n + 1` numbers. First number - `k`, you need to return `k-th` number from the last `n` numbers in your input",
+			"difficulty": "easy",
+			"input": "3\n1\n6\n21\n882\n91\n20",
+			"answer": "21"
+		},
+		{
+			"title": "Addition",
+			"statement": "Sum three numbers from your input. Return single number",
+			"difficulty": "easy",
+			"input": "21\n69\n6",
+			"answer": "96"
+		}
+	],
+	"starting_at": "2025-01-14T17:00:00.000000Z",
+	"duration_mins": 300,
+	"is_draft": false
+}

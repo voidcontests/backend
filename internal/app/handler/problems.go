@@ -14,14 +14,24 @@ func (h *Handler) GetProblems(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetProblems"), slog.String("request_id", requestid.Get(c)))
 
 	// TODO: return problems splitted by chunks
-	problems, err := h.repo.Problem.GetAll(c.Request().Context())
+	detailed_problems, err := h.repo.Problem.GetAll(c.Request().Context())
 	if err != nil {
 		log.Error("can't get contests", sl.Err(err))
-		return c.String(http.StatusInternalServerError, "internal server error")
+		return err
 	}
 
-	return c.JSON(http.StatusOK, response.Problems{
-		Amount:   len(problems),
-		Problems: problems,
+	problems := make([]response.Problem, len(detailed_problems), len(detailed_problems))
+	for i, p := range problems {
+		problems[i] = response.Problem{
+			ID:            p.ID,
+			ContestID:     p.ContestID,
+			Title:         p.Title,
+			Difficulty:    p.Difficulty,
+			WriterAddress: p.WriterAddress,
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": problems,
 	})
 }
