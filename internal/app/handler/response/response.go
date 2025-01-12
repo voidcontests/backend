@@ -3,13 +3,8 @@ package response
 import (
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/repository/entity"
 )
-
-func WithMessage(c echo.Context, code int, message string) error {
-	return c.JSON(code, map[string]string{"message": message})
-}
 
 type Problem struct {
 	ID            int32  `json:"id"`

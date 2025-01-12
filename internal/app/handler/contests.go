@@ -25,7 +25,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	var body request.Contest
 	if err := c.Bind(&body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
-		return response.WithMessage(c, http.StatusBadRequest, "bad request")
+		return Error(http.StatusBadRequest, "invalid body")
 	}
 
 	// TODO: start transaction here
@@ -54,12 +54,12 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	contestID, err := strconv.Atoi(id)
 	if err != nil {
 		log.Debug("`id` param is not an integer", slog.String("id", id), sl.Err(err))
-		return response.WithMessage(c, http.StatusBadRequest, "`id` should be integer")
+		return Error(http.StatusBadRequest, "`id` should be integer")
 	}
 
 	contest, err := h.repo.Contest.GetByID(c.Request().Context(), int32(contestID))
 	if errors.Is(repoerr.ErrContestNotFound, err) {
-		return response.WithMessage(c, http.StatusNotFound, "contest not found")
+		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
 		log.Error("can't get contest by id", sl.Err(err))

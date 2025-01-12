@@ -30,6 +30,13 @@ type APIError struct {
 	Message string
 }
 
+func Error(code int, message string) error {
+	return &APIError{
+		Status:  code,
+		Message: message,
+	}
+}
+
 func (e *APIError) Error() string {
 	return e.Message
 }

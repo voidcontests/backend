@@ -49,10 +49,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	var tp ton.Proof
 	err = json.Unmarshal(b, &tp)
 	if err != nil {
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "invalid request body",
-		}
+		return Error(http.StatusBadRequest, "invalid request body")
 	}
 
 	slog.Debug("tonproof request structure", slog.Any("ton.Proof", tp))
@@ -64,10 +61,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	case ton.TestnetID:
 		tcs = h.tonconnectTestnet
 	default:
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "invalid network provided",
-		}
+		return Error(http.StatusBadRequest, "invalid network provided")
 	}
 
 	proof := tonconnect.Proof{
@@ -85,10 +79,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 
 	verified, _, err := tcs.CheckProof(ctx, &proof, tcs.CheckPayload, tonconnect.StaticDomain(proof.Proof.Domain))
 	if err != nil || !verified {
-		return &APIError{
-			Status:  http.StatusUnauthorized,
-			Message: "tonproof verification failed",
-		}
+		return Error(http.StatusUnauthorized, "tonproof verification failed")
 	}
 
 	token, err := jwt.GenerateToken(tp.Address, h.tonconnectMainnet.GetSecret())
@@ -109,26 +100,17 @@ func (h *Handler) GetAccount(c echo.Context) error {
 
 	address, err := tongo.ParseAddress(claims.Address)
 	if err != nil {
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "can't parse account",
-		}
+		return Error(http.StatusBadRequest, "can't parse account")
 	}
 
 	net := ton.Networks[c.QueryParam("network")]
 	if net == nil {
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "undefined network",
-		}
+		return Error(http.StatusBadRequest, "undefined network")
 	}
 
 	account, err := ton.GetAccountInfo(c.Request().Context(), address.ID, net)
 	if err != nil {
-		return &APIError{
-			Status:  http.StatusBadRequest,
-			Message: "can't get account info",
-		}
+		return Error(http.StatusBadRequest, "can't get account info")
 	}
 
 	slog.Info("account info", slog.Any("account", account))
