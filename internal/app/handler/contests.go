@@ -12,6 +12,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/response"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository/entity"
 	repoerr "github.com/voidcontests/backend/internal/repository/errors"
 	"github.com/voidcontests/backend/pkg/requestid"
 )
@@ -44,6 +45,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		}
 	}
 
+	// TODO: Return contest with basic problems info
 	return c.JSON(http.StatusCreated, contest)
 }
 
@@ -98,7 +100,15 @@ func (h *Handler) GetContests(c echo.Context) error {
 		return err
 	}
 
+	n := len(contests)
+	filteredContests := make([]*entity.Contest, n, n)
+	for i, c := range contests {
+		if !c.IsDraft {
+			filteredContests[i] = &c
+		}
+	}
+
 	return c.JSON(http.StatusOK, map[string]any{
-		"data": contests,
+		"data": filteredContests,
 	})
 }
