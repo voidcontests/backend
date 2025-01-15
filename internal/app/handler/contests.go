@@ -92,7 +92,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		CreatorID:    contest.CreatorID,
 		StartingAt:   contest.StartingAt,
 		DurationMins: contest.DurationMins,
-		IsDraft:      contest.IsDraft, // TODO: return `is_draft` only if contest created by request initiator
+		IsDraft:      contest.IsDraft,
 	})
 }
 

@@ -9,7 +9,7 @@ type Contest struct {
 	Description  string            `json:"description"`
 	StartingAt   time.Time         `json:"starting_at"`
 	DurationMins int32             `json:"duration_mins"`
-	IsDraft      bool              `json:"is_draft"`
+	IsDraft      bool              `json:"is_draft,omitempty"`
 	Problems     []ProblemListItem `json:"problems"`
 }
 
