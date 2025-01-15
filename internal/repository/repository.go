@@ -33,6 +33,7 @@ type Problem interface {
 
 type Entry interface {
 	Create(ctx context.Context, contestID int32, userID int32) (*models.Entry, error)
+	Get(ctx context.Context, contestID int32, userID int32) (*models.Entry, error)
 }
 
 type Submission interface {

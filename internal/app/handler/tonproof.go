@@ -13,7 +13,7 @@ import (
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
-	repoerr "github.com/voidcontests/backend/internal/repository/errors"
+	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/internal/ton"
 )
 

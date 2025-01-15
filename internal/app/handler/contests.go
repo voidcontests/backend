@@ -12,7 +12,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	repoerr "github.com/voidcontests/backend/internal/repository/errors"
+	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
 )
 
@@ -126,4 +126,37 @@ func (h *Handler) GetContests(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{
 		"data": published,
 	})
+}
+
+func (h *Handler) CreateEntry(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.CreateEntry"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	// TODO: check if user can be null, or jwt abort if token is not set
+	user := c.Get("account").(*jwtgo.Token)
+	claims := user.Claims.(*jwt.CustomClaims)
+
+	id := c.Param("id")
+	contestID, err := strconv.Atoi(id)
+	if err != nil {
+		log.Debug("`id` param is not an integer", slog.String("id", id), sl.Err(err))
+		return Error(http.StatusBadRequest, "`id` should be integer")
+	}
+
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
+		log.Error("can't get entry", sl.Err(err))
+		return err
+	}
+	if entry != nil {
+		return Error(http.StatusConflict, "user already has entry for this contest")
+	}
+
+	_, err = h.repo.Entry.Create(ctx, int32(contestID), claims.ID)
+	if err != nil {
+		log.Error("can't create entry for contest", sl.Err(err))
+		return err
+	}
+
+	return c.NoContent(http.StatusCreated)
 }

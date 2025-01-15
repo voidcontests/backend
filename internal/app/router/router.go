@@ -88,9 +88,11 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		contests := api.Group("/contests")
 		{
+			// TODO: move create contest to `/contest` instean of `/contests`
 			contests.GET("", r.handler.GetContests)
 			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(jwtopts))
 			contests.GET("/:id", r.handler.GetContestByID)
+			contests.POST("/:id/entry", r.handler.CreateEntry)
 		}
 
 		problems := api.Group("/problems")

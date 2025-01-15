@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	repoerr "github.com/voidcontests/backend/internal/repository/errors"
 	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
 
 type Postgres struct {
