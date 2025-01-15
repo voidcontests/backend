@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/voidcontests/backend/internal/repository/entity"
 	repoerr "github.com/voidcontests/backend/internal/repository/errors"
+	"github.com/voidcontests/backend/internal/repository/models"
 )
 
 type Postgres struct {
@@ -19,12 +19,12 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, title string, description string, creatorAddress string, startingAt time.Time, durationMins int32, isDraft bool) (*entity.Contest, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startingAt time.Time, durationMins int32, isDraft bool) (*models.Contest, error) {
 	var err error
-	var contest entity.Contest
+	var contest models.Contest
 
-	query := `INSERT INTO contests (title, description, creator_address, starting_at, duration_mins, is_draft) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`
-	err = p.db.GetContext(ctx, &contest, query, title, description, creatorAddress, startingAt, durationMins, isDraft)
+	query := `INSERT INTO contests (creator_id, title, description, starting_at, duration_mins, is_draft) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`
+	err = p.db.GetContext(ctx, &contest, query, creatorID, title, description, startingAt, durationMins, isDraft)
 	if err != nil {
 		return nil, err
 	}
@@ -32,9 +32,9 @@ func (p *Postgres) Create(ctx context.Context, title string, description string,
 	return &contest, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*entity.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
 	var err error
-	var contest entity.Contest
+	var contest models.Contest
 
 	query := `SELECT * FROM contests WHERE id = $1`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
@@ -48,10 +48,10 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*entity.Contes
 	return &contest, nil
 }
 
-func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]entity.Problem, error) {
+func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	query := "SELECT * FROM problems WHERE contest_id = $1"
 
-	var problems []entity.Problem
+	var problems []models.Problem
 	err := p.db.SelectContext(ctx, &problems, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return problems, nil
@@ -63,9 +63,9 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]entity
 	return problems, nil
 }
 
-func (p *Postgres) GetAll(ctx context.Context) ([]entity.Contest, error) {
+func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	var err error
-	var contests []entity.Contest
+	var contests []models.Contest
 
 	query := `SELECT * FROM contests`
 	err = p.db.SelectContext(ctx, &contests, query)

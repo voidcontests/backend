@@ -38,3 +38,12 @@ type Entry struct {
 	UserID    int32     `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
+
+type Submission struct {
+	ID        int32     `db:"id"`
+	EntryID   int32     `db:"entry_id"`
+	ProblemID int32     `db:"problem_id"`
+	Verdict   string    `db:"verdict"`
+	Answer    string    `db:"answer"`
+	CreatedAt time.Time `db:"created_at"`
+}

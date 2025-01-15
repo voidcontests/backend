@@ -9,12 +9,14 @@ import (
 
 type CustomClaims struct {
 	Address string `json:"address"`
+	ID      int32  `json:"id"`
 	jwt.StandardClaims
 }
 
-func GenerateToken(address, secret string) (string, error) {
+func GenerateToken(address string, id int32, secret string) (string, error) {
 	claims := &CustomClaims{
 		address,
+		id,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().AddDate(100, 0, 0).Unix(),
 		},

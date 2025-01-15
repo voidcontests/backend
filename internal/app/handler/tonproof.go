@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
+	repoerr "github.com/voidcontests/backend/internal/repository/errors"
 	"github.com/voidcontests/backend/internal/ton"
 )
 
@@ -82,7 +84,17 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return Error(http.StatusUnauthorized, "tonproof verification failed")
 	}
 
-	token, err := jwt.GenerateToken(tp.Address, h.tonconnectMainnet.GetSecret())
+	user, err := h.repo.User.GetByAddress(c.Request().Context(), tp.Address)
+	if errors.Is(err, repoerr.ErrUserNotFound) {
+		user, err = h.repo.User.Create(c.Request().Context(), tp.Address)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	token, err := jwt.GenerateToken(tp.Address, user.ID, h.tonconnectMainnet.GetSecret())
 	if err != nil {
 		return err
 	}
