@@ -75,7 +75,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 			tonproof.POST("/payload", r.handler.GeneratePayload)
 			tonproof.POST("/check", r.handler.CheckProof)
 
-			// TODO: Migrate to `echo-jwt` middleware
 			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		}
 
