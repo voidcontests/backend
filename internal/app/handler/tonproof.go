@@ -34,7 +34,7 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 
 	slog.Debug("payload generated", slog.String("payload", payload))
 
-	return c.JSON(http.StatusOK, echo.Map{
+	return c.JSON(http.StatusOK, map[string]any{
 		"payload": payload,
 	})
 }
@@ -104,7 +104,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 
 	slog.Debug("token generated", slog.String("token", token))
 
-	return c.JSON(http.StatusOK, echo.Map{
+	return c.JSON(http.StatusOK, map[string]any{
 		"token": token,
 	})
 }

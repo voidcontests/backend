@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -9,7 +8,6 @@ import (
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/requestlog"
@@ -29,15 +27,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		slog.Error("error occurred", sl.Err(err))
 		if apiErr, ok := err.(*handler.APIError); ok {
-			c.JSON(apiErr.Status, echo.Map{
+			c.JSON(apiErr.Status, map[string]any{
 				"message": apiErr.Message,
 			})
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, echo.Map{
+		c.JSON(http.StatusInternalServerError, map[string]any{
 			"message": "internal server error",
 		})
 	}
@@ -82,12 +79,9 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid", r.handler.GetContestByID)
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problem/:pid/submissions", r.handler.CreateSubmission, r.handler.MustIdentify())
-		// api.GET("/contests/:cid/problem/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
+		api.GET("/contests/:cid/problem/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 
-		problems := api.Group("/problems")
-		{
-			problems.GET("", r.handler.GetProblems)
-		}
+		api.GET("/problems", r.handler.GetProblems)
 	}
 
 	return router

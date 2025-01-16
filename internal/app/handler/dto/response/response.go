@@ -2,7 +2,7 @@ package response
 
 import "time"
 
-type Contest struct {
+type ContestDetailed struct {
 	ID           int32             `json:"id"`
 	CreatorID    int32             `json:"creator_id"`
 	Title        string            `json:"title"`
@@ -29,7 +29,9 @@ type ContestListItem struct {
 	DurationMins int32     `json:"duration_mins"`
 }
 
-type Submission struct {
-	ID      int32  `json:"id"`
-	Verdict string `json:"verdict"`
+type SubmissionListItem struct {
+	ID        int32     `json:"id"`
+	ProblemID int32     `json:"problem_id"`
+	Verdict   string    `json:"verdict"`
+	CreatedAt time.Time `json:"created_at"`
 }

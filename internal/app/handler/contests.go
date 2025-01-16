@@ -95,7 +95,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 
-	return c.JSON(http.StatusOK, response.Contest{
+	return c.JSON(http.StatusOK, response.ContestDetailed{
 		ID:           contest.ID,
 		Title:        contest.Title,
 		Description:  contest.Description,
@@ -224,8 +224,59 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, response.Submission{
-		ID:      submission.ID,
-		Verdict: string(submission.Verdict),
+	return c.JSON(http.StatusCreated, response.SubmissionListItem{
+		ID:        submission.ID,
+		ProblemID: submission.ProblemID,
+		Verdict:   string(submission.Verdict),
+		CreatedAt: submission.CreatedAt,
+	})
+}
+
+func (h *Handler) GetSubmissions(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetSubmissions"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	user := c.Get("account").(*jwtgo.Token)
+	claims := user.Claims.(*jwt.CustomClaims)
+
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
+	if err != nil {
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
+	}
+
+	pid := c.Param("pid")
+	problemID, err := strconv.Atoi(pid)
+	if err != nil {
+		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`pid` should be integer")
+	}
+
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	if err != nil {
+		log.Error("can't get entry", sl.Err(err))
+		return err
+	}
+
+	submissions, err := h.repo.Submission.GetMany(ctx, claims.ID, entry.ID, int32(problemID))
+	if err != nil {
+		log.Error("can't get submissions", sl.Err(err))
+		return err
+	}
+
+	n := len(submissions)
+	ss := make([]response.SubmissionListItem, n, n)
+	for i, s := range submissions {
+		ss[i] = response.SubmissionListItem{
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Verdict:   string(s.Verdict),
+			CreatedAt: s.CreatedAt,
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": ss,
 	})
 }
