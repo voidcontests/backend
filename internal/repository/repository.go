@@ -28,6 +28,8 @@ type Contest interface {
 
 type Problem interface {
 	Create(ctx context.Context, contestID int32, writerID int32, title string, statement string, difficulty string, input string, answer string) (*models.Problem, error)
+	GetAnswer(ctx context.Context, id int32) (string, error)
+	Get(ctx context.Context, id int32) (*models.Problem, error)
 	GetAll(ctx context.Context) ([]models.Problem, error)
 }
 

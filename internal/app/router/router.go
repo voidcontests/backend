@@ -84,7 +84,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 			contests.GET("", r.handler.GetContests)
 			contests.POST("", r.handler.CreateContest, r.handler.MustIdentify())
 			contests.GET("/:id", r.handler.GetContestByID)
-			contests.POST("/:id/entry", r.handler.CreateEntry)
+			contests.POST("/:id/entry", r.handler.CreateEntry, r.handler.MustIdentify())
+			contests.POST("/submission", r.handler.CreateSubmission, r.handler.MustIdentify())
 		}
 
 		problems := api.Group("/problems")

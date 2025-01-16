@@ -16,3 +16,8 @@ type CreateContestRequest struct {
 	DurationMins int32     `json:"duration_mins"`
 	IsDraft      bool      `json:"is_draft"`
 }
+
+type CreateSubmissionRequest struct {
+	ProblemID int32  `json:"problem_id"`
+	Answer    string `json:"answer"`
+}

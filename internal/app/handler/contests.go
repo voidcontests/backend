@@ -12,6 +12,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
 )
@@ -169,4 +170,48 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+func (h *Handler) CreateSubmission(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.CreateSubmission"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	user := c.Get("account").(*jwtgo.Token)
+	claims := user.Claims.(*jwt.CustomClaims)
+
+	var body request.CreateSubmissionRequest
+	if err := c.Bind(&body); err != nil {
+		log.Debug("can't decode request body", sl.Err(err))
+		return Error(http.StatusBadRequest, "invalid body")
+	}
+
+	entry, err := h.repo.Entry.Get(ctx, body.ProblemID, claims.ID)
+	if err != nil {
+		log.Error("can't get entry", sl.Err(err))
+		return err
+	}
+
+	answer, err := h.repo.Problem.GetAnswer(ctx, body.ProblemID)
+	if err != nil {
+		log.Error("can't get problem", sl.Err(err))
+		return err
+	}
+
+	var verdict submission.Verdict
+	if answer != body.Answer {
+		verdict = submission.VerdictWrongAnswer
+	} else {
+		verdict = submission.VerdictOK
+	}
+
+	submission, err := h.repo.Submission.Create(ctx, entry.ID, body.ProblemID, verdict, body.Answer)
+	if err != nil {
+		log.Error("can't create submission", sl.Err(err))
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, response.Submission{
+		ID:      submission.ID,
+		Verdict: string(submission.Verdict),
+	})
 }

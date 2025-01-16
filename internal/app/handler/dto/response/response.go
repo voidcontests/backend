@@ -28,3 +28,8 @@ type ContestListItem struct {
 	StartingAt   time.Time `json:"starting_at"`
 	DurationMins int32     `json:"duration_mins"`
 }
+
+type Submission struct {
+	ID      int32  `json:"id"`
+	Verdict string `json:"verdict"`
+}
