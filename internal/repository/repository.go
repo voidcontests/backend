@@ -41,7 +41,7 @@ type Entry interface {
 type Submission interface {
 	Create(ctx context.Context, entryID int32, problemID int32, verdict submission.Verdict, answer string) (*models.Submission, error)
 	GetForProblem(ctx context.Context, userID int32, entryID int32, problemID int32) ([]models.Submission, error)
-	GetForEntry(ctx context.Context, userID int32, entryID int32) ([]models.Submission, error)
+	GetForEntry(ctx context.Context, entryID int32) ([]models.Submission, error)
 }
 
 type Repository struct {

@@ -19,6 +19,7 @@ type ProblemListItem struct {
 	WriterID   int32  `json:"writer_id"`
 	Title      string `json:"title"`
 	Difficulty string `json:"difficulty"`
+	Status     string `json:"status,omitempty"`
 }
 
 type ContestListItem struct {

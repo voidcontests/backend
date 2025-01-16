@@ -79,6 +79,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
+	if contest.IsDraft && (claims == nil || claims.ID != contest.CreatorID) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+
 	problems, err := h.repo.Contest.GetProblemset(c.Request().Context(), contest.ID)
 	if err != nil {
 		log.Error("can't get contest problemset", sl.Err(err))
@@ -97,9 +101,47 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		}
 	}
 
-	// TODO: Add problem's status: solved, tried or none
-	if contest.IsDraft && (claims == nil || claims.ID != contest.CreatorID) {
-		return Error(http.StatusNotFound, "contest not found")
+	entry, err := h.repo.Entry.Get(c.Request().Context(), contest.ID, claims.ID)
+	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
+		log.Error("can't get entry", sl.Err(err))
+		return err
+	}
+	if errors.Is(err, repoerr.ErrEntryNotFound) {
+		return c.JSON(http.StatusOK, response.ContestDetailed{
+			ID:           contest.ID,
+			Title:        contest.Title,
+			Description:  contest.Description,
+			Problems:     problemset,
+			CreatorID:    contest.CreatorID,
+			StartingAt:   contest.StartingAt,
+			DurationMins: contest.DurationMins,
+			IsDraft:      contest.IsDraft,
+		})
+	}
+
+	submissions, err := h.repo.Submission.GetForEntry(c.Request().Context(), entry.ID)
+	if err != nil {
+		log.Error("can't get submissions", sl.Err(err))
+		return err
+	}
+
+	verdicts := make(map[int32]submission.Verdict)
+	for _, s := range submissions {
+		if v, ok := verdicts[s.ProblemID]; ok && v == submission.VerdictOK {
+			continue
+		}
+		verdicts[s.ProblemID] = submission.Verdict(s.Verdict)
+	}
+
+	for i := range n {
+		switch verdicts[problems[i].ID] {
+		case submission.VerdictOK:
+			problemset[i].Status = "accepted"
+		case submission.VerdictWrongAnswer:
+			problemset[i].Status = "tried"
+		default:
+			problemset[i].Status = "none"
+		}
 	}
 
 	return c.JSON(http.StatusOK, response.ContestDetailed{

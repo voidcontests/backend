@@ -53,12 +53,12 @@ func (p *Postgres) GetForProblem(ctx context.Context, userID int32, entryID int3
 	return submissions, nil
 }
 
-func (p *Postgres) GetForEntry(ctx context.Context, userID int32, entryID int32) ([]models.Submission, error) {
+func (p *Postgres) GetForEntry(ctx context.Context, entryID int32) ([]models.Submission, error) {
 	var err error
 	var submissions []models.Submission
 
-	query := `SELECT * FROM submissions WHERE user_id = $1 AND entry_id = $2`
-	err = p.db.SelectContext(ctx, &submissions, query, userID, entryID)
+	query := `SELECT * FROM submissions WHERE entry_id = $1`
+	err = p.db.SelectContext(ctx, &submissions, query, entryID)
 	if err != nil {
 		return nil, err
 	}
