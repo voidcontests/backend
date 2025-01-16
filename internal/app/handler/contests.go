@@ -185,7 +185,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, body.ProblemID, claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, body.ContestID, claims.ID)
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
