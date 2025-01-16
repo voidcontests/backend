@@ -50,6 +50,12 @@ func (h *Handler) CreateContest(c echo.Context) error {
 func (h *Handler) GetContestByID(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetContestByID"), slog.String("request_id", requestid.Get(c)))
 
+	data := c.Get("account")
+	var claims *jwt.CustomClaims
+	if data != nil {
+		claims = data.(*jwt.CustomClaims)
+	}
+
 	id := c.Param("id")
 	contestID, err := strconv.Atoi(id)
 	if err != nil {
@@ -82,6 +88,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Title:      problems[i].Title,
 			Difficulty: problems[i].Difficulty,
 		}
+	}
+
+	if contest.IsDraft && (claims == nil || claims.ID != contest.CreatorID) {
+		return Error(http.StatusNotFound, "contest not found")
 	}
 
 	return c.JSON(http.StatusOK, response.Contest{
