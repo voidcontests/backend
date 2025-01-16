@@ -9,7 +9,6 @@ import (
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -67,12 +66,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 		})
 	}
 
-	jwtopts := middleware.JWTConfig{
-		Claims:     &jwt.CustomClaims{},
-		SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
-		ContextKey: "account",
-	}
-
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
@@ -83,14 +76,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 			tonproof.POST("/check", r.handler.CheckProof)
 
 			// TODO: Migrate to `echo-jwt` middleware
-			tonproof.GET("/account", r.handler.GetAccount, middleware.JWTWithConfig(jwtopts))
+			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		}
 
 		contests := api.Group("/contests")
 		{
 			// TODO: move create contest to `/contest` instean of `/contests`
 			contests.GET("", r.handler.GetContests)
-			contests.POST("", r.handler.CreateContest, middleware.JWTWithConfig(jwtopts))
+			contests.POST("", r.handler.CreateContest, r.handler.MustIdentify())
 			contests.GET("/:id", r.handler.GetContestByID)
 			contests.POST("/:id/entry", r.handler.CreateEntry)
 		}

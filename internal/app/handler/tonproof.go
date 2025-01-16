@@ -7,14 +7,17 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
+	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/internal/ton"
+	"github.com/voidcontests/backend/pkg/requestid"
 )
 
 func (h *Handler) GeneratePayload(c echo.Context) error {
@@ -128,4 +131,61 @@ func (h *Handler) GetAccount(c echo.Context) error {
 	slog.Info("account info", slog.Any("account", account))
 
 	return c.JSON(http.StatusOK, account)
+}
+
+func (h *Handler) TryIdentify() echo.MiddlewareFunc {
+	return h.UserIdentity(true)
+}
+
+func (h *Handler) MustIdentify() echo.MiddlewareFunc {
+	return h.UserIdentity(false)
+}
+
+func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			log := slog.With(slog.String("op", "handler.TryIdentify"), slog.String("request_id", requestid.Get(c)))
+
+			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
+			if authHeader == "" {
+				log.Debug("auth header is empty, skipping check")
+				if skiperr {
+					return next(c)
+				} else {
+					return Error(http.StatusUnauthorized, "invalid or malformed token")
+				}
+			}
+
+			parts := strings.Split(authHeader, " ")
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				log.Debug("invalid auth header format, skipping check")
+				if skiperr {
+					return next(c)
+				} else {
+					return Error(http.StatusUnauthorized, "invalid or malformed token")
+				}
+			}
+
+			tokenString := parts[1]
+
+			token, err := jwtgo.ParseWithClaims(tokenString, &jwt.CustomClaims{}, func(token *jwtgo.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwtgo.SigningMethodHMAC); !ok {
+					return nil, echo.NewHTTPError(http.StatusUnauthorized, "unexpected signing method")
+				}
+				return []byte(h.config.TonProof.PayloadSignatureKey), nil
+			})
+			if err != nil || !token.Valid {
+				log.Debug("invalid or expired token", sl.Err(err))
+				if skiperr {
+					return next(c)
+				} else {
+					return Error(http.StatusUnauthorized, "invalid or malformed token")
+				}
+			}
+
+			c.Set("account", token)
+
+			return next(c)
+		}
+	}
 }
