@@ -79,9 +79,10 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
-		api.GET("/contests/:id", r.handler.GetContestByID)
-		api.POST("/contests/:id/entry", r.handler.CreateEntry, r.handler.MustIdentify())
+		api.GET("/contests/:cid", r.handler.GetContestByID)
+		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problem/:pid/submissions", r.handler.CreateSubmission, r.handler.MustIdentify())
+		// api.GET("/contests/:cid/problem/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 
 		problems := api.Group("/problems")
 		{

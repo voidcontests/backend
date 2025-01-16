@@ -57,11 +57,11 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		claims = data.(*jwt.CustomClaims)
 	}
 
-	id := c.Param("id")
-	contestID, err := strconv.Atoi(id)
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
 	if err != nil {
-		log.Debug("`id` param is not an integer", slog.String("id", id), sl.Err(err))
-		return Error(http.StatusBadRequest, "`id` should be integer")
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
 	contest, err := h.repo.Contest.GetByID(c.Request().Context(), int32(contestID))
@@ -147,11 +147,11 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
-	id := c.Param("id")
-	contestID, err := strconv.Atoi(id)
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
 	if err != nil {
-		log.Debug("`id` param is not an integer", slog.String("id", id), sl.Err(err))
-		return Error(http.StatusBadRequest, "`id` should be integer")
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
@@ -182,15 +182,15 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
 	if err != nil {
-		log.Debug("`id` param is not an integer", slog.String("cid", cid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`id` should be integer")
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
 	pid := c.Param("pid")
 	problemID, err := strconv.Atoi(pid)
 	if err != nil {
-		log.Debug("`id` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`id` should be integer")
+		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`pid` should be integer")
 	}
 
 	var body request.CreateSubmissionRequest
