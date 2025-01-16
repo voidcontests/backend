@@ -74,19 +74,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 		{
 			tonproof.POST("/payload", r.handler.GeneratePayload)
 			tonproof.POST("/check", r.handler.CheckProof)
-
 			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		}
 
-		contests := api.Group("/contests")
-		{
-			// TODO: move create contest to `/contest` instean of `/contests`
-			contests.GET("", r.handler.GetContests)
-			contests.POST("", r.handler.CreateContest, r.handler.MustIdentify())
-			contests.GET("/:id", r.handler.GetContestByID)
-			contests.POST("/:id/entry", r.handler.CreateEntry, r.handler.MustIdentify())
-			contests.POST("/:id/submission", r.handler.CreateSubmission, r.handler.MustIdentify())
-		}
+		api.GET("/contests", r.handler.GetContests)
+		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
+		api.GET("/contests/:id", r.handler.GetContestByID)
+		api.POST("/contests/:id/entry", r.handler.CreateEntry, r.handler.MustIdentify())
+		api.POST("/contests/:cid/problem/:pid/submissions", r.handler.CreateSubmission, r.handler.MustIdentify())
 
 		problems := api.Group("/problems")
 		{

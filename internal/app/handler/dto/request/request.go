@@ -18,7 +18,5 @@ type CreateContestRequest struct {
 }
 
 type CreateSubmissionRequest struct {
-	ContestID int32  `json:"contest_id"`
-	ProblemID int32  `json:"problem_id"`
-	Answer    string `json:"answer"`
+	Answer string `json:"answer"`
 }

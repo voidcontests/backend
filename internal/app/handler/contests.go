@@ -179,19 +179,33 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
+	if err != nil {
+		log.Debug("`id` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`id` should be integer")
+	}
+
+	pid := c.Param("pid")
+	problemID, err := strconv.Atoi(pid)
+	if err != nil {
+		log.Debug("`id` param is not an integer", slog.String("pid", pid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`id` should be integer")
+	}
+
 	var body request.CreateSubmissionRequest
 	if err := c.Bind(&body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, body.ContestID, claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
 	}
 
-	answer, err := h.repo.Problem.GetAnswer(ctx, body.ProblemID)
+	answer, err := h.repo.Problem.GetAnswer(ctx, int32(problemID))
 	if err != nil {
 		log.Error("can't get problem", sl.Err(err))
 		return err
@@ -204,7 +218,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		verdict = submission.VerdictOK
 	}
 
-	submission, err := h.repo.Submission.Create(ctx, entry.ID, body.ProblemID, verdict, body.Answer)
+	submission, err := h.repo.Submission.Create(ctx, entry.ID, int32(problemID), verdict, body.Answer)
 	if err != nil {
 		log.Error("can't create submission", sl.Err(err))
 		return err
