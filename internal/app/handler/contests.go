@@ -15,6 +15,7 @@ import (
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
+	"github.com/voidcontests/backend/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {
@@ -24,10 +25,15 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	claims := user.Claims.(*jwt.CustomClaims)
 
 	var body request.CreateContestRequest
-	if err := c.Bind(&body); err != nil {
+	if err := validate.Bind(c, &body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
-		return Error(http.StatusBadRequest, "invalid body")
+		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
+	if !body.IsDraft && (body.StartingAt.IsZero() || body.DurationMins == 0 || len(body.Problems) == 0) {
+		return Error(http.StatusBadRequest, "invalid body: only draft contest may have empty fields")
+	}
+
+	log.Info("msg string", slog.Any("key string", body))
 
 	// TODO: start transaction here
 	contest, err := h.repo.Contest.Create(c.Request().Context(), claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, body.IsDraft)
@@ -195,10 +201,12 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	var body request.CreateSubmissionRequest
-	if err := c.Bind(&body); err != nil {
+	if err := validate.Bind(c, &body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")
 	}
+
+	log.Info("msg string", slog.Any("key string", body))
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if err != nil {
