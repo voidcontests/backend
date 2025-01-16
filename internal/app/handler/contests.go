@@ -150,7 +150,6 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateEntry"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	// TODO: check if user can be null, or jwt abort if token is not set
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 

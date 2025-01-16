@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -42,13 +41,10 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 func (h *Handler) CheckProof(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	log.Print("call check proof")
-
 	var err error
 	b, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		// TODO: Is this really internal server error
-		return err
+		return Error(http.StatusBadRequest, "can't read request body")
 	}
 
 	var tp ton.Proof

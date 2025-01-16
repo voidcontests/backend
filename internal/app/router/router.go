@@ -43,8 +43,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router.Use(requestlog.Completed)
 	router.Pre(middleware.RemoveTrailingSlash())
 
-	// TODO: use custom validator with e.Validator
-
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
 		router.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
