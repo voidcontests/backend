@@ -27,9 +27,9 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		if apiErr, ok := err.(*handler.APIError); ok {
-			c.JSON(apiErr.Status, map[string]any{
-				"message": apiErr.Message,
+		if apierr, ok := err.(*handler.APIError); ok {
+			c.JSON(apierr.Status, map[string]any{
+				"message": apierr.Message,
 			})
 			return
 		}
