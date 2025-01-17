@@ -20,6 +20,7 @@ import (
 
 func (h *Handler) CreateContest(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateContest"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
 
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
@@ -29,22 +30,17 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
-	if !body.IsDraft && (body.StartingAt.IsZero() || body.DurationMins == 0 || len(body.Problems) == 0) {
-		return Error(http.StatusBadRequest, "invalid body: only draft contest may have empty fields")
-	}
 
-	log.Info("msg string", slog.Any("key string", body))
-
-	// TODO: start transaction here
-	contest, err := h.repo.Contest.Create(c.Request().Context(), claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, body.IsDraft)
+	contest, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
 	}
 
-	// TODO: insert up to 10? problems in one query
+	// TODO: insert contest and problem in transaction
+	// TODO: insert up to 10 problems in one query (???)
 	for _, p := range body.Problems {
-		_, err := h.repo.Problem.Create(c.Request().Context(), contest.ID, contest.CreatorID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
+		_, err := h.repo.Problem.Create(ctx, contest.ID, contest.CreatorID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
 		if err != nil {
 			log.Error("can't create workout", sl.Err(err))
 			return err

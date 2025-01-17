@@ -2,6 +2,7 @@ package request
 
 import "time"
 
+// TODO: think about draft contests
 type CreateContestRequest struct {
 	Title       string `json:"title" required:"true"`
 	Description string `json:"description"`
@@ -11,10 +12,9 @@ type CreateContestRequest struct {
 		Difficulty string `json:"difficulty" required:"true"`
 		Input      string `json:"input"`
 		Answer     string `json:"answer" required:"true"`
-	} `json:"problems"`
-	StartingAt   time.Time `json:"starting_at"`
-	DurationMins int32     `json:"duration_mins"`
-	IsDraft      bool      `json:"is_draft" required:"true"`
+	} `json:"problems" required:"true"`
+	StartingAt   time.Time `json:"starting_at" required:"true"`
+	DurationMins int32     `json:"duration_mins" requried:"true"`
 }
 
 type CreateSubmissionRequest struct {
