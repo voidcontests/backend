@@ -12,9 +12,10 @@ import (
 
 func (h *Handler) GetProblems(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetProblems"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
 
 	// TODO: return problems splitted by chunks
-	ps, err := h.repo.Problem.GetAll(c.Request().Context())
+	ps, err := h.repo.Problem.GetAll(ctx)
 	if err != nil {
 		log.Error("can't get contests", sl.Err(err))
 		return err
