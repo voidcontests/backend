@@ -1,10 +1,8 @@
 package validate
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 
 	"github.com/labstack/echo/v4"
@@ -15,12 +13,6 @@ func Bind(c echo.Context, dst interface{}) error {
 		return errors.New("validate: invalid dstination: expected pointer")
 	}
 
-	b, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return fmt.Errorf("io.ReadAll: %v", err)
-	}
-
-	json.Unmarshal(b, dst)
 	if err := c.Bind(dst); err != nil {
 		return fmt.Errorf("json.Unmarshall: %v", err)
 	}
