@@ -311,7 +311,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return err
 	}
 
-	submissions, err := h.repo.Submission.GetForProblem(ctx, claims.ID, entry.ID, int32(problemID))
+	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, int32(problemID))
 	if err != nil {
 		log.Error("can't get submissions", sl.Err(err))
 		return err
