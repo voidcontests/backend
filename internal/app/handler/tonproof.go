@@ -140,7 +140,7 @@ func (h *Handler) MustIdentify() echo.MiddlewareFunc {
 func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			log := slog.With(slog.String("op", "handler.TryIdentify"), slog.String("request_id", requestid.Get(c)))
+			log := slog.With(slog.String("op", "handler.UserIdentify"), slog.String("request_id", requestid.Get(c)))
 
 			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 			if authHeader == "" {
@@ -179,7 +179,9 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 				}
 			}
 
-			c.Set("account", token)
+			claims := token.Claims.(*jwt.CustomClaims)
+
+			c.Set("account", *claims)
 
 			return next(c)
 		}

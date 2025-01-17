@@ -7,11 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
@@ -23,8 +21,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateContest"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
+	claims, _ := ExtractClaims(c)
 
 	var body request.CreateContestRequest
 	if err := validate.Bind(c, &body); err != nil {
@@ -55,12 +52,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetContestByID"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	data := c.Get("account")
-	var claims *jwt.CustomClaims
-	if data != nil {
-		user := data.(*jwtgo.Token)
-		claims = user.Claims.(*jwt.CustomClaims)
-	}
+	claims, authenticated := ExtractClaims(c)
 
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
@@ -107,7 +99,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	// NOTE: Return contest without problem submissions
 	// statuses if user is not authenticated
-	if claims == nil {
+	if !authenticated {
 		return c.JSON(http.StatusOK, cdetailed)
 	}
 
@@ -192,8 +184,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateEntry"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
+	claims, _ := ExtractClaims(c)
 
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
@@ -233,8 +224,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateSubmission"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
+	claims, _ := ExtractClaims(c)
 
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
@@ -300,8 +290,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetSubmissions"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
+	claims, _ := ExtractClaims(c)
 
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
