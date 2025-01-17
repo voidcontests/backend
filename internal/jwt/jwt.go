@@ -8,16 +8,18 @@ import (
 )
 
 type CustomClaims struct {
-	Address string `json:"address"`
 	jwt.StandardClaims
+	Address string `json:"address"`
+	ID      int32  `json:"id"`
 }
 
-func GenerateToken(address, secret string) (string, error) {
+func GenerateToken(address string, id int32, secret string) (string, error) {
 	claims := &CustomClaims{
-		address,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().AddDate(100, 0, 0).Unix(),
 		},
+		address,
+		id,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

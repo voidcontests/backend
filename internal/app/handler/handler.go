@@ -25,6 +25,10 @@ func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnec
 	}
 }
 
+func (h *Handler) Healthcheck(c echo.Context) error {
+	return c.String(http.StatusOK, "ok")
+}
+
 type APIError struct {
 	Status  int
 	Message string
@@ -39,8 +43,4 @@ func Error(code int, message string) error {
 
 func (e *APIError) Error() string {
 	return e.Message
-}
-
-func (h *Handler) Healthcheck(c echo.Context) error {
-	return c.String(http.StatusOK, "ok")
 }
