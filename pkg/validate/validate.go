@@ -34,6 +34,12 @@ func Struct(dst interface{}) error {
 				return fmt.Errorf("`%s` is required", name)
 			}
 		}
+
+		if field.Kind() == reflect.Struct {
+			if err := Struct(field.Interface()); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
