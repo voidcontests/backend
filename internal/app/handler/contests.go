@@ -195,6 +195,8 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
+	// TODO: check if contest exists
+
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
 	if err != nil {
