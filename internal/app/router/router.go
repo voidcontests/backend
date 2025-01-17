@@ -27,6 +27,13 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
+		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
+			c.JSON(http.StatusNotFound, map[string]string{
+				"message": "resource not found",
+			})
+			return
+		}
+
 		if apierr, ok := err.(*handler.APIError); ok {
 			c.JSON(apierr.Status, map[string]any{
 				"message": apierr.Message,
