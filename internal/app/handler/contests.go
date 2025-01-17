@@ -60,7 +60,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	data := c.Get("account")
 	var claims *jwt.CustomClaims
 	if data != nil {
-		claims = data.(*jwt.CustomClaims)
+		user := data.(*jwtgo.Token)
+		claims = user.Claims.(*jwt.CustomClaims)
 	}
 
 	cid := c.Param("cid")
