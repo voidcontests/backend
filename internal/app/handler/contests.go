@@ -156,23 +156,23 @@ func (h *Handler) GetContests(c echo.Context) error {
 		return err
 	}
 
-	n := len(contests)
-	filtered := make([]response.ContestListItem, n, n)
-	for i, c := range contests {
+	filtered := make([]response.ContestListItem, 0)
+	for _, c := range contests {
 		if c.IsDraft {
 			continue
 		}
-		if c.StartingAt.Add(time.Minute * time.Duration(c.DurationMins)).After(time.Now()) {
+		if c.StartingAt.Add(time.Minute * time.Duration(c.DurationMins)).Before(time.Now()) {
 			continue
 		}
 
-		filtered[i] = response.ContestListItem{
+		item := response.ContestListItem{
 			ID:           c.ID,
 			CreatorID:    c.CreatorID,
 			Title:        c.Title,
 			StartingAt:   c.StartingAt,
 			DurationMins: c.DurationMins,
 		}
+		filtered = append(filtered, item)
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{
