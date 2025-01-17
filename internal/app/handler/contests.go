@@ -102,6 +102,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		}
 	}
 
+	log.Info("msg string", slog.Any("claims", claims))
+
 	entry, err := h.repo.Entry.Get(c.Request().Context(), contest.ID, claims.ID)
 	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Error("can't get entry", sl.Err(err))
