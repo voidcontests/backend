@@ -57,6 +57,8 @@ func (h *Handler) CreateContest(c echo.Context) error {
 func (h *Handler) GetContestByID(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetContestByID"), slog.String("request_id", requestid.Get(c)))
 
+	// TODO: this shit isnt work (claims is nil)
+	// store either token + id, or claims directly
 	data := c.Get("account")
 	var claims *jwt.CustomClaims
 	if data != nil {
@@ -102,7 +104,18 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		}
 	}
 
-	log.Info("msg string", slog.Any("claims", claims))
+	if claims == nil {
+		return c.JSON(http.StatusOK, response.ContestDetailed{
+			ID:           contest.ID,
+			Title:        contest.Title,
+			Description:  contest.Description,
+			Problems:     problemset,
+			CreatorID:    contest.CreatorID,
+			StartingAt:   contest.StartingAt,
+			DurationMins: contest.DurationMins,
+			IsDraft:      contest.IsDraft,
+		})
+	}
 
 	entry, err := h.repo.Entry.Get(c.Request().Context(), contest.ID, claims.ID)
 	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
@@ -198,13 +211,20 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	user := c.Get("account").(*jwtgo.Token)
 	claims := user.Claims.(*jwt.CustomClaims)
 
-	// TODO: check if contest exists
-
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
 	if err != nil {
 		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
 		return Error(http.StatusBadRequest, "`cid` should be integer")
+	}
+
+	_, err = h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, repoerr.ErrContestNotFound) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		log.Error("can't get contest by id", sl.Err(err))
+		return err
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
