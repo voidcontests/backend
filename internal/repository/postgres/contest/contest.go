@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -74,4 +75,17 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	}
 
 	return contests, nil
+}
+
+func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`
+	err = p.db.QueryRowContext(ctx, query, strings.ToLower(title)).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

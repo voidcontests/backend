@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -27,6 +28,15 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	if err := validate.Bind(c, &body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
+	if err != nil {
+		log.Error("can't verify that title isn't occupied")
+		return err
+	}
+	if occupied {
+		return Error(http.StatusConflict, "title alredy taken")
 	}
 
 	contest, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, false)

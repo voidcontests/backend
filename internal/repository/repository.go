@@ -23,6 +23,7 @@ type Contest interface {
 	Create(ctx context.Context, creatorID int32, title string, description string, startingAt time.Time, durationMins int32, isDraft bool) (*models.Contest, error)
 	GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error)
 	GetByID(ctx context.Context, id int32) (*models.Contest, error)
+	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetAll(ctx context.Context) ([]models.Contest, error)
 }
 
