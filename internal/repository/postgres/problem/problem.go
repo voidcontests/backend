@@ -24,6 +24,9 @@ func (p *Postgres) Create(ctx context.Context, contestID int32, writerID int32, 
 
 	query := `INSERT INTO problems (contest_id, writer_id, title, statement, difficulty, input, answer) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`
 	err = p.db.GetContext(ctx, &problem, query, contestID, writerID, title, statement, difficulty, input, answer)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, repoerr.ErrProblemNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

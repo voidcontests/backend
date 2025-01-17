@@ -256,15 +256,20 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
-	log.Info("msg string", slog.Any("key string", body))
-
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	if errors.Is(err, repoerr.ErrEntryNotFound) {
+		log.Debug("trying to create submission without entry")
+		return Error(http.StatusForbidden, "no entry for contest")
+	}
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
 	}
 
 	answer, err := h.repo.Problem.GetAnswer(ctx, int32(problemID))
+	if errors.Is(err, repoerr.ErrProblemNotFound) {
+		return Error(http.StatusNotFound, "problem not found")
+	}
 	if err != nil {
 		log.Error("can't get problem", sl.Err(err))
 		return err
