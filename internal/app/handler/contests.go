@@ -70,6 +70,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
+	if contest.IsDraft && (!authenticated || claims.ID != contest.CreatorID) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+
 	problems, err := h.repo.Contest.GetProblemset(ctx, contest.ID)
 	if err != nil {
 		log.Error("can't get contest problemset", sl.Err(err))
