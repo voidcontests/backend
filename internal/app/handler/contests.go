@@ -318,6 +318,9 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	if errors.Is(err, repoerr.ErrEntryNotFound) {
+		return Error(http.StatusForbidden, "no entry for contest")
+	}
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
