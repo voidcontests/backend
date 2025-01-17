@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,9 +25,16 @@ func Struct(dst interface{}) error {
 	val := reflect.ValueOf(dst)
 	typ := reflect.TypeOf(dst)
 
-	for i := 0; i < val.Elem().NumField(); i++ {
-		field := val.Elem().Field(i)
-		fieldType := typ.Elem().Field(i)
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("expected a pointer to a struct")
+	}
+
+	val = val.Elem()
+	typ = typ.Elem()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := typ.Field(i)
 
 		if fieldType.Tag.Get("required") == "true" {
 			name := fieldType.Tag.Get("json")
@@ -35,12 +43,22 @@ func Struct(dst interface{}) error {
 			}
 		}
 
-		if field.Kind() == reflect.Struct {
-			if err := Struct(field.Interface()); err != nil {
-				return err
+		if field.Kind() == reflect.Struct && fieldType.Type != reflect.TypeOf(time.Time{}) {
+			var nestedPtr interface{}
+			if field.CanAddr() {
+				nestedPtr = field.Addr().Interface()
+			} else {
+				nestedCopy := reflect.New(field.Type()).Elem()
+				nestedCopy.Set(field)
+				nestedPtr = nestedCopy.Addr().Interface()
+			}
+
+			if err := Struct(nestedPtr); err != nil {
+				return fmt.Errorf("error in nested struct `%s`: %w", fieldType.Name, err)
 			}
 		}
 	}
+
 	return nil
 }
 
