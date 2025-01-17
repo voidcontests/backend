@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
@@ -155,29 +156,35 @@ func (h *Handler) GetContests(c echo.Context) error {
 	// - return by chunks (pages)
 
 	log := slog.With(slog.String("op", "handler.GetContests"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
 
-	contests, err := h.repo.Contest.GetAll(c.Request().Context())
+	contests, err := h.repo.Contest.GetAll(ctx)
 	if err != nil {
 		log.Error("can't get contests", sl.Err(err))
 		return err
 	}
 
 	n := len(contests)
-	published := make([]response.ContestListItem, n, n)
+	filtered := make([]response.ContestListItem, n, n)
 	for i, c := range contests {
-		if !c.IsDraft {
-			published[i] = response.ContestListItem{
-				ID:           c.ID,
-				CreatorID:    c.CreatorID,
-				Title:        c.Title,
-				StartingAt:   c.StartingAt,
-				DurationMins: c.DurationMins,
-			}
+		if c.IsDraft {
+			continue
+		}
+		if c.StartingAt.Add(time.Minute * time.Duration(c.DurationMins)).After(time.Now()) {
+			continue
+		}
+
+		filtered[i] = response.ContestListItem{
+			ID:           c.ID,
+			CreatorID:    c.CreatorID,
+			Title:        c.Title,
+			StartingAt:   c.StartingAt,
+			DurationMins: c.DurationMins,
 		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{
-		"data": published,
+		"data": filtered,
 	})
 }
 
