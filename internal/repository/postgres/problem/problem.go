@@ -45,7 +45,7 @@ func (p *Postgres) Get(ctx context.Context, id int32) (*models.Problem, error) {
 	var err error
 	var problem models.Problem
 
-	query := `SELECT problems.*, users.address AS creator_address FROM problems JOIN users ON users.id = problems.writer_id WHERE problems.id = $1`
+	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE problems.id = $1`
 	err = p.db.GetContext(ctx, &problem, query, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrProblemNotFound
@@ -61,7 +61,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	var err error
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS creator_address FROM problems JOIN users ON users.id = problems.writer_id`
+	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id`
 	err = p.db.SelectContext(ctx, &problems, query)
 	if err != nil {
 		return nil, err

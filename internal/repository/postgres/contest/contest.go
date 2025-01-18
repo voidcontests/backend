@@ -49,7 +49,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS creator_address FROM problems JOIN users ON users.id = problems.writer_id WHERE contest_id = $1`
+	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE contest_id = $1`
 	err := p.db.SelectContext(ctx, &problems, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return problems, nil
