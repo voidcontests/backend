@@ -8,7 +8,7 @@ type ContestID struct {
 
 type ContestDetailed struct {
 	ID            int32             `json:"id"`
-	CreatorID     int32             `json:"creator_id"`
+	Creator       User              `json:"creator"`
 	Title         string            `json:"title"`
 	Description   string            `json:"description"`
 	StartingAt    time.Time         `json:"starting_at"`
@@ -21,7 +21,7 @@ type ContestDetailed struct {
 type ProblemListItem struct {
 	ID         int32  `json:"id"`
 	ContestID  int32  `json:"contest_id"`
-	WriterID   int32  `json:"writer_id"`
+	Writer     User   `json:"writer"`
 	Title      string `json:"title"`
 	Difficulty string `json:"difficulty"`
 	Status     string `json:"status,omitempty"`
@@ -29,10 +29,15 @@ type ProblemListItem struct {
 
 type ContestListItem struct {
 	ID           int32     `json:"id"`
-	CreatorID    int32     `json:"creator_id"`
+	Creator      User      `json:"creator"`
 	Title        string    `json:"title"`
 	StartingAt   time.Time `json:"starting_at"`
 	DurationMins int32     `json:"duration_mins"`
+}
+
+type User struct {
+	ID      int32  `json:"id"`
+	Address string `json:"address"`
 }
 
 type SubmissionListItem struct {

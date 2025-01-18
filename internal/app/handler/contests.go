@@ -39,7 +39,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusConflict, "title alredy taken")
 	}
 
-	contest, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, false)
+	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
@@ -48,7 +48,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	// TODO: insert contest and problem in transaction
 	// TODO: insert up to 10 problems in one query (???)
 	for _, p := range body.Problems {
-		_, err := h.repo.Problem.Create(ctx, contest.ID, contest.CreatorID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
+		_, err := h.repo.Problem.Create(ctx, contestID, claims.ID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
 		if err != nil {
 			log.Error("can't create workout", sl.Err(err))
 			return err
@@ -56,7 +56,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, response.ContestID{
-		ID: contest.ID,
+		ID: contestID,
 	})
 }
 
@@ -94,20 +94,26 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	n := len(problems)
 	cdetailed := response.ContestDetailed{
-		ID:           contest.ID,
-		Title:        contest.Title,
-		Description:  contest.Description,
-		Problems:     make([]response.ProblemListItem, n, n),
-		CreatorID:    contest.CreatorID,
+		ID:          contest.ID,
+		Title:       contest.Title,
+		Description: contest.Description,
+		Problems:    make([]response.ProblemListItem, n, n),
+		Creator: response.User{
+			ID:      contest.CreatorID,
+			Address: contest.CreatorAddress,
+		},
 		StartingAt:   contest.StartingAt,
 		DurationMins: contest.DurationMins,
 		IsDraft:      contest.IsDraft,
 	}
 	for i := range n {
 		cdetailed.Problems[i] = response.ProblemListItem{
-			ID:         problems[i].ID,
-			ContestID:  problems[i].ContestID,
-			WriterID:   problems[i].WriterID,
+			ID:        problems[i].ID,
+			ContestID: problems[i].ContestID,
+			Writer: response.User{
+				ID:      problems[i].WriterID,
+				Address: problems[i].WriterAddress,
+			},
 			Title:      problems[i].Title,
 			Difficulty: problems[i].Difficulty,
 		}
@@ -182,8 +188,11 @@ func (h *Handler) GetContests(c echo.Context) error {
 		}
 
 		item := response.ContestListItem{
-			ID:           c.ID,
-			CreatorID:    c.CreatorID,
+			ID: c.ID,
+			Creator: response.User{
+				ID:      c.CreatorID,
+				Address: c.CreatorAddress,
+			},
 			Title:        c.Title,
 			StartingAt:   c.StartingAt,
 			DurationMins: c.DurationMins,

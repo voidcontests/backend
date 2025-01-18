@@ -25,9 +25,12 @@ func (h *Handler) GetProblems(c echo.Context) error {
 	problems := make([]response.ProblemListItem, n, n)
 	for i, p := range ps {
 		problems[i] = response.ProblemListItem{
-			ID:         p.ID,
-			ContestID:  p.ContestID,
-			WriterID:   p.WriterID,
+			ID:        p.ID,
+			ContestID: p.ContestID,
+			Writer: response.User{
+				ID:      p.WriterID,
+				Address: p.WriterAddress,
+			},
 			Title:      p.Title,
 			Difficulty: p.Difficulty,
 		}

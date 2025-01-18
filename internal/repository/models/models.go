@@ -10,26 +10,28 @@ type User struct {
 }
 
 type Contest struct {
-	ID           int32     `db:"id"`
-	CreatorID    int32     `db:"creator_id"`
-	Title        string    `db:"title"`
-	Description  string    `db:"description"`
-	StartingAt   time.Time `db:"starting_at"`
-	DurationMins int32     `db:"duration_mins"`
-	IsDraft      bool      `db:"is_draft"`
-	CreatedAt    time.Time `db:"created_at"`
+	ID             int32     `db:"id"`
+	CreatorID      int32     `db:"creator_id"`
+	CreatorAddress string    `db:"creator_address"`
+	Title          string    `db:"title"`
+	Description    string    `db:"description"`
+	StartingAt     time.Time `db:"starting_at"`
+	DurationMins   int32     `db:"duration_mins"`
+	IsDraft        bool      `db:"is_draft"`
+	CreatedAt      time.Time `db:"created_at"`
 }
 
 type Problem struct {
-	ID         int32     `db:"id"`
-	ContestID  int32     `db:"contest_id"`
-	WriterID   int32     `db:"writer_id"`
-	Title      string    `db:"title"`
-	Statement  string    `db:"statement"`
-	Difficulty string    `db:"difficulty"`
-	Input      string    `db:"input"`
-	Answer     string    `db:"answer"`
-	CreatedAt  time.Time `db:"created_at"`
+	ID            int32     `db:"id"`
+	ContestID     int32     `db:"contest_id"`
+	WriterID      int32     `db:"writer_id"`
+	WriterAddress string    `db:"writer_address"`
+	Title         string    `db:"title"`
+	Statement     string    `db:"statement"`
+	Difficulty    string    `db:"difficulty"`
+	Input         string    `db:"input"`
+	Answer        string    `db:"answer"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 type Entry struct {
