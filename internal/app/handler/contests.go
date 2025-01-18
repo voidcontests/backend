@@ -55,7 +55,9 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		}
 	}
 
-	return c.NoContent(http.StatusCreated)
+	return c.JSON(http.StatusCreated, response.ContestID{
+		ID: contest.ID,
+	})
 }
 
 func (h *Handler) GetContestByID(c echo.Context) error {

@@ -2,6 +2,10 @@ package response
 
 import "time"
 
+type ContestID struct {
+	ID int32 `json:"id"`
+}
+
 type ContestDetailed struct {
 	ID            int32             `json:"id"`
 	CreatorID     int32             `json:"creator_id"`
