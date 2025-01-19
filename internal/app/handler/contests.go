@@ -156,8 +156,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			cdetailed.Problems[i].Status = "accepted"
 		case submission.VerdictWrongAnswer:
 			cdetailed.Problems[i].Status = "tried"
-		default:
-			cdetailed.Problems[i].Status = "none"
 		}
 	}
 
