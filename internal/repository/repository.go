@@ -24,6 +24,7 @@ type Contest interface {
 	GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error)
 	GetByID(ctx context.Context, id int32) (*models.Contest, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
+	GetParticipantsCount(ctx context.Context, contestID int32) (int32, error)
 	GetAll(ctx context.Context) ([]models.Contest, error)
 }
 

@@ -13,6 +13,7 @@ type ContestDetailed struct {
 	Description   string            `json:"description"`
 	StartingAt    time.Time         `json:"starting_at"`
 	DurationMins  int32             `json:"duration_mins"`
+	Participants  int32             `json:"participants"`
 	IsDraft       bool              `json:"is_draft,omitempty"`
 	IsParticipant bool              `json:"is_participant,omitempty"`
 	Problems      []ProblemListItem `json:"problems"`

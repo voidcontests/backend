@@ -74,6 +74,19 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	return contests, nil
 }
 
+func (p *Postgres) GetParticipantsCount(ctx context.Context, contestID int32) (int32, error) {
+	var err error
+	var count int32
+
+	query := `SELECT COUNT(*) FROM entries WHERE contest_id = $1`
+	err = p.db.QueryRowContext(ctx, query, contestID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
 	var err error
 	var count int
