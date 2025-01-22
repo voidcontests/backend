@@ -150,12 +150,12 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
-	verdicts := make(map[int32]submission.Verdict) // map problem_id -> verdict
+	verdicts := make(map[int32]string) // map problem_id -> verdict
 	for _, s := range submissions {
 		if v, ok := verdicts[s.ProblemID]; ok && v == submission.VerdictOK {
 			continue
 		}
-		verdicts[s.ProblemID] = submission.Verdict(s.Verdict)
+		verdicts[s.ProblemID] = s.Verdict
 	}
 
 	for i := range n {
@@ -296,7 +296,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	var verdict submission.Verdict
+	var verdict string
 	if answer != body.Answer {
 		verdict = submission.VerdictWrongAnswer
 	} else {

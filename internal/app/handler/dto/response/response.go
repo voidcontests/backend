@@ -47,3 +47,14 @@ type SubmissionListItem struct {
 	Verdict   string    `json:"verdict"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type ProblemDetailed struct {
+	ID         int32  `json:"id"`
+	ContestID  int32  `json:"contest_id"`
+	Writer     User   `json:"writer"`
+	Title      string `json:"title"`
+	Statement  string `json:"statement"`
+	Difficulty string `json:"difficulty"`
+	Status     string `json:"status,omitempty"`
+	Input      string `json:"input,omitempty"`
+}

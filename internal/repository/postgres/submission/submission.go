@@ -7,11 +7,9 @@ import (
 	"github.com/voidcontests/backend/internal/repository/models"
 )
 
-type Verdict string
-
 const (
-	VerdictOK          Verdict = "OK"
-	VerdictWrongAnswer Verdict = "WA"
+	VerdictOK          = "OK"
+	VerdictWrongAnswer = "WA"
 )
 
 type Postgres struct {
@@ -27,7 +25,7 @@ func New(db *sqlx.DB) *Postgres {
 // verdict VARCHAR(10) NOT NULL,
 // answer TEXT NOT NULL,
 
-func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict Verdict, answer string) (*models.Submission, error) {
+func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (*models.Submission, error) {
 	var err error
 	var submission models.Submission
 
