@@ -27,7 +27,7 @@ func WithTimeout(duration time.Duration) echo.MiddlewareFunc {
 				if since < duration {
 					slog.Debug("rate limited", slog.String("ip", ip))
 					return c.JSON(http.StatusTooManyRequests, map[string]any{
-						"timeout": fmt.Sprintf("%ds", int64(duration.Seconds()-since.Seconds())),
+						"timeout": fmt.Sprintf("%ds", int64(duration.Seconds()-since.Seconds())+1),
 					})
 				}
 			}
