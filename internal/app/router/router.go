@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -9,6 +10,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/backend/pkg/ratelimit"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/requestlog"
 )
@@ -84,7 +86,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:pid", r.handler.GetProblem, r.handler.MustIdentify())
-		api.POST("/contests/:cid/problems/:pid/submissions", r.handler.CreateSubmission, r.handler.MustIdentify())
+		api.POST("/contests/:cid/problems/:pid/submissions",
+			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 
 		api.GET("/problems", r.handler.GetProblems)
