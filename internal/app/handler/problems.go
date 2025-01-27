@@ -105,11 +105,11 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		Input:      p.Input,
 	}
 
-	for _, s := range submissions {
-		switch s.Verdict {
+	// TODO: Make status enum
+	for i := 0; i < len(submissions) && pdetailed.Status != "accepted"; i++ {
+		switch submissions[i].Verdict {
 		case submission.VerdictOK:
 			pdetailed.Status = "accepted"
-			break
 		case submission.VerdictWrongAnswer:
 			pdetailed.Status = "tried"
 		}
