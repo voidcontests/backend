@@ -233,8 +233,8 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return err
 	}
 
-	if contest.StartingAt.After(time.Now()) {
-		return Error(http.StatusForbidden, "contest is not started yet")
+	if contest.StartingAt.Before(time.Now()) {
+		return Error(http.StatusForbidden, "application time is over")
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
