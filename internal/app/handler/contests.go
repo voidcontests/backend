@@ -224,13 +224,17 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	_, err = h.repo.Contest.GetByID(ctx, int32(contestID))
+	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
 	if errors.Is(err, repoerr.ErrContestNotFound) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
 		log.Error("can't get contest by id", sl.Err(err))
 		return err
+	}
+
+	if contest.StartingAt.After(time.Now()) {
+		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
@@ -275,6 +279,19 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	if err := validate.Bind(c, &body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")
+	}
+
+	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, repoerr.ErrContestNotFound) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		log.Error("can't get contest", sl.Err(err))
+		return err
+	}
+
+	if contest.StartingAt.After(time.Now()) {
+		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
