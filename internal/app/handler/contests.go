@@ -39,7 +39,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusConflict, "title alredy taken")
 	}
 
-	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartingAt, body.DurationMins, false)
+	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
@@ -109,7 +109,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Address: contest.CreatorAddress,
 		},
 		Participants: participants,
-		StartingAt:   contest.StartingAt,
+		StartTime:    contest.StartTime,
+		EndTime:      contest.EndTime,
 		DurationMins: contest.DurationMins,
 		IsDraft:      contest.IsDraft,
 	}
@@ -189,7 +190,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 		if c.IsDraft {
 			continue
 		}
-		if c.StartingAt.Add(time.Minute * time.Duration(c.DurationMins)).Before(time.Now()) {
+		if c.StartTime.Add(time.Minute * time.Duration(c.DurationMins)).Before(time.Now()) {
 			continue
 		}
 
@@ -200,7 +201,8 @@ func (h *Handler) GetContests(c echo.Context) error {
 				Address: c.CreatorAddress,
 			},
 			Title:        c.Title,
-			StartingAt:   c.StartingAt,
+			StartTime:    c.StartTime,
+			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
 		}
 		filtered = append(filtered, item)
@@ -233,7 +235,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return err
 	}
 
-	if contest.StartingAt.Before(time.Now()) {
+	if contest.StartTime.Before(time.Now()) {
 		return Error(http.StatusForbidden, "application time is over")
 	}
 
@@ -290,7 +292,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	if contest.StartingAt.After(time.Now()) {
+	if contest.StartTime.After(time.Now()) {
 		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 

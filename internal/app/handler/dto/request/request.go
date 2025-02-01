@@ -13,7 +13,8 @@ type CreateContestRequest struct {
 		Input      string `json:"input"`
 		Answer     string `json:"answer" required:"true"`
 	} `json:"problems" required:"true"`
-	StartingAt   time.Time `json:"starting_at" required:"true"`
+	StartTime    time.Time `json:"start_time" required:"true"`
+	EndTime      time.Time `json:"end_time" required:"true"`
 	DurationMins int32     `json:"duration_mins" requried:"true"`
 }
 

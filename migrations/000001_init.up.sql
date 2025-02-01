@@ -12,7 +12,8 @@ CREATE TABLE contests
     creator_id INTEGER NOT NULL REFERENCES users(id),
     title VARCHAR(64) NOT NULL,
     description VARCHAR(300) DEFAULT '' NOT NULL,
-    starting_at TIMESTAMP NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL,
     is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL

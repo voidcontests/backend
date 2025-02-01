@@ -15,7 +15,8 @@ type Contest struct {
 	CreatorAddress string    `db:"creator_address"`
 	Title          string    `db:"title"`
 	Description    string    `db:"description"`
-	StartingAt     time.Time `db:"starting_at"`
+	StartTime      time.Time `db:"start_time"`
+	EndTime        time.Time `db:"end_time"`
 	DurationMins   int32     `db:"duration_mins"`
 	IsDraft        bool      `db:"is_draft"`
 	CreatedAt      time.Time `db:"created_at"`
