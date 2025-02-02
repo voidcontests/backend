@@ -296,6 +296,10 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 
+	if contest.EndTime.Before(time.Now()) {
+		return Error(http.StatusForbidden, "contest alreay ended")
+	}
+
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Debug("trying to create submission without entry")
