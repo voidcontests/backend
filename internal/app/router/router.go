@@ -1,17 +1,16 @@
 package router
 
 import (
-	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/jwt"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/backend/pkg/ratelimit"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/requestlog"
 )
@@ -30,21 +29,28 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		slog.Error("error occurred", sl.Err(err))
-		if apiErr, ok := err.(*handler.APIError); ok {
-			c.JSON(apiErr.Status, echo.Map{
-				"message": apiErr.Message,
+		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
+			c.JSON(http.StatusNotFound, map[string]string{
+				"message": "resource not found",
 			})
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, echo.Map{
+		if apierr, ok := err.(*handler.APIError); ok {
+			c.JSON(apierr.Status, map[string]any{
+				"message": apierr.Message,
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, map[string]any{
 			"message": "internal server error",
 		})
 	}
 
 	router.Use(requestid.New)
 	router.Use(requestlog.Completed)
+	router.Pre(middleware.RemoveTrailingSlash())
 
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
@@ -72,13 +78,19 @@ func (r *Router) InitRoutes() *echo.Echo {
 		{
 			tonproof.POST("/payload", r.handler.GeneratePayload)
 			tonproof.POST("/check", r.handler.CheckProof)
-
-			// TODO: Migrate to `echo-jwt` middleware
-			tonproof.GET("/account", r.handler.GetAccount, middleware.JWTWithConfig(middleware.JWTConfig{
-				Claims:     &jwt.CustomClaims{},
-				SigningKey: []byte(r.config.TonProof.PayloadSignatureKey),
-			}))
+			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		}
+
+		api.GET("/contests", r.handler.GetContests)
+		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
+		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
+		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
+		api.GET("/contests/:cid/problems/:pid", r.handler.GetProblem, r.handler.MustIdentify())
+		api.POST("/contests/:cid/problems/:pid/submissions",
+			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
+		api.GET("/contests/:cid/problems/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
+
+		api.GET("/problems", r.handler.GetProblems)
 	}
 
 	return router

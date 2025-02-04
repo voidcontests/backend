@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
-	"github.com/voidcontests/backend/internal/repository/entity"
-	repoerr "github.com/voidcontests/backend/internal/repository/errors"
+	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
 
 type Postgres struct {
@@ -20,25 +20,21 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, title string, description string, problemIDs []int32, creatorAddress string, startTime time.Time, duration time.Duration, slots int32, isDraft bool) (*entity.Contest, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, isDraft bool) (int32, error) {
+	var id int32
 	var err error
-	var contest entity.Contest
 
-	query := `INSERT INTO contests (title, description, problem_ids, creator_address, start_time, duration, slots, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`
-	err = p.db.GetContext(ctx, &contest, query, title, description, pq.Array(problemIDs), creatorAddress, startTime, duration, slots, isDraft)
-	if err != nil {
-		return nil, err
-	}
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, isDraft).Scan(&id)
 
-	return &contest, nil
+	return id, err
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32) (*entity.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
 	var err error
-	var contest entity.Contest
+	var contest models.Contest
 
-	query := `SELECT * FROM contests WHERE id = $1`
-
+	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id WHERE contests.id = $1`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrContestNotFound
@@ -50,6 +46,56 @@ func (p *Postgres) Get(ctx context.Context, contestID int32) (*entity.Contest, e
 	return &contest, nil
 }
 
-func (p *Postgres) PublishDraft(ctx context.Context, contestID int32) (*entity.Contest, error) {
-	return nil, nil
+func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
+	var problems []models.Problem
+
+	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE contest_id = $1`
+	err := p.db.SelectContext(ctx, &problems, query, contestID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return problems, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
+}
+
+func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
+	var err error
+	var contests []models.Contest
+
+	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id`
+	err = p.db.SelectContext(ctx, &contests, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return contests, nil
+}
+
+func (p *Postgres) GetParticipantsCount(ctx context.Context, contestID int32) (int32, error) {
+	var err error
+	var count int32
+
+	query := `SELECT COUNT(*) FROM entries WHERE contest_id = $1`
+	err = p.db.QueryRowContext(ctx, query, contestID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`
+	err = p.db.QueryRowContext(ctx, query, strings.ToLower(title)).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
