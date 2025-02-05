@@ -190,7 +190,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 		if c.IsDraft {
 			continue
 		}
-		if c.StartTime.Add(time.Minute * time.Duration(c.DurationMins)).Before(time.Now()) {
+		if c.EndTime.Before(time.Now()) {
 			continue
 		}
 
