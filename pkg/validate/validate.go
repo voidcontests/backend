@@ -14,6 +14,9 @@ func Bind(c echo.Context, dst interface{}) error {
 		return errors.New("validate: invalid dstination: expected pointer")
 	}
 
+	// NOTE: Validate used only on parsing JSON data, so it makes sense to set an `application/json` header here.
+	// And sometimes I just don't want to set it manualy in curl
+	c.Request().Header.Set("Content-Type", "application/json")
 	if err := c.Bind(dst); err != nil {
 		return fmt.Errorf("json.Unmarshall: %v", err)
 	}
