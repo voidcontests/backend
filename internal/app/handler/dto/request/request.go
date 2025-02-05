@@ -21,3 +21,7 @@ type CreateContestRequest struct {
 type CreateSubmissionRequest struct {
 	Answer string `json:"answer" required:"true"`
 }
+
+type CreateCodeSubmission struct {
+	Code string `json:"code" required:"true"`
+}

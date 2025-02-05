@@ -81,6 +81,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		}
 
+		api.POST("/runner", r.handler.Run)
+
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
