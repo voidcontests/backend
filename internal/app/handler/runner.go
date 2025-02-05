@@ -14,7 +14,7 @@ import (
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
-func (h *Handler) Run(c echo.Context) error {
+func (h *Handler) ExecuteSolution(c echo.Context) error {
 	rid := requestid.Get(c)
 	log := slog.With(slog.String("op", "handler.Run"), slog.String("request_id", rid))
 
