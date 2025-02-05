@@ -15,8 +15,8 @@ import (
 )
 
 func (h *Handler) ExecuteSolution(c echo.Context) error {
-	rid := requestid.Get(c)
-	log := slog.With(slog.String("op", "handler.Run"), slog.String("request_id", rid))
+	requestID := requestid.Get(c)
+	log := slog.With(slog.String("op", "handler.ExecuteSolution"), slog.String("request_id", requestID))
 
 	var body request.CreateCodeSubmission
 	if err := validate.Bind(c, &body); err != nil {
@@ -25,7 +25,7 @@ func (h *Handler) ExecuteSolution(c echo.Context) error {
 	}
 
 	// TODO: Use submission.ID instead of request id
-	filename := fmt.Sprintf("%s.c", rid)
+	filename := fmt.Sprintf("%s.c", requestID)
 
 	file, err := os.Create(filename)
 	if err != nil {
@@ -42,7 +42,7 @@ func (h *Handler) ExecuteSolution(c echo.Context) error {
 
 	res, err := runner.Execute(filename)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "internal server error")
+		return err
 	}
 
 	err = os.Remove(filename)
