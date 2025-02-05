@@ -14,21 +14,6 @@ import (
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
-func createCProgramFile(filename, code string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(code)
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-
-	return nil
-}
-
 func (h *Handler) Run(c echo.Context) error {
 	rid := requestid.Get(c)
 	log := slog.With(slog.String("op", "handler.Run"), slog.String("request_id", rid))
@@ -39,6 +24,7 @@ func (h *Handler) Run(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
+	// TODO: Use submission.ID instead of request id
 	filename := fmt.Sprintf("%s.c", rid)
 
 	file, err := os.Create(filename)
