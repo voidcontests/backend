@@ -5,7 +5,6 @@ import "time"
 type User struct {
 	ID        int32     `db:"id"`
 	Address   string    `db:"address"`
-	Username  string    `db:"username"`
 	CreatedAt time.Time `db:"created_at"`
 }
 

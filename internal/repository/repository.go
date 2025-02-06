@@ -16,7 +16,6 @@ import (
 type User interface {
 	Create(ctx context.Context, address string) (*models.User, error)
 	GetByAddress(ctx context.Context, address string) (*models.User, error)
-	GetByUsername(ctx context.Context, username string) (*models.User, error)
 }
 
 type Contest interface {

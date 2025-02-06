@@ -2,7 +2,6 @@ CREATE TABLE users
 (
     id SERIAL PRIMARY KEY,
     address VARCHAR(70) UNIQUE NOT NULL,
-    username VARCHAR(32) UNIQUE DEFAULT '' NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 

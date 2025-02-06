@@ -46,19 +46,3 @@ func (p *Postgres) GetByAddress(ctx context.Context, address string) (*models.Us
 
 	return &user, nil
 }
-
-func (p *Postgres) GetByUsername(ctx context.Context, username string) (*models.User, error) {
-	var err error
-	var user models.User
-
-	query := `SELECT * FROM users WHERE username = $1`
-	err = p.db.GetContext(ctx, &user, query, username)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, repoerr.ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &user, nil
-}
