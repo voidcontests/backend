@@ -190,9 +190,9 @@ func (h *Handler) GetContests(c echo.Context) error {
 		if c.IsDraft {
 			continue
 		}
-		if c.EndTime.Before(time.Now()) {
-			continue
-		}
+		// if c.EndTime.Before(time.Now()) {
+		// 	continue
+		// }
 
 		item := response.ContestListItem{
 			ID: c.ID,
