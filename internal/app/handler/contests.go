@@ -45,14 +45,10 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return err
 	}
 
-	// TODO: insert contest and problem in transaction
-	// TODO: insert up to 10 problems in one query (???)
-	for _, p := range body.Problems {
-		_, err := h.repo.Problem.Create(ctx, contestID, claims.ID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
-		if err != nil {
-			log.Error("can't create workout", sl.Err(err))
-			return err
-		}
+	err = h.repo.Contest.AddProblems(ctx, contestID, body.ProblemsIDs...)
+	if err != nil {
+		log.Error("can't add problems", sl.Err(err))
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, response.ContestID{
@@ -117,14 +113,13 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	for i := range n {
 		cdetailed.Problems[i] = response.ProblemListItem{
-			ID:        problems[i].ID,
-			ContestID: problems[i].ContestID,
+			ID:         problems[i].ID,
+			Title:      problems[i].Title,
+			Difficulty: problems[i].Difficulty,
 			Writer: response.User{
 				ID:      problems[i].WriterID,
 				Address: problems[i].WriterAddress,
 			},
-			Title:      problems[i].Title,
-			Difficulty: problems[i].Difficulty,
 		}
 	}
 

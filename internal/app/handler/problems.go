@@ -7,12 +7,37 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
+	"github.com/voidcontests/backend/pkg/validate"
 )
+
+func (h *Handler) CreateProblem(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.CreateProblem"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	var body request.CreateProblemRequest
+	if err := validate.Bind(c, &body); err != nil {
+		log.Debug("can't decode request body", sl.Err(err))
+		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	problemID, err := h.repo.Problem.Create(ctx, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer)
+	if err != nil {
+		log.Error("can't create problem", sl.Err(err))
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, response.ContestID{
+		ID: problemID,
+	})
+}
 
 func (h *Handler) GetProblems(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetProblems"), slog.String("request_id", requestid.Get(c)))
@@ -29,14 +54,13 @@ func (h *Handler) GetProblems(c echo.Context) error {
 	problems := make([]response.ProblemListItem, n, n)
 	for i, p := range ps {
 		problems[i] = response.ProblemListItem{
-			ID:        p.ID,
-			ContestID: p.ContestID,
+			ID:         p.ID,
+			Title:      p.Title,
+			Difficulty: p.Difficulty,
 			Writer: response.User{
 				ID:      p.WriterID,
 				Address: p.WriterAddress,
 			},
-			Title:      p.Title,
-			Difficulty: p.Difficulty,
 		}
 	}
 
@@ -65,8 +89,6 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`pid` should be integer")
 	}
 
-	// TODO: Check for contest existance
-
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Debug("no entry for contest")
@@ -77,7 +99,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return err
 	}
 
-	p, err := h.repo.Problem.Get(ctx, int32(problemID))
+	p, err := h.repo.Problem.Get(ctx, int32(contestID), int32(problemID))
 	if errors.Is(err, repoerr.ErrProblemNotFound) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
@@ -93,16 +115,16 @@ func (h *Handler) GetProblem(c echo.Context) error {
 	}
 
 	pdetailed := response.ProblemDetailed{
-		ID:        p.ID,
-		ContestID: p.ContestID,
-		Writer: response.User{
-			ID:      p.WriterID,
-			Address: p.WriterAddress,
-		},
+		ID:         p.ID,
+		ContestID:  int32(contestID),
 		Title:      p.Title,
 		Statement:  p.Statement,
 		Difficulty: p.Difficulty,
 		Input:      p.Input,
+		Writer: response.User{
+			ID:      p.WriterID,
+			Address: p.WriterAddress,
+		},
 	}
 
 	// TODO: Make status enum

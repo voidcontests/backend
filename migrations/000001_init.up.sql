@@ -21,7 +21,6 @@ CREATE TABLE contests
 CREATE TABLE problems
 (
     id SERIAL PRIMARY KEY,
-    contest_id INTEGER NOT NULL REFERENCES contests(id),
     writer_id INTEGER NOT NULL REFERENCES users(id),
     title VARCHAR(64) NOT NULL,
     statement TEXT DEFAULT '' NOT NULL,
@@ -29,6 +28,12 @@ CREATE TABLE problems
     input TEXT NOT NULL,
     answer TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+CREATE TABLE contest_problems (
+    contest_id INTEGER NOT NULL REFERENCES contests(id),
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    PRIMARY KEY (contest_id, problem_id)
 );
 
 CREATE TABLE entries
@@ -39,12 +44,14 @@ CREATE TABLE entries
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
+CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer');
+
 CREATE TABLE submissions
 (
     id SERIAL PRIMARY KEY,
     entry_id INTEGER NOT NULL REFERENCES entries(id),
     problem_id INTEGER NOT NULL REFERENCES problems(id),
-    verdict VARCHAR(10) NOT NULL,
+    verdict verdict NOT NULL,
     answer TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

@@ -23,7 +23,6 @@ type Contest struct {
 
 type Problem struct {
 	ID            int32     `db:"id"`
-	ContestID     int32     `db:"contest_id"`
 	WriterID      int32     `db:"writer_id"`
 	WriterAddress string    `db:"writer_address"`
 	Title         string    `db:"title"`

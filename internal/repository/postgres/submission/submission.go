@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	VerdictOK          = "OK"
-	VerdictWrongAnswer = "WA"
+	VerdictOK          = "ok"
+	VerdictWrongAnswer = "wrong_answer"
 )
 
 type Postgres struct {
@@ -19,11 +19,6 @@ type Postgres struct {
 func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
-
-// entry_id INTEGER NOT NULL REFERENCES entries(id),
-// problem_id INTEGER NOT NULL REFERENCES problems(id),
-// verdict VARCHAR(10) NOT NULL,
-// answer TEXT NOT NULL,
 
 func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (*models.Submission, error) {
 	var err error

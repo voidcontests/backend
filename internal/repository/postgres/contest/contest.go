@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -30,6 +31,26 @@ func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, de
 	return id, err
 }
 
+func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs ...int32) error {
+	if len(problemIDs) == 0 {
+		return nil
+	}
+
+	query := `INSERT INTO contest_problems (contest_id, problem_id) VALUES `
+	values := make([]interface{}, 0, len(problemIDs)*2)
+	placeholders := make([]string, 0, len(problemIDs))
+
+	for i, problemID := range problemIDs {
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+		values = append(values, contestID, problemID)
+	}
+
+	query += strings.Join(placeholders, ", ")
+
+	_, err := p.db.ExecContext(ctx, query, values...)
+	return err
+}
+
 func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
 	var err error
 	var contest models.Contest
@@ -49,7 +70,12 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE contest_id = $1`
+	query := `SELECT p.*, u.address AS writer_address
+		FROM problems p
+		JOIN contest_problems cp ON p.id = cp.problem_id
+		JOIN users u ON u.id = p.writer_id
+		WHERE cp.contest_id = $1`
+
 	err := p.db.SelectContext(ctx, &problems, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return problems, nil
