@@ -46,6 +46,10 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return err
 	}
 
+	if len(body.ProblemsIDs) > 6 {
+		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
+	}
+
 	err = h.repo.Contest.AddProblems(ctx, contestID, body.ProblemsIDs...)
 	if err != nil {
 		log.Error("can't add problems", sl.Err(err))
@@ -115,6 +119,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	for i := range n {
 		cdetailed.Problems[i] = response.ProblemListItem{
 			ID:         problems[i].ID,
+			Charcode:   problems[i].Charcode,
 			Title:      problems[i].Title,
 			Difficulty: problems[i].Difficulty,
 			Writer: response.User{

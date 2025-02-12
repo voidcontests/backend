@@ -22,6 +22,7 @@ type ContestDetailed struct {
 
 type ProblemListItem struct {
 	ID         int32  `json:"id"`
+	Charcode   string `json:"charcode"`
 	ContestID  int32  `json:"contest_id"`
 	Writer     User   `json:"writer"`
 	Title      string `json:"title"`
@@ -52,6 +53,7 @@ type SubmissionListItem struct {
 
 type ProblemDetailed struct {
 	ID         int32  `json:"id"`
+	Charcode   string `json:"charcode"`
 	ContestID  int32  `json:"contest_id"`
 	Writer     User   `json:"writer"`
 	Title      string `json:"title"`

@@ -42,16 +42,15 @@ func (p *Postgres) GetAnswer(ctx context.Context, id int32) (string, error) {
 	return answer, nil
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, problemID int32) (*models.Problem, error) {
+func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
 	var problem models.Problem
 
-	query := `SELECT p.*, u.address AS writer_address
+	query := `SELECT p.*, cp.charcode, u.address AS writer_address
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1 AND p.id = $2`
-
-	err := p.db.GetContext(ctx, &problem, query, contestID, problemID)
+		WHERE cp.contest_id = $1 AND cp.charcode = $2`
+	err := p.db.GetContext(ctx, &problem, query, contestID, charcode)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrProblemNotFound
 	}

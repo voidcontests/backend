@@ -32,7 +32,7 @@ type Contest interface {
 type Problem interface {
 	Create(ctx context.Context, writerID int32, title string, statement string, difficulty string, input string, answer string) (int32, error)
 	GetAnswer(ctx context.Context, id int32) (string, error)
-	Get(ctx context.Context, contestID int32, problemID int32) (*models.Problem, error)
+	Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error)
 	GetAll(ctx context.Context) ([]models.Problem, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 }

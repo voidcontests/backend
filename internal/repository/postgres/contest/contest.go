@@ -36,13 +36,20 @@ func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs 
 		return nil
 	}
 
-	query := `INSERT INTO contest_problems (contest_id, problem_id) VALUES `
-	values := make([]interface{}, 0, len(problemIDs)*2)
+	// TODO: move charcodes somewhere out of here
+	charcodes := []string{"A", "B", "C", "D", "E", "F"}
+
+	if len(problemIDs) > len(charcodes) {
+		return fmt.Errorf("not enough charcodes for the number of problems")
+	}
+
+	query := `INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES `
+	values := make([]interface{}, 0, len(problemIDs)*3)
 	placeholders := make([]string, 0, len(problemIDs))
 
 	for i, problemID := range problemIDs {
-		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
-		values = append(values, contestID, problemID)
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+		values = append(values, contestID, problemID, charcodes[i])
 	}
 
 	query += strings.Join(placeholders, ", ")
@@ -70,7 +77,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	var problems []models.Problem
 
-	query := `SELECT p.*, u.address AS writer_address
+	query := `SELECT cp.charcode, p.*, u.address AS writer_address
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id

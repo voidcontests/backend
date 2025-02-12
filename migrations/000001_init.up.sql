@@ -33,6 +33,7 @@ CREATE TABLE problems
 CREATE TABLE contest_problems (
     contest_id INTEGER NOT NULL REFERENCES contests(id),
     problem_id INTEGER NOT NULL REFERENCES problems(id),
+    charcode VARCHAR(2) NOT NULL,
     PRIMARY KEY (contest_id, problem_id)
 );
 

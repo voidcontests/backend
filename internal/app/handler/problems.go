@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
@@ -82,12 +83,11 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
+	charcode := c.Param("charcode")
+	if len(charcode) > 2 {
+		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
 	}
+	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
@@ -99,7 +99,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return err
 	}
 
-	p, err := h.repo.Problem.Get(ctx, int32(contestID), int32(problemID))
+	p, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
 	if errors.Is(err, repoerr.ErrProblemNotFound) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
@@ -116,6 +116,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 
 	pdetailed := response.ProblemDetailed{
 		ID:         p.ID,
+		Charcode:   p.Charcode,
 		ContestID:  int32(contestID),
 		Title:      p.Title,
 		Statement:  p.Statement,
