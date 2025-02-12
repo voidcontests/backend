@@ -48,3 +48,9 @@ type Submission struct {
 	Answer    string    `db:"answer"`
 	CreatedAt time.Time `db:"created_at"`
 }
+
+type LeaderboardEntry struct {
+	UserID      int32  `db:"user_id" json:"user_id"`
+	UserAddress string `db:"user_address" json:"user_address"`
+	Points      int    `db:"points" json:"points"`
+}

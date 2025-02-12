@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -250,6 +251,35 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+func (h *Handler) GetLeaderboard(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetLeaderboard"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
+	if err != nil {
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
+	}
+
+	// TODO: get all users that are participating in current contest
+	// and return their points (if no submisisons - 0)
+	leaderboard, err := h.repo.Contest.GetLeaderboard(ctx, contestID)
+	if err != nil {
+		log.Error("can't get leaderboard", sl.Err(err))
+		return err
+	}
+
+	sort.Slice(leaderboard, func(i, j int) bool {
+		// NOTE: points in non-ascending order
+		return leaderboard[i].Points > leaderboard[j].Points
+	})
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": leaderboard,
+	})
 }
 
 func (h *Handler) CreateSubmission(c echo.Context) error {

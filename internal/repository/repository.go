@@ -26,6 +26,7 @@ type Contest interface {
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetParticipantsCount(ctx context.Context, contestID int32) (int32, error)
 	GetAll(ctx context.Context) ([]models.Contest, error)
+	GetLeaderboard(ctx context.Context, contestID int) ([]models.LeaderboardEntry, error)
 }
 
 type Problem interface {

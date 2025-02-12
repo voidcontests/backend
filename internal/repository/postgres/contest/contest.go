@@ -125,3 +125,49 @@ func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, err
 
 	return count > 0, nil
 }
+
+func (p *Postgres) GetLeaderboard(ctx context.Context, contestID int) ([]models.LeaderboardEntry, error) {
+	var err error
+	var leaderboard []models.LeaderboardEntry
+
+	query := `SELECT
+    u.id AS user_id,
+    u.address AS user_address,
+    SUM(
+        CASE
+            WHEN p.difficulty = 'easy' THEN 1
+            WHEN p.difficulty = 'mid' THEN 3
+            WHEN p.difficulty = 'hard' THEN 5
+            ELSE 0
+        END
+    ) AS points
+FROM
+    users u
+JOIN
+    entries e ON u.id = e.user_id
+JOIN
+    contests c ON e.contest_id = c.id
+JOIN
+    (SELECT DISTINCT entry_id, problem_id
+     FROM submissions
+     WHERE verdict = 'ok') s ON e.id = s.entry_id
+JOIN
+    problems p ON s.problem_id = p.id
+WHERE
+    c.id = 1
+GROUP BY
+    u.id, u.address
+ORDER BY
+    points DESC`
+
+	err = p.db.SelectContext(ctx, &leaderboard, query)
+	if err != nil {
+		return nil, err
+	}
+
+	if leaderboard == nil {
+		return []models.LeaderboardEntry{}, nil
+	}
+
+	return leaderboard, nil
+}
