@@ -90,8 +90,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
 
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetProblem, r.handler.MustIdentify())
-		api.GET("/contests/:cid/problems/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
-		api.POST("/contests/:cid/problems/:pid/submissions",
+		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
+		api.POST("/contests/:cid/problems/:charcode/submissions",
 			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
 
 	}

@@ -29,19 +29,6 @@ func (p *Postgres) Create(ctx context.Context, writerID int32, title string, sta
 	return id, err
 }
 
-func (p *Postgres) GetAnswer(ctx context.Context, id int32) (string, error) {
-	var err error
-	var answer string
-
-	query := `SELECT answer FROM problems WHERE id = $1`
-	err = p.db.GetContext(ctx, &answer, query, id)
-	if err != nil {
-		return "", err
-	}
-
-	return answer, nil
-}
-
 func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
 	var problem models.Problem
 

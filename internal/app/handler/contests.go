@@ -300,12 +300,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
+	charcode := c.Param("charcode")
+	if len(charcode) > 2 {
+		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
 	}
+	charcode = strings.ToUpper(charcode)
 
 	var body request.CreateSubmissionRequest
 	if err := validate.Bind(c, &body); err != nil {
@@ -340,7 +339,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	answer, err := h.repo.Problem.GetAnswer(ctx, int32(problemID))
+	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
 	if errors.Is(err, repoerr.ErrProblemNotFound) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
@@ -350,13 +349,13 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	var verdict string
-	if answer != body.Answer {
+	if problem.Answer != body.Answer {
 		verdict = submission.VerdictWrongAnswer
 	} else {
 		verdict = submission.VerdictOK
 	}
 
-	submission, err := h.repo.Submission.Create(ctx, entry.ID, int32(problemID), verdict, body.Answer)
+	submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer)
 	if err != nil {
 		log.Error("can't create submission", sl.Err(err))
 		return err
@@ -383,12 +382,11 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
+	charcode := c.Param("charcode")
+	if len(charcode) > 2 {
+		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
 	}
+	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
@@ -399,7 +397,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return err
 	}
 
-	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, int32(problemID))
+	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, charcode)
 	if err != nil {
 		log.Error("can't get submissions", sl.Err(err))
 		return err
