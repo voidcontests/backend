@@ -18,16 +18,18 @@ type ContestDetailed struct {
 	IsDraft       bool              `json:"is_draft,omitempty"`
 	IsParticipant bool              `json:"is_participant,omitempty"`
 	Problems      []ProblemListItem `json:"problems"`
+	CreatedAt     time.Time         `json:"created_at"`
 }
 
 type ProblemListItem struct {
-	ID         int32  `json:"id"`
-	Charcode   string `json:"charcode"`
-	ContestID  int32  `json:"contest_id"`
-	Writer     User   `json:"writer"`
-	Title      string `json:"title"`
-	Difficulty string `json:"difficulty"`
-	Status     string `json:"status,omitempty"`
+	ID         int32     `json:"id"`
+	Charcode   string    `json:"charcode"`
+	ContestID  int32     `json:"contest_id"`
+	Writer     User      `json:"writer"`
+	Title      string    `json:"title"`
+	Difficulty string    `json:"difficulty"`
+	Status     string    `json:"status,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type ContestListItem struct {
@@ -37,6 +39,7 @@ type ContestListItem struct {
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
 	DurationMins int32     `json:"duration_mins"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type User struct {
@@ -52,13 +55,14 @@ type SubmissionListItem struct {
 }
 
 type ProblemDetailed struct {
-	ID         int32  `json:"id"`
-	Charcode   string `json:"charcode"`
-	ContestID  int32  `json:"contest_id"`
-	Writer     User   `json:"writer"`
-	Title      string `json:"title"`
-	Statement  string `json:"statement"`
-	Difficulty string `json:"difficulty"`
-	Status     string `json:"status,omitempty"`
-	Input      string `json:"input,omitempty"`
+	ID         int32     `json:"id"`
+	Charcode   string    `json:"charcode"`
+	ContestID  int32     `json:"contest_id"`
+	Writer     User      `json:"writer"`
+	Title      string    `json:"title"`
+	Statement  string    `json:"statement"`
+	Difficulty string    `json:"difficulty"`
+	Status     string    `json:"status,omitempty"`
+	Input      string    `json:"input,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }

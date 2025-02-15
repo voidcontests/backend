@@ -58,6 +58,7 @@ func (h *Handler) GetProblems(c echo.Context) error {
 			ID:         p.ID,
 			Title:      p.Title,
 			Difficulty: p.Difficulty,
+			CreatedAt:  p.CreatedAt,
 			Writer: response.User{
 				ID:      p.WriterID,
 				Address: p.WriterAddress,
@@ -90,6 +91,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 			ID:         p.ID,
 			Title:      p.Title,
 			Difficulty: p.Difficulty,
+			CreatedAt:  p.CreatedAt,
 			Writer: response.User{
 				ID:      p.WriterID,
 				Address: p.WriterAddress,
@@ -154,6 +156,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		Statement:  p.Statement,
 		Difficulty: p.Difficulty,
 		Input:      p.Input,
+		CreatedAt:  p.CreatedAt,
 		Writer: response.User{
 			ID:      p.WriterID,
 			Address: p.WriterAddress,

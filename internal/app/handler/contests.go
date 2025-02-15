@@ -114,6 +114,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		EndTime:      contest.EndTime,
 		DurationMins: contest.DurationMins,
 		IsDraft:      contest.IsDraft,
+		CreatedAt:    contest.CreatedAt,
 	}
 
 	for i := range n {
@@ -200,6 +201,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			CreatedAt:    c.CreatedAt,
 		}
 		filtered = append(filtered, item)
 	}
@@ -242,6 +244,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			CreatedAt:    c.CreatedAt,
 		}
 		filtered = append(filtered, item)
 	}
