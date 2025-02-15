@@ -107,6 +107,19 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	return contests, nil
 }
 
+func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32) ([]models.Contest, error) {
+	var err error
+	var contests []models.Contest
+
+	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id WHERE creator_id = $1`
+	err = p.db.SelectContext(ctx, &contests, query, creatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	return contests, nil
+}
+
 func (p *Postgres) GetParticipantsCount(ctx context.Context, contestID int32) (int32, error) {
 	var err error
 	var count int32

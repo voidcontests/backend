@@ -172,6 +172,43 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, cdetailed)
 }
 
+func (h *Handler) GetCreatedContests(c echo.Context) error {
+	// TODO: do not return all contests:
+	// - return only active contests
+	// - return by chunks (pages)
+
+	log := slog.With(slog.String("op", "handler.GetCreatedContests"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	contests, err := h.repo.Contest.GetWithCreatorID(ctx, claims.ID)
+	if err != nil {
+		log.Error("can't get created contests", sl.Err(err))
+		return err
+	}
+
+	filtered := make([]response.ContestListItem, 0)
+	for _, c := range contests {
+		item := response.ContestListItem{
+			ID: c.ID,
+			Creator: response.User{
+				ID:      c.CreatorID,
+				Address: c.CreatorAddress,
+			},
+			Title:        c.Title,
+			StartTime:    c.StartTime,
+			EndTime:      c.EndTime,
+			DurationMins: c.DurationMins,
+		}
+		filtered = append(filtered, item)
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": filtered,
+	})
+}
+
 func (h *Handler) GetContests(c echo.Context) error {
 	// TODO: do not return all contests:
 	// - return only active contests

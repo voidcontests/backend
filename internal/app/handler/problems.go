@@ -70,6 +70,38 @@ func (h *Handler) GetProblems(c echo.Context) error {
 	})
 }
 
+func (h *Handler) GetCreatedProblems(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetCreatedProblems"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	// TODO: return problems splitted by chunks
+	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.ID)
+	if err != nil {
+		log.Error("can't get created contests", sl.Err(err))
+		return err
+	}
+
+	n := len(ps)
+	problems := make([]response.ProblemListItem, n, n)
+	for i, p := range ps {
+		problems[i] = response.ProblemListItem{
+			ID:         p.ID,
+			Title:      p.Title,
+			Difficulty: p.Difficulty,
+			Writer: response.User{
+				ID:      p.WriterID,
+				Address: p.WriterAddress,
+			},
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": problems,
+	})
+}
+
 func (h *Handler) GetProblem(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetProblem"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()

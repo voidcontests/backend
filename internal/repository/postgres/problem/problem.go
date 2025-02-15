@@ -61,6 +61,19 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	return problems, nil
 }
 
+func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32) ([]models.Problem, error) {
+	var err error
+	var problems []models.Problem
+
+	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE writer_id = $1`
+	err = p.db.SelectContext(ctx, &problems, query, writerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
+}
+
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
 	var err error
 	var count int

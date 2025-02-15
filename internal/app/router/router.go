@@ -79,6 +79,10 @@ func (r *Router) InitRoutes() *echo.Echo {
 		tonproof.POST("/check", r.handler.CheckProof)
 		tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 
+		creator := api.Group("/creator", r.handler.MustIdentify())
+		creator.GET("/contests", r.handler.GetCreatedContests)
+		creator.GET("/problems", r.handler.GetCreatedProblems)
+
 		api.GET("/problems", r.handler.GetProblems)
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
