@@ -93,12 +93,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
-	participants, err := h.repo.Contest.GetParticipantsCount(ctx, contest.ID)
-	if err != nil {
-		log.Error("can't get participants count for contest", sl.Err(err))
-		return err
-	}
-
 	n := len(problems)
 	cdetailed := response.ContestDetailed{
 		ID:          contest.ID,
@@ -109,7 +103,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			ID:      contest.CreatorID,
 			Address: contest.CreatorAddress,
 		},
-		Participants: participants,
+		Participants: contest.Participants,
 		StartTime:    contest.StartTime,
 		EndTime:      contest.EndTime,
 		DurationMins: contest.DurationMins,
@@ -201,6 +195,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			Participants: c.Participants,
 			CreatedAt:    c.CreatedAt,
 		}
 		filtered = append(filtered, item)
@@ -244,6 +239,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			Participants: c.Participants,
 			CreatedAt:    c.CreatedAt,
 		}
 		filtered = append(filtered, item)

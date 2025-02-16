@@ -23,8 +23,8 @@ type ContestDetailed struct {
 
 type ProblemListItem struct {
 	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode"`
-	ContestID  int32     `json:"contest_id"`
+	Charcode   string    `json:"charcode,omitempty"`
+	ContestID  int32     `json:"contest_id,omitempty"`
 	Writer     User      `json:"writer"`
 	Title      string    `json:"title"`
 	Difficulty string    `json:"difficulty"`
@@ -39,6 +39,7 @@ type ContestListItem struct {
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
 	DurationMins int32     `json:"duration_mins"`
+	Participants int32     `json:"participants"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -56,8 +57,8 @@ type SubmissionListItem struct {
 
 type ProblemDetailed struct {
 	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode"`
-	ContestID  int32     `json:"contest_id"`
+	Charcode   string    `json:"charcode,omitempty"`
+	ContestID  int32     `json:"contest_id,omitempty"`
 	Writer     User      `json:"writer"`
 	Title      string    `json:"title"`
 	Statement  string    `json:"statement"`

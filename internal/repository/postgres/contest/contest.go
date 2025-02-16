@@ -62,7 +62,17 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 	var err error
 	var contest models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id WHERE contests.id = $1`
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+FROM
+    contests
+JOIN
+    users ON users.id = contests.creator_id
+LEFT JOIN
+    entries ON entries.contest_id = contests.id
+WHERE
+    contests.id = $1
+GROUP BY
+    contests.id, users.address`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrContestNotFound
@@ -98,7 +108,15 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	var err error
 	var contests []models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id`
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+FROM
+    contests
+JOIN
+    users ON users.id = contests.creator_id
+LEFT JOIN
+    entries ON entries.contest_id = contests.id
+GROUP BY
+    contests.id, users.address`
 	err = p.db.SelectContext(ctx, &contests, query)
 	if err != nil {
 		return nil, err
@@ -111,7 +129,17 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32) ([]mod
 	var err error
 	var contests []models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id WHERE creator_id = $1`
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+FROM
+    contests
+JOIN
+    users ON users.id = contests.creator_id
+LEFT JOIN
+    entries ON entries.contest_id = contests.id
+WHERE
+    contests.creator_id = $1
+GROUP BY
+    contests.id, users.address`
 	err = p.db.SelectContext(ctx, &contests, query, creatorID)
 	if err != nil {
 		return nil, err
