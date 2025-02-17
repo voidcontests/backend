@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -45,14 +46,14 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return err
 	}
 
-	// TODO: insert contest and problem in transaction
-	// TODO: insert up to 10 problems in one query (???)
-	for _, p := range body.Problems {
-		_, err := h.repo.Problem.Create(ctx, contestID, claims.ID, p.Title, p.Statement, p.Difficulty, p.Input, p.Answer)
-		if err != nil {
-			log.Error("can't create workout", sl.Err(err))
-			return err
-		}
+	if len(body.ProblemsIDs) > 6 {
+		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
+	}
+
+	err = h.repo.Contest.AddProblems(ctx, contestID, body.ProblemsIDs...)
+	if err != nil {
+		log.Error("can't add problems", sl.Err(err))
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, response.ContestID{
@@ -92,12 +93,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
-	participants, err := h.repo.Contest.GetParticipantsCount(ctx, contest.ID)
-	if err != nil {
-		log.Error("can't get participants count for contest", sl.Err(err))
-		return err
-	}
-
 	n := len(problems)
 	cdetailed := response.ContestDetailed{
 		ID:          contest.ID,
@@ -108,23 +103,24 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			ID:      contest.CreatorID,
 			Address: contest.CreatorAddress,
 		},
-		Participants: participants,
+		Participants: contest.Participants,
 		StartTime:    contest.StartTime,
 		EndTime:      contest.EndTime,
 		DurationMins: contest.DurationMins,
 		IsDraft:      contest.IsDraft,
+		CreatedAt:    contest.CreatedAt,
 	}
 
 	for i := range n {
 		cdetailed.Problems[i] = response.ProblemListItem{
-			ID:        problems[i].ID,
-			ContestID: problems[i].ContestID,
+			ID:         problems[i].ID,
+			Charcode:   problems[i].Charcode,
+			Title:      problems[i].Title,
+			Difficulty: problems[i].Difficulty,
 			Writer: response.User{
 				ID:      problems[i].WriterID,
 				Address: problems[i].WriterAddress,
 			},
-			Title:      problems[i].Title,
-			Difficulty: problems[i].Difficulty,
 		}
 	}
 
@@ -171,6 +167,45 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, cdetailed)
 }
 
+func (h *Handler) GetCreatedContests(c echo.Context) error {
+	// TODO: do not return all contests:
+	// - return only active contests
+	// - return by chunks (pages)
+
+	log := slog.With(slog.String("op", "handler.GetCreatedContests"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	contests, err := h.repo.Contest.GetWithCreatorID(ctx, claims.ID)
+	if err != nil {
+		log.Error("can't get created contests", sl.Err(err))
+		return err
+	}
+
+	filtered := make([]response.ContestListItem, 0)
+	for _, c := range contests {
+		item := response.ContestListItem{
+			ID: c.ID,
+			Creator: response.User{
+				ID:      c.CreatorID,
+				Address: c.CreatorAddress,
+			},
+			Title:        c.Title,
+			StartTime:    c.StartTime,
+			EndTime:      c.EndTime,
+			DurationMins: c.DurationMins,
+			Participants: c.Participants,
+			CreatedAt:    c.CreatedAt,
+		}
+		filtered = append(filtered, item)
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": filtered,
+	})
+}
+
 func (h *Handler) GetContests(c echo.Context) error {
 	// TODO: do not return all contests:
 	// - return only active contests
@@ -204,6 +239,8 @@ func (h *Handler) GetContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			Participants: c.Participants,
+			CreatedAt:    c.CreatedAt,
 		}
 		filtered = append(filtered, item)
 	}
@@ -257,6 +294,35 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
+func (h *Handler) GetLeaderboard(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetLeaderboard"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	cid := c.Param("cid")
+	contestID, err := strconv.Atoi(cid)
+	if err != nil {
+		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`cid` should be integer")
+	}
+
+	// TODO: get all users that are participating in current contest
+	// and return their points (if no submisisons - 0)
+	leaderboard, err := h.repo.Contest.GetLeaderboard(ctx, contestID)
+	if err != nil {
+		log.Error("can't get leaderboard", sl.Err(err))
+		return err
+	}
+
+	sort.Slice(leaderboard, func(i, j int) bool {
+		// NOTE: points in non-ascending order
+		return leaderboard[i].Points > leaderboard[j].Points
+	})
+
+	return c.JSON(http.StatusOK, map[string]any{
+		"data": leaderboard,
+	})
+}
+
 func (h *Handler) CreateSubmission(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.CreateSubmission"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
@@ -270,12 +336,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
+	charcode := c.Param("charcode")
+	if len(charcode) > 2 {
+		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
 	}
+	charcode = strings.ToUpper(charcode)
 
 	var body request.CreateSubmissionRequest
 	if err := validate.Bind(c, &body); err != nil {
@@ -310,7 +375,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	answer, err := h.repo.Problem.GetAnswer(ctx, int32(problemID))
+	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
 	if errors.Is(err, repoerr.ErrProblemNotFound) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
@@ -320,13 +385,13 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	var verdict string
-	if answer != body.Answer {
+	if problem.Answer != body.Answer {
 		verdict = submission.VerdictWrongAnswer
 	} else {
 		verdict = submission.VerdictOK
 	}
 
-	submission, err := h.repo.Submission.Create(ctx, entry.ID, int32(problemID), verdict, body.Answer)
+	submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer)
 	if err != nil {
 		log.Error("can't create submission", sl.Err(err))
 		return err
@@ -353,12 +418,11 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
+	charcode := c.Param("charcode")
+	if len(charcode) > 2 {
+		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
 	}
+	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
@@ -369,7 +433,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return err
 	}
 
-	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, int32(problemID))
+	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, charcode)
 	if err != nil {
 		log.Error("can't get submissions", sl.Err(err))
 		return err

@@ -75,22 +75,29 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/healthcheck", r.handler.Healthcheck)
 
 		tonproof := api.Group("/tonproof")
-		{
-			tonproof.POST("/payload", r.handler.GeneratePayload)
-			tonproof.POST("/check", r.handler.CheckProof)
-			tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
-		}
+		tonproof.POST("/payload", r.handler.GeneratePayload)
+		tonproof.POST("/check", r.handler.CheckProof)
+		tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
+
+		creator := api.Group("/creator", r.handler.MustIdentify())
+		creator.GET("/contests", r.handler.GetCreatedContests)
+		creator.GET("/problems", r.handler.GetCreatedProblems)
+
+		api.GET("/problems", r.handler.GetProblems)
+		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
+
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
-		api.GET("/contests/:cid/problems/:pid", r.handler.GetProblem, r.handler.MustIdentify())
-		api.POST("/contests/:cid/problems/:pid/submissions",
-			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
-		api.GET("/contests/:cid/problems/:pid/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
+		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
 
-		api.GET("/problems", r.handler.GetProblems)
+		api.GET("/contests/:cid/problems/:charcode", r.handler.GetProblem, r.handler.MustIdentify())
+		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
+		api.POST("/contests/:cid/problems/:charcode/submissions",
+			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
+
 	}
 
 	return router

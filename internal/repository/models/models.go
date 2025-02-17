@@ -18,12 +18,13 @@ type Contest struct {
 	EndTime        time.Time `db:"end_time"`
 	DurationMins   int32     `db:"duration_mins"`
 	IsDraft        bool      `db:"is_draft"`
+	Participants   int32     `db:"participants"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 
 type Problem struct {
 	ID            int32     `db:"id"`
-	ContestID     int32     `db:"contest_id"`
+	Charcode      string    `db:"charcode"`
 	WriterID      int32     `db:"writer_id"`
 	WriterAddress string    `db:"writer_address"`
 	Title         string    `db:"title"`
@@ -48,4 +49,10 @@ type Submission struct {
 	Verdict   string    `db:"verdict"`
 	Answer    string    `db:"answer"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type LeaderboardEntry struct {
+	UserID      int32  `db:"user_id" json:"user_id"`
+	UserAddress string `db:"user_address" json:"user_address"`
+	Points      int    `db:"points" json:"points"`
 }
