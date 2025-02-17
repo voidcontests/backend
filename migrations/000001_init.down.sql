@@ -1,9 +1,8 @@
-DROP TABLE submissions;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS entries;
+DROP TABLE IF EXISTS contest_problems;
+DROP TABLE IF EXISTS problems;
+DROP TABLE IF EXISTS contests;
+DROP TABLE IF EXISTS users;
 
-DROP TABLE entries;
-
-DROP TABLE problems;
-
-DROP TABLE contests;
-
-DROP TABLE users;
+DROP TYPE IF EXISTS verdict;
