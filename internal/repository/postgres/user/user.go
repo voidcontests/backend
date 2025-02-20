@@ -46,3 +46,29 @@ func (p *Postgres) GetByAddress(ctx context.Context, address string) (*models.Us
 
 	return &user, nil
 }
+
+func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int32) (int, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM problems WHERE writer_id = $1`
+	err = p.db.GetContext(ctx, &count, query, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (p *Postgres) GetCreatedContestsCount(ctx context.Context, userID int32) (int, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM contests WHERE creator_id = $1`
+	err = p.db.GetContext(ctx, &count, query, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

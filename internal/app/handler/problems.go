@@ -29,6 +29,16 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
+	pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
+	if err != nil {
+		log.Debug("can't get created problems count", sl.Err(err))
+		return err
+	}
+
+	if pscount >= 10 {
+		return Error(http.StatusForbidden, "problems limit exceeded")
+	}
+
 	problemID, err := h.repo.Problem.Create(ctx, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer)
 	if err != nil {
 		log.Error("can't create problem", sl.Err(err))

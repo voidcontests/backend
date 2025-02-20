@@ -31,6 +31,16 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
+	cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
+	if err != nil {
+		log.Debug("can't get created contests count", sl.Err(err))
+		return err
+	}
+
+	if cscount >= 2 {
+		return Error(http.StatusForbidden, "contests limit exceeded")
+	}
+
 	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
 	if err != nil {
 		log.Error("can't verify that title isn't occupied")
