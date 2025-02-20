@@ -29,13 +29,19 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
+	userrole, err := h.repo.User.GetRole(ctx, claims.ID)
+	if err != nil {
+		log.Error("can't get user's role", sl.Err(err))
+		return err
+	}
+
 	pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
 	if err != nil {
 		log.Debug("can't get created problems count", sl.Err(err))
 		return err
 	}
 
-	if pscount >= 10 {
+	if pscount >= int(userrole.CreatedProblemsLimit) {
 		return Error(http.StatusForbidden, "problems limit exceeded")
 	}
 

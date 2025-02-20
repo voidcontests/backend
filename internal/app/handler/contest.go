@@ -30,13 +30,19 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
+	userrole, err := h.repo.User.GetRole(ctx, claims.ID)
+	if err != nil {
+		log.Error("can't get user's role", sl.Err(err))
+		return err
+	}
+
 	cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
 	if err != nil {
 		log.Debug("can't get created contests count", sl.Err(err))
 		return err
 	}
 
-	if cscount >= 2 {
+	if cscount >= int(userrole.CreatedContestsLimit) {
 		return Error(http.StatusForbidden, "contests limit exceeded")
 	}
 
