@@ -6,6 +6,18 @@ type ContestID struct {
 	ID int32 `json:"id"`
 }
 
+type Account struct {
+	ID      int32  `json:"id"`
+	Address string `json:"address"`
+	Role    Role   `json:"role"`
+}
+
+type Role struct {
+	Name                 string `json:"name"`
+	CreatedProblemsLimit int32  `json:"created_problems_limit"`
+	CreatedContestsLimit int32  `json:"created_contests_limit"`
+}
+
 type ContestDetailed struct {
 	ID            int32             `json:"id"`
 	Creator       User              `json:"creator"`

@@ -5,7 +5,17 @@ import "time"
 type User struct {
 	ID        int32     `db:"id"`
 	Address   string    `db:"address"`
+	RoleID    int32     `db:"role_id"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type Role struct {
+	ID                   int32     `db:"id"`
+	Name                 string    `db:"name"`
+	CreatedProblemsLimit int32     `db:"created_problems_limit"`
+	CreatedContestsLimit int32     `db:"created_contests_limit"`
+	IsDefault            bool      `db:"is_default"`
+	CreatedAt            time.Time `db:"created_at"`
 }
 
 type Contest struct {

@@ -76,6 +76,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	api := router.Group("/api")
 	{
+		api.GET("/me", r.handler.GetMe, r.handler.MustIdentify())
 		api.POST("/run", r.handler.Run)
 
 		api.GET("/healthcheck", r.handler.Healthcheck)

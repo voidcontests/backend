@@ -9,14 +9,12 @@ CREATE TABLE roles
 );
 
 INSERT INTO
-    roles (name, created_problems_limit, created_contests_limit)
+    roles (name, created_problems_limit, created_contests_limit, is_default)
 VALUES
-    ('admin', -1, -1),
-    ('unlimited', -1, -1),
-    ('limited', 10, 2),
-    ('banned', 0, 0);
-
-UPDATE roles SET is_default = true WHERE name = 'limited';
+    ('admin', -1, -1, false),
+    ('unlimited', -1, -1, false),
+    ('limited', 10, 2, true),
+    ('banned', 0, 0, false);
 
 CREATE TABLE users
 (
