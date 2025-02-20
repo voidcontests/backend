@@ -1,7 +1,28 @@
+CREATE TABLE roles
+(
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) UNIQUE NOT NULL,
+    created_problems_limit INTEGER NOT NULL,
+    created_contests_limit INTEGER NOT NULL,
+    is_default BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+INSERT INTO
+    roles (name, created_problems_limit, created_contests_limit)
+VALUES
+    ('admin', -1, -1),
+    ('unlimited', -1, -1),
+    ('limited', 10, 2),
+    ('banned', 0, 0);
+
+UPDATE roles SET is_default = true WHERE name = 'limited';
+
 CREATE TABLE users
 (
     id SERIAL PRIMARY KEY,
     address VARCHAR(70) UNIQUE NOT NULL,
+    role_id INTEGER NOT NULL REFERENCES roles(id),
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
