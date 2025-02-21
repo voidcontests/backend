@@ -36,8 +36,7 @@ func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs 
 		return nil
 	}
 
-	// TODO: move charcodes somewhere out of here
-	charcodes := []string{"A", "B", "C", "D", "E", "F"}
+	charcodes := strings.Split("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "")
 
 	if len(problemIDs) > len(charcodes) {
 		return fmt.Errorf("not enough charcodes for the number of problems")

@@ -22,7 +22,7 @@ func (p *Postgres) Create(ctx context.Context, address string) (*models.User, er
 	var err error
 	var user models.User
 
-	query := `INSERT INTO users (address) VALUES ($1) RETURNING *`
+	query := `INSERT INTO users (address, role_id) VALUES ($1, (SELECT id FROM roles WHERE is_default=true LIMIT 1)) RETURNING id`
 	err = p.db.GetContext(ctx, &user, query, address)
 	if err != nil {
 		return nil, err
@@ -45,4 +45,43 @@ func (p *Postgres) GetByAddress(ctx context.Context, address string) (*models.Us
 	}
 
 	return &user, nil
+}
+
+func (p *Postgres) GetRole(ctx context.Context, userID int32) (*models.Role, error) {
+	var err error
+	var role models.Role
+
+	query := `SELECT r.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1`
+	err = p.db.GetContext(ctx, &role, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &role, nil
+}
+
+func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int32) (int, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM problems WHERE writer_id = $1`
+	err = p.db.GetContext(ctx, &count, query, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (p *Postgres) GetCreatedContestsCount(ctx context.Context, userID int32) (int, error) {
+	var err error
+	var count int
+
+	query := `SELECT COUNT(*) FROM contests WHERE creator_id = $1`
+	err = p.db.GetContext(ctx, &count, query, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

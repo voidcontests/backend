@@ -1,6 +1,7 @@
 package router
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
+	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/pkg/ratelimit"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -29,6 +31,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
+		slog.Error("something went wrong", sl.Err(err))
+
 		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
 			c.JSON(http.StatusNotFound, map[string]string{
 				"message": "resource not found",
@@ -36,9 +40,9 @@ func (r *Router) InitRoutes() *echo.Echo {
 			return
 		}
 
-		if apierr, ok := err.(*handler.APIError); ok {
-			c.JSON(apierr.Status, map[string]any{
-				"message": apierr.Message,
+		if ae, ok := err.(*handler.APIError); ok {
+			c.JSON(ae.Status, map[string]any{
+				"message": ae.Message,
 			})
 			return
 		}
@@ -72,12 +76,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	api := router.Group("/api")
 	{
+		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
+		api.POST("/run", r.handler.Run)
+
 		api.GET("/healthcheck", r.handler.Healthcheck)
 
 		tonproof := api.Group("/tonproof")
 		tonproof.POST("/payload", r.handler.GeneratePayload)
 		tonproof.POST("/check", r.handler.CheckProof)
-		tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 
 		creator := api.Group("/creator", r.handler.MustIdentify())
 		creator.GET("/contests", r.handler.GetCreatedContests)

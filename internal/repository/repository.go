@@ -15,7 +15,10 @@ import (
 
 type User interface {
 	Create(ctx context.Context, address string) (*models.User, error)
+	GetRole(ctx context.Context, userID int32) (*models.Role, error)
 	GetByAddress(ctx context.Context, address string) (*models.User, error)
+	GetCreatedProblemsCount(ctx context.Context, userID int32) (int, error)
+	GetCreatedContestsCount(ctx context.Context, userID int32) (int, error)
 }
 
 type Contest interface {

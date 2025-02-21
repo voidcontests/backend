@@ -1,9 +1,25 @@
 package response
 
-import "time"
+import (
+	"time"
+
+	"github.com/voidcontests/backend/internal/ton"
+)
 
 type ContestID struct {
 	ID int32 `json:"id"`
+}
+
+type Account struct {
+	ID         int32       `json:"id"`
+	TonAccount ton.Account `json:"ton_account"`
+	Role       Role        `json:"role"`
+}
+
+type Role struct {
+	Name                 string `json:"name"`
+	CreatedProblemsLimit int32  `json:"created_problems_limit"`
+	CreatedContestsLimit int32  `json:"created_contests_limit"`
 }
 
 type ContestDetailed struct {
