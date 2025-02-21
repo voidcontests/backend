@@ -35,14 +35,21 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return err
 	}
 
-	pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
-	if err != nil {
-		log.Debug("can't get created problems count", sl.Err(err))
-		return err
+	if userrole.Name == "banned" {
+		log.Debug("banned mf tried to create new problem")
+		return Error(http.StatusForbidden, "you are banned from creating problems")
 	}
 
-	if pscount >= int(userrole.CreatedProblemsLimit) {
-		return Error(http.StatusForbidden, "problems limit exceeded")
+	if userrole.Name == "limited" {
+		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
+		if err != nil {
+			log.Debug("can't get created problems count", sl.Err(err))
+			return err
+		}
+
+		if pscount >= int(userrole.CreatedProblemsLimit) {
+			return Error(http.StatusForbidden, "problems limit exceeded")
+		}
 	}
 
 	problemID, err := h.repo.Problem.Create(ctx, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer)

@@ -36,14 +36,21 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return err
 	}
 
-	cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
-	if err != nil {
-		log.Debug("can't get created contests count", sl.Err(err))
-		return err
+	if userrole.Name == "banned" {
+		log.Debug("banned mf tried to create new contest")
+		return Error(http.StatusForbidden, "you are banned from creating contests")
 	}
 
-	if cscount >= int(userrole.CreatedContestsLimit) {
-		return Error(http.StatusForbidden, "contests limit exceeded")
+	if userrole.Name == "limited" {
+		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
+		if err != nil {
+			log.Debug("can't get created contests count", sl.Err(err))
+			return err
+		}
+
+		if cscount >= int(userrole.CreatedContestsLimit) {
+			return Error(http.StatusForbidden, "contests limit exceeded")
+		}
 	}
 
 	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
