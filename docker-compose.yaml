@@ -12,7 +12,7 @@ services:
 
     server:
         container_name: void-server
-        image: void-server
+        image: jus1d/void-server:latest
         network_mode: "host"
         depends_on:
             - postgres
