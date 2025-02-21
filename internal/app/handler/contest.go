@@ -12,6 +12,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -36,12 +37,12 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return err
 	}
 
-	if userrole.Name == "banned" {
+	if userrole.Name == models.RoleBanned {
 		log.Debug("banned mf tried to create new contest")
 		return Error(http.StatusForbidden, "you are banned from creating contests")
 	}
 
-	if userrole.Name == "limited" {
+	if userrole.Name == models.RoleLimited {
 		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
 		if err != nil {
 			log.Debug("can't get created contests count", sl.Err(err))

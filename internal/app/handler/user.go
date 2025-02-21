@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) GetAccount(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetMe"), slog.String("request_id", requestid.Get(c)))
+	log := slog.With(slog.String("op", "handler.GetAccount"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)

@@ -2,6 +2,13 @@ package models
 
 import "time"
 
+const (
+	RoleAdmin     = "admin"
+	RoleUnlimited = "unlimited"
+	RoleLimited   = "limited"
+	RoleBanned    = "banned"
+)
+
 type User struct {
 	ID        int32     `db:"id"`
 	Address   string    `db:"address"`

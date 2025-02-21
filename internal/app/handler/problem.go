@@ -11,6 +11,7 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -35,12 +36,12 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return err
 	}
 
-	if userrole.Name == "banned" {
+	if userrole.Name == models.RoleBanned {
 		log.Debug("banned mf tried to create new problem")
 		return Error(http.StatusForbidden, "you are banned from creating problems")
 	}
 
-	if userrole.Name == "limited" {
+	if userrole.Name == models.RoleLimited {
 		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
 		if err != nil {
 			log.Debug("can't get created problems count", sl.Err(err))
@@ -186,7 +187,6 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		},
 	}
 
-	// TODO: Make status enum
 	for i := 0; i < len(submissions) && pdetailed.Status != "accepted"; i++ {
 		switch submissions[i].Verdict {
 		case submission.VerdictOK:
