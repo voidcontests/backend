@@ -10,7 +10,6 @@ import (
 
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -100,28 +99,6 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{
 		"token": token,
 	})
-}
-
-func (h *Handler) GetAccount(c echo.Context) error {
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
-
-	address, err := tongo.ParseAddress(claims.Address)
-	if err != nil {
-		return Error(http.StatusBadRequest, "can't parse account")
-	}
-
-	net := ton.Networks[c.QueryParam("network")]
-	if net == nil {
-		return Error(http.StatusBadRequest, "undefined network")
-	}
-
-	account, err := ton.GetAccountInfo(c.Request().Context(), address.ID, net)
-	if err != nil {
-		return Error(http.StatusBadRequest, "can't get account info")
-	}
-
-	return c.JSON(http.StatusOK, account)
 }
 
 func (h *Handler) TryIdentify() echo.MiddlewareFunc {

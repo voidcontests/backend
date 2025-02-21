@@ -76,7 +76,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	api := router.Group("/api")
 	{
-		api.GET("/me", r.handler.GetMe, r.handler.MustIdentify())
+		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		api.POST("/run", r.handler.Run)
 
 		api.GET("/healthcheck", r.handler.Healthcheck)
@@ -84,7 +84,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 		tonproof := api.Group("/tonproof")
 		tonproof.POST("/payload", r.handler.GeneratePayload)
 		tonproof.POST("/check", r.handler.CheckProof)
-		tonproof.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 
 		creator := api.Group("/creator", r.handler.MustIdentify())
 		creator.GET("/contests", r.handler.GetCreatedContests)
