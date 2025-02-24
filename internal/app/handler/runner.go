@@ -1,20 +1,36 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/pkg/validate"
 )
 
 func (h *Handler) Run(c echo.Context) error {
-	body := `{"code": "#include <stdio.h>\nint main() { return 69; }"}`
-	req, err := http.NewRequest("POST", "http://localhost:2111/run", strings.NewReader(body))
+	var body struct {
+		Code  string `json:"code" required:"true"`
+		Input string `json:"input"`
+	}
+	if err := validate.Bind(c, &body); err != nil {
+		log.Debug("can't decode request body", sl.Err(err))
+		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	raw, err := json.Marshal(body)
+	if err != nil {
+		log.Debug("can't decode request body", sl.Err(err))
+		return Error(http.StatusBadRequest, "invalid body")
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost:2111/run", bytes.NewBuffer(raw))
 	if err != nil {
 		slog.Error("something went wrong 1", sl.Err(err))
 		return err
