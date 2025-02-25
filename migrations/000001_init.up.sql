@@ -34,6 +34,7 @@ CREATE TABLE contests
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL,
     max_entries INTEGER DEFAULT 0 NOT NULL, -- 0 - not limited
+    allow_late_join BOOLEAN DEFAULT true NOT NULL,
     is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

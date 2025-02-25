@@ -46,7 +46,8 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusConflict, "no available slots to join competition")
 	}
 
-	if contest.StartTime.Before(time.Now()) {
+	// NOTE: disallow join if: contest already finished or (already started and no late joins)
+	if contest.EndTime.Before(time.Now()) || (contest.StartTime.Before(time.Now()) && !contest.AllowLateJoin) {
 		return Error(http.StatusForbidden, "application time is over")
 	}
 

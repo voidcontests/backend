@@ -21,12 +21,12 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, isDraft bool) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, isDraft bool) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, isDraft).Scan(&id)
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin, isDraft).Scan(&id)
 
 	return id, err
 }

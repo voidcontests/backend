@@ -63,7 +63,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusConflict, "title alredy taken")
 	}
 
-	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, false)
+	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
