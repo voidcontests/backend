@@ -30,8 +30,10 @@ type ContestDetailed struct {
 	StartTime     time.Time         `json:"start_time"`
 	EndTime       time.Time         `json:"end_time"`
 	DurationMins  int32             `json:"duration_mins"`
+	MaxEntries    int32             `json:"max_entries,omitempty"`
 	Participants  int32             `json:"participants"`
 	IsDraft       bool              `json:"is_draft,omitempty"`
+	AllowLateJoin bool              `json:"allow_late_join"`
 	IsParticipant bool              `json:"is_participant,omitempty"`
 	Problems      []ProblemListItem `json:"problems"`
 	CreatedAt     time.Time         `json:"created_at"`
@@ -55,6 +57,7 @@ type ContestListItem struct {
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
 	DurationMins int32     `json:"duration_mins"`
+	MaxEntries   int32     `json:"max_entries,omitempty"`
 	Participants int32     `json:"participants"`
 	CreatedAt    time.Time `json:"created_at"`
 }

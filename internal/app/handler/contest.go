@@ -132,12 +132,14 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			ID:      contest.CreatorID,
 			Address: contest.CreatorAddress,
 		},
-		Participants: contest.Participants,
-		StartTime:    contest.StartTime,
-		EndTime:      contest.EndTime,
-		DurationMins: contest.DurationMins,
-		IsDraft:      contest.IsDraft,
-		CreatedAt:    contest.CreatedAt,
+		Participants:  contest.Participants,
+		StartTime:     contest.StartTime,
+		EndTime:       contest.EndTime,
+		DurationMins:  contest.DurationMins,
+		MaxEntries:    contest.MaxEntries,
+		AllowLateJoin: contest.AllowLateJoin,
+		IsDraft:       contest.IsDraft,
+		CreatedAt:     contest.CreatedAt,
 	}
 
 	for i := range n {
@@ -224,6 +226,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			MaxEntries:   c.MaxEntries,
 			Participants: c.Participants,
 			CreatedAt:    c.CreatedAt,
 		}
@@ -268,6 +271,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			StartTime:    c.StartTime,
 			EndTime:      c.EndTime,
 			DurationMins: c.DurationMins,
+			MaxEntries:   c.MaxEntries,
 			Participants: c.Participants,
 			CreatedAt:    c.CreatedAt,
 		}
