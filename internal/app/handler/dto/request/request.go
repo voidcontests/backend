@@ -10,6 +10,7 @@ type CreateContestRequest struct {
 	StartTime    time.Time `json:"start_time" required:"true"`
 	EndTime      time.Time `json:"end_time" required:"true"`
 	DurationMins int32     `json:"duration_mins" requried:"true"`
+	MaxEntries   int32     `json:"max_entries"`
 }
 
 type CreateProblemRequest struct {

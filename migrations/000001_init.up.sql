@@ -33,6 +33,7 @@ CREATE TABLE contests
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL,
+    max_entries INTEGER DEFAULT 0 NOT NULL, -- 0 - not limited
     is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

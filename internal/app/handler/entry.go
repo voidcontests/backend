@@ -35,6 +35,17 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return err
 	}
 
+	entries, err := h.repo.Contest.GetEntriesCount(ctx, int32(contestID))
+	if err != nil {
+		log.Error("can't get entries count", sl.Err(err))
+		return err
+	}
+
+	if entries >= contest.MaxEntries {
+		log.Debug("no available slots")
+		return Error(http.StatusConflict, "no available slots to join competition")
+	}
+
 	if contest.StartTime.Before(time.Now()) {
 		return Error(http.StatusForbidden, "application time is over")
 	}

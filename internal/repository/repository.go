@@ -22,12 +22,12 @@ type User interface {
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, isDraft bool) (int32, error)
+	Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, isDraft bool) (int32, error)
 	AddProblems(ctx context.Context, contestID int32, problemIDs ...int32) error
 	GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error)
 	GetByID(ctx context.Context, id int32) (*models.Contest, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
-	GetParticipantsCount(ctx context.Context, contestID int32) (int32, error)
+	GetEntriesCount(ctx context.Context, contestID int32) (int32, error)
 	GetAll(ctx context.Context) ([]models.Contest, error)
 	GetWithCreatorID(ctx context.Context, creatorID int32) ([]models.Contest, error)
 	GetLeaderboard(ctx context.Context, contestID int) ([]models.LeaderboardEntry, error)

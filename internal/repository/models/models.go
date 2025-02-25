@@ -34,6 +34,7 @@ type Contest struct {
 	StartTime      time.Time `db:"start_time"`
 	EndTime        time.Time `db:"end_time"`
 	DurationMins   int32     `db:"duration_mins"`
+	MaxEntries     int32     `db:"max_entries"`
 	IsDraft        bool      `db:"is_draft"`
 	Participants   int32     `db:"participants"`
 	CreatedAt      time.Time `db:"created_at"`

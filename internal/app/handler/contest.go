@@ -63,12 +63,13 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusConflict, "title alredy taken")
 	}
 
-	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, false)
+	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
 	}
 
+	// TODO: move this limitation somwhere as MAX_PROBLEMS
 	if len(body.ProblemsIDs) > 6 {
 		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
 	}
