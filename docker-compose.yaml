@@ -16,9 +16,8 @@ services:
         depends_on:
             - postgres
         restart: unless-stopped
+        network_mode: host
         volumes:
             - ./config:/app/config
         environment:
             - CONFIG_PATH=./config/dev.yaml
-        ports:
-            - "6969:6969"
