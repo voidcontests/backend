@@ -56,6 +56,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 
+	// TODO: maybe allow to submit solutions after end time if `keep_as_training` is enabled
 	if contest.EndTime.Before(time.Now()) {
 		return Error(http.StatusForbidden, "contest alreay ended")
 	}

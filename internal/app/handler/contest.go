@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
@@ -63,7 +64,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusConflict, "title alredy taken")
 	}
 
-	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, false)
+	contestID, err := h.repo.Contest.Create(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.KeepAsTraining, false)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
@@ -108,6 +109,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	if contest.IsDraft && (!authenticated || claims.ID != contest.CreatorID) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+
+	if contest.EndTime.Before(time.Now()) && !contest.KeepAsTraining {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 
@@ -249,9 +254,9 @@ func (h *Handler) GetContests(c echo.Context) error {
 		if c.IsDraft {
 			continue
 		}
-		// if c.EndTime.Before(time.Now()) {
-		// 	continue
-		// }
+		if c.EndTime.Before(time.Now()) && !c.KeepAsTraining {
+			continue
+		}
 
 		item := response.ContestListItem{
 			ID: c.ID,

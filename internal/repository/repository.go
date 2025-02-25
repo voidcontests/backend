@@ -22,7 +22,7 @@ type User interface {
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, isDraft bool) (int32, error)
+	Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, keepAsTraining bool, isDraft bool) (int32, error)
 	AddProblems(ctx context.Context, contestID int32, problemIDs ...int32) error
 	GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error)
 	GetByID(ctx context.Context, id int32) (*models.Contest, error)

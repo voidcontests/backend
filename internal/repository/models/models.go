@@ -36,6 +36,7 @@ type Contest struct {
 	DurationMins   int32     `db:"duration_mins"`
 	MaxEntries     int32     `db:"max_entries"`
 	AllowLateJoin  bool      `db:"allow_late_join"`
+	KeepAsTraining bool      `db:"keep_as_training"`
 	IsDraft        bool      `db:"is_draft"`
 	Participants   int32     `db:"participants"`
 	CreatedAt      time.Time `db:"created_at"`
