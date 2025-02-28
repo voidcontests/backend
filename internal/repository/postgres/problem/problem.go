@@ -19,12 +19,12 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, writerID int32, title string, statement string, difficulty string, input string, answer string) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO problems (writer_id, title, statement, difficulty, input, answer) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, writerID, title, statement, difficulty, input, answer).Scan(&id)
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&id)
 
 	return id, err
 }

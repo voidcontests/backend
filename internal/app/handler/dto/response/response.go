@@ -75,14 +75,16 @@ type SubmissionListItem struct {
 }
 
 type ProblemDetailed struct {
-	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode,omitempty"`
-	ContestID  int32     `json:"contest_id,omitempty"`
-	Writer     User      `json:"writer"`
-	Title      string    `json:"title"`
-	Statement  string    `json:"statement"`
-	Difficulty string    `json:"difficulty"`
-	Status     string    `json:"status,omitempty"`
-	Input      string    `json:"input,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID          int32     `json:"id"`
+	Charcode    string    `json:"charcode,omitempty"`
+	ContestID   int32     `json:"contest_id,omitempty"`
+	Writer      User      `json:"writer"`
+	Kind        string    `json:"kind"`
+	Title       string    `json:"title"`
+	Statement   string    `json:"statement"`
+	Difficulty  string    `json:"difficulty"`
+	Status      string    `json:"status,omitempty"`
+	Input       string    `json:"input,omitempty"`
+	TimeLimitMS int32     `json:"time_limit_ms,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }
