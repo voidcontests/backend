@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
@@ -27,6 +29,26 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&id)
 
 	return id, err
+}
+
+func (p *Postgres) AddTestCases(ctx context.Context, problemID int32, tcs ...request.TC) error {
+	if len(tcs) == 0 {
+		return nil
+	}
+
+	query := `INSERT INTO test_cases (problem_id, input, output) VALUES `
+	values := make([]interface{}, 0, len(tcs)*4)
+	placeholders := make([]string, 0, len(tcs))
+
+	for i, tc := range tcs {
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+		values = append(values, problemID, tc.Input, tc.Output)
+	}
+
+	query += strings.Join(placeholders, ", ")
+
+	_, err := p.db.ExecContext(ctx, query, values...)
+	return err
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {

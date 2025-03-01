@@ -22,11 +22,13 @@ type CreateProblemRequest struct {
 	Difficulty  string `json:"difficulty" required:"true"`
 	Input       string `json:"input"`
 	TimeLimitMS int    `json:"time_limit_ms"`
-	TestCases   []struct {
-		Input  string `json:"input"`
-		Output string `json:"output"`
-	} `json:"test_cases"`
-	Answer string `json:"answer" required:"true"`
+	TestCases   []TC   `json:"test_cases"`
+	Answer      string `json:"answer"`
+}
+
+type TC struct {
+	Input  string `json:"input"`
+	Output string `json:"output"`
 }
 
 type CreateSubmissionRequest struct {

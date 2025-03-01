@@ -10,8 +10,8 @@ const (
 )
 
 const (
-	TextAnswerProblem = "text_aswer_problem"
-	CodingProblem     = "text_aswer_problem"
+	TextAnswerProblem = "text_answer_problem"
+	CodingProblem     = "coding_problem"
 )
 
 type User struct {

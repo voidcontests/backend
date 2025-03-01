@@ -68,6 +68,12 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return err
 	}
 
+	err = h.repo.Problem.AddTestCases(ctx, problemID, body.TestCases...)
+	if err != nil {
+		log.Error("can't create test cases", sl.Err(err))
+		return err
+	}
+
 	return c.JSON(http.StatusCreated, response.ContestID{
 		ID: problemID,
 	})
