@@ -21,6 +21,54 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32, tcs []request.TC) (int32, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	rollback := func(tx *sql.Tx) {
+		tx.Rollback()
+	}
+
+	var problemID int32
+
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&problemID); err != nil {
+		rollback(tx)
+		return 0, err
+	}
+
+	if len(tcs) == 0 {
+		if err = tx.Commit(); err != nil {
+			return 0, err
+		}
+		return problemID, nil
+	}
+
+	query = `INSERT INTO test_cases (problem_id, input, output) VALUES `
+	values := make([]interface{}, 0, len(tcs)*3)
+	placeholders := make([]string, 0, len(tcs))
+
+	for i, tc := range tcs {
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+		values = append(values, problemID, tc.Input, tc.Output)
+	}
+	query += strings.Join(placeholders, ", ")
+
+	if _, err := tx.ExecContext(ctx, query, values...); err != nil {
+		rollback(tx)
+		return 0, err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return problemID, nil
+}
+
 func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32) (int32, error) {
 	var id int32
 	var err error
@@ -29,26 +77,6 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&id)
 
 	return id, err
-}
-
-func (p *Postgres) AddTestCases(ctx context.Context, problemID int32, tcs ...request.TC) error {
-	if len(tcs) == 0 {
-		return nil
-	}
-
-	query := `INSERT INTO test_cases (problem_id, input, output) VALUES `
-	values := make([]interface{}, 0, len(tcs)*4)
-	placeholders := make([]string, 0, len(tcs))
-
-	for i, tc := range tcs {
-		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
-		values = append(values, problemID, tc.Input, tc.Output)
-	}
-
-	query += strings.Join(placeholders, ", ")
-
-	_, err := p.db.ExecContext(ctx, query, values...)
-	return err
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {

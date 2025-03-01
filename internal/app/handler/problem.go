@@ -57,7 +57,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 	if body.Kind == models.TextAnswerProblem {
 		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0)
 	} else if body.Kind == models.CodingProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS))
+		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.TestCases)
 	} else {
 		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
 		return Error(http.StatusBadRequest, "unknown problem kind")
@@ -65,12 +65,6 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	if err != nil {
 		log.Error("can't create problem", sl.Err(err))
-		return err
-	}
-
-	err = h.repo.Problem.AddTestCases(ctx, problemID, body.TestCases...)
-	if err != nil {
-		log.Error("can't create test cases", sl.Err(err))
 		return err
 	}
 
