@@ -182,14 +182,16 @@ func (h *Handler) GetProblem(c echo.Context) error {
 	}
 
 	pdetailed := response.ProblemDetailed{
-		ID:         p.ID,
-		Charcode:   p.Charcode,
-		ContestID:  int32(contestID),
-		Title:      p.Title,
-		Statement:  p.Statement,
-		Difficulty: p.Difficulty,
-		Input:      p.Input,
-		CreatedAt:  p.CreatedAt,
+		ID:          p.ID,
+		Charcode:    p.Charcode,
+		ContestID:   int32(contestID),
+		Kind:        p.Kind,
+		Title:       p.Title,
+		Statement:   p.Statement,
+		Difficulty:  p.Difficulty,
+		Input:       p.Input,
+		CreatedAt:   p.CreatedAt,
+		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
 			ID:      p.WriterID,
 			Address: p.WriterAddress,
