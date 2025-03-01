@@ -67,11 +67,20 @@ type User struct {
 	Address string `json:"address"`
 }
 
+// TODO: Add info about last executed test
 type SubmissionListItem struct {
-	ID        int32     `json:"id"`
-	ProblemID int32     `json:"problem_id"`
-	Verdict   string    `json:"verdict"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            int32         `json:"id"`
+	ProblemID     int32         `json:"problem_id"`
+	Verdict       string        `json:"verdict"`
+	Answer        string        `json:"answer,omitempty"`
+	Code          string        `json:"code,omitempty"`
+	TestingReport TestingReport `json:"testing_report,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+}
+
+type TestingReport struct {
+	Passed int `json:"passed"`
+	Total  int `json:"total"`
 }
 
 type ProblemDetailed struct {

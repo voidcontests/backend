@@ -32,5 +32,7 @@ type TC struct {
 }
 
 type CreateSubmissionRequest struct {
-	Answer string `json:"answer" required:"true"`
+	ProblemKind string `json:"problem_kind" required:"true"`
+	Answer      string `json:"answer"`
+	Code        string `json:"code"`
 }

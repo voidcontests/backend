@@ -89,6 +89,19 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 	return &problem, nil
 }
 
+func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+	var err error
+	var tcs []models.TestCase
+
+	query := `SELECT * FROM test_cases WHERE problem_id = $1`
+	err = p.db.SelectContext(ctx, &tcs, query, problemID)
+	if err != nil {
+		return nil, err
+	}
+
+	return tcs, nil
+}
+
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	var err error
 	var problems []models.Problem

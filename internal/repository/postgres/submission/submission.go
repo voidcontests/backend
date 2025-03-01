@@ -20,12 +20,12 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (*models.Submission, error) {
+func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict string, answer string, code string, passedTestsCount int32) (*models.Submission, error) {
 	var err error
 	var submission models.Submission
 
-	query := `INSERT INTO submissions (entry_id, problem_id, verdict, answer) VALUES ($1, $2, $3, $4) RETURNING *`
-	err = p.db.GetContext(ctx, &submission, query, entryID, problemID, verdict, answer)
+	query := `INSERT INTO submissions (entry_id, problem_id, verdict, answer, code, passed_tests_count) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`
+	err = p.db.GetContext(ctx, &submission, query, entryID, problemID, verdict, answer, code, passedTestsCount)
 	if err != nil {
 		return nil, err
 	}

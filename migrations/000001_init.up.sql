@@ -88,5 +88,7 @@ CREATE TABLE submissions
     problem_id INTEGER NOT NULL REFERENCES problems(id),
     verdict verdict NOT NULL,
     answer TEXT NOT NULL,
+    code TEXT NOT NULL,
+    passed_tests_count INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
