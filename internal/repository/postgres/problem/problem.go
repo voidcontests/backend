@@ -27,39 +27,30 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 		return 0, err
 	}
 
-	rollback := func(tx *sql.Tx) {
-		tx.Rollback()
-	}
+	defer tx.Rollback()
 
 	var problemID int32
 
 	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
 	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&problemID); err != nil {
-		rollback(tx)
 		return 0, err
 	}
 
-	if len(tcs) == 0 {
-		if err = tx.Commit(); err != nil {
+	if len(tcs) > 0 {
+		query = `INSERT INTO test_cases (problem_id, input, output) VALUES `
+		values := make([]interface{}, 0, len(tcs)*3)
+		placeholders := make([]string, 0, len(tcs))
+
+		for i, tc := range tcs {
+			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			values = append(values, problemID, tc.Input, tc.Output)
+		}
+		query += strings.Join(placeholders, ", ")
+
+		if _, err := tx.ExecContext(ctx, query, values...); err != nil {
 			return 0, err
 		}
-		return problemID, nil
-	}
-
-	query = `INSERT INTO test_cases (problem_id, input, output) VALUES `
-	values := make([]interface{}, 0, len(tcs)*3)
-	placeholders := make([]string, 0, len(tcs))
-
-	for i, tc := range tcs {
-		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
-		values = append(values, problemID, tc.Input, tc.Output)
-	}
-	query += strings.Join(placeholders, ", ")
-
-	if _, err := tx.ExecContext(ctx, query, values...); err != nil {
-		rollback(tx)
-		return 0, err
 	}
 
 	if err = tx.Commit(); err != nil {
