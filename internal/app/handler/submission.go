@@ -110,26 +110,19 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			return err
 		}
 
-		var res *runner.Result
-		passed := 0
-		for _, tc := range tcs {
-			res, err = runner.ExecuteWithInput(body.Code, tc.Input)
-			if err != nil {
-				log.Error("can't execute user's solution", sl.Err(err))
-				return err
-			}
-
-			if res.Stdout == tc.Output {
-				passed++
-			}
+		rtcs := make([]request.TC, len(tcs))
+		for i := range rtcs {
+			rtcs[i].Input = tcs[i].Input
+			rtcs[i].Output = tcs[i].Output
 		}
 
-		verdict := submission.VerdictWrongAnswer
-		if passed == len(tcs) {
-			verdict = submission.VerdictOK
+		res, err := runner.ExecuteTesting(body.Code, rtcs)
+		if err != nil {
+			log.Error("can't test user's solution", sl.Err(err))
+			return err
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, "", body.Code, int32(passed))
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, res.Verdict, "", body.Code, int32(res.Passed))
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
@@ -138,11 +131,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return c.JSON(http.StatusCreated, response.SubmissionListItem{
 			ID:        submission.ID,
 			ProblemID: submission.ProblemID,
-			Verdict:   verdict,
+			Verdict:   res.Verdict,
 			Code:      body.Code,
 			TestingReport: response.TestingReport{
-				Passed: passed,
-				Total:  len(tcs),
+				Passed: res.Passed,
+				Total:  res.Total,
 			},
 			CreatedAt: submission.CreatedAt,
 		})

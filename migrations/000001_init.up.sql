@@ -79,7 +79,7 @@ CREATE TABLE entries
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer');
+CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer', 'runtime_error', 'compilation_error');
 
 CREATE TABLE submissions
 (
