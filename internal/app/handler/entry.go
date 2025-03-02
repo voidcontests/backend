@@ -41,7 +41,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return err
 	}
 
-	if entries >= contest.MaxEntries {
+	if contest.MaxEntries != 0 && entries >= contest.MaxEntries {
 		log.Debug("no available slots")
 		return Error(http.StatusConflict, "no available slots to join competition")
 	}

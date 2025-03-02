@@ -11,7 +11,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
+	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
@@ -80,25 +82,66 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	var verdict string
-	if problem.Answer != body.Answer {
-		verdict = submission.VerdictWrongAnswer
-	} else {
-		verdict = submission.VerdictOK
+	if body.ProblemKind == models.TextAnswerProblem {
+		var verdict string
+		if problem.Answer != body.Answer {
+			verdict = submission.VerdictWrongAnswer
+		} else {
+			verdict = submission.VerdictOK
+		}
+
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", 0)
+		if err != nil {
+			log.Error("can't create submission", sl.Err(err))
+			return err
+		}
+
+		return c.JSON(http.StatusCreated, response.SubmissionListItem{
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Verdict:   string(submission.Verdict),
+			Answer:    body.Answer,
+			CreatedAt: submission.CreatedAt,
+		})
+	} else if body.ProblemKind == models.CodingProblem {
+		tcs, err := h.repo.Problem.GetTCs(ctx, problem.ID)
+		if err != nil {
+			log.Error("can't get test cases for problem", sl.Err(err))
+			return err
+		}
+
+		rtcs := make([]request.TC, len(tcs))
+		for i := range rtcs {
+			rtcs[i].Input = tcs[i].Input
+			rtcs[i].Output = tcs[i].Output
+		}
+
+		res, err := runner.ExecuteTesting(body.Code, rtcs)
+		if err != nil {
+			log.Error("can't test user's solution", sl.Err(err))
+			return err
+		}
+
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, res.Verdict, "", body.Code, int32(res.Passed))
+		if err != nil {
+			log.Error("can't create submission", sl.Err(err))
+			return err
+		}
+
+		return c.JSON(http.StatusCreated, response.SubmissionListItem{
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Verdict:   res.Verdict,
+			Code:      body.Code,
+			TestingReport: response.TestingReport{
+				Passed: res.Passed,
+				Total:  res.Total,
+			},
+			CreatedAt: submission.CreatedAt,
+		})
 	}
 
-	submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer)
-	if err != nil {
-		log.Error("can't create submission", sl.Err(err))
-		return err
-	}
-
-	return c.JSON(http.StatusCreated, response.SubmissionListItem{
-		ID:        submission.ID,
-		ProblemID: submission.ProblemID,
-		Verdict:   string(submission.Verdict),
-		CreatedAt: submission.CreatedAt,
-	})
+	return Error(http.StatusBadRequest, "unknown problem kind")
 }
 
 func (h *Handler) GetSubmissions(c echo.Context) error {

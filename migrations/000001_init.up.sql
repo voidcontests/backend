@@ -40,16 +40,28 @@ CREATE TABLE contests
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
+CREATE TYPE problem_kind AS ENUM ('text_answer_problem', 'coding_problem');
+
 CREATE TABLE problems
 (
     id SERIAL PRIMARY KEY,
+    kind problem_kind NOT NULL,
     writer_id INTEGER NOT NULL REFERENCES users(id),
     title VARCHAR(64) NOT NULL,
     statement TEXT DEFAULT '' NOT NULL,
     difficulty VARCHAR(10) NOT NULL,
     input TEXT NOT NULL,
     answer TEXT NOT NULL,
+    time_limit_ms INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+CREATE TABLE test_cases
+(
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    input TEXT NOT NULL,
+    output TEXT NOT NULL
 );
 
 CREATE TABLE contest_problems (
@@ -67,7 +79,7 @@ CREATE TABLE entries
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer');
+CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer', 'runtime_error', 'compilation_error');
 
 CREATE TABLE submissions
 (
@@ -76,5 +88,7 @@ CREATE TABLE submissions
     problem_id INTEGER NOT NULL REFERENCES problems(id),
     verdict verdict NOT NULL,
     answer TEXT NOT NULL,
+    code TEXT NOT NULL,
+    passed_tests_count INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

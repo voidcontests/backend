@@ -9,6 +9,11 @@ const (
 	RoleBanned    = "banned"
 )
 
+const (
+	TextAnswerProblem = "text_answer_problem"
+	CodingProblem     = "coding_problem"
+)
+
 type User struct {
 	ID        int32     `db:"id"`
 	Address   string    `db:"address"`
@@ -45,6 +50,7 @@ type Contest struct {
 type Problem struct {
 	ID            int32     `db:"id"`
 	Charcode      string    `db:"charcode"`
+	Kind          string    `db:"kind"`
 	WriterID      int32     `db:"writer_id"`
 	WriterAddress string    `db:"writer_address"`
 	Title         string    `db:"title"`
@@ -52,7 +58,16 @@ type Problem struct {
 	Difficulty    string    `db:"difficulty"`
 	Input         string    `db:"input"`
 	Answer        string    `db:"answer"`
+	Language      string    `db:"language"`
+	TimeLimitMS   int32     `db:"time_limit_ms"`
 	CreatedAt     time.Time `db:"created_at"`
+}
+
+type TestCase struct {
+	ID        int32  `db:"id"`
+	ProblemID int32  `db:"problem_id"`
+	Input     string `db:"input"`
+	Output    string `db:"output"`
 }
 
 type Entry struct {
@@ -63,12 +78,14 @@ type Entry struct {
 }
 
 type Submission struct {
-	ID        int32     `db:"id"`
-	EntryID   int32     `db:"entry_id"`
-	ProblemID int32     `db:"problem_id"`
-	Verdict   string    `db:"verdict"`
-	Answer    string    `db:"answer"`
-	CreatedAt time.Time `db:"created_at"`
+	ID               int32     `db:"id"`
+	EntryID          int32     `db:"entry_id"`
+	ProblemID        int32     `db:"problem_id"`
+	Verdict          string    `db:"verdict"`
+	Answer           string    `db:"answer"`
+	Code             string    `db:"code"`
+	PassedTestsCount int32     `db:"passed_tests_count"`
+	CreatedAt        time.Time `db:"created_at"`
 }
 
 type LeaderboardEntry struct {

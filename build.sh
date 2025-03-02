@@ -74,7 +74,7 @@ elif [ "$1" == "run" ]; then
 
 	if [ $env == "local" ]; then
 	   echo "Start docker containers with environment"
-	   docker compose -f ./docker-compose.local.yaml up -d
+	   POSTGRES_PASSWORD=1234 docker compose -f ./docker-compose.local.yaml up -d
 	fi
 
 	CONFIG_PATH="./config/${env}.yaml" ./.bin/server

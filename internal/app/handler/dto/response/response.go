@@ -67,22 +67,33 @@ type User struct {
 	Address string `json:"address"`
 }
 
+// TODO: Add info about last executed test
 type SubmissionListItem struct {
-	ID        int32     `json:"id"`
-	ProblemID int32     `json:"problem_id"`
-	Verdict   string    `json:"verdict"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            int32         `json:"id"`
+	ProblemID     int32         `json:"problem_id"`
+	Verdict       string        `json:"verdict"`
+	Answer        string        `json:"answer,omitempty"`
+	Code          string        `json:"code,omitempty"`
+	TestingReport TestingReport `json:"testing_report,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+}
+
+type TestingReport struct {
+	Passed int `json:"passed"`
+	Total  int `json:"total"`
 }
 
 type ProblemDetailed struct {
-	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode,omitempty"`
-	ContestID  int32     `json:"contest_id,omitempty"`
-	Writer     User      `json:"writer"`
-	Title      string    `json:"title"`
-	Statement  string    `json:"statement"`
-	Difficulty string    `json:"difficulty"`
-	Status     string    `json:"status,omitempty"`
-	Input      string    `json:"input,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID          int32     `json:"id"`
+	Charcode    string    `json:"charcode,omitempty"`
+	ContestID   int32     `json:"contest_id,omitempty"`
+	Writer      User      `json:"writer"`
+	Kind        string    `json:"kind"`
+	Title       string    `json:"title"`
+	Statement   string    `json:"statement"`
+	Difficulty  string    `json:"difficulty"`
+	Status      string    `json:"status,omitempty"`
+	Input       string    `json:"input,omitempty"`
+	TimeLimitMS int32     `json:"time_limit_ms,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
 }

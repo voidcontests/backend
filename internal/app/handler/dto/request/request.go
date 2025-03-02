@@ -16,13 +16,23 @@ type CreateContestRequest struct {
 }
 
 type CreateProblemRequest struct {
-	Title      string `json:"title" required:"true"`
-	Statement  string `json:"statement" required:"true"`
-	Difficulty string `json:"difficulty" required:"true"`
-	Input      string `json:"input"`
-	Answer     string `json:"answer" required:"true"`
+	Title       string `json:"title" required:"true"`
+	Kind        string `json:"kind" required:"true"`
+	Statement   string `json:"statement" required:"true"`
+	Difficulty  string `json:"difficulty" required:"true"`
+	Input       string `json:"input"`
+	TimeLimitMS int    `json:"time_limit_ms"`
+	TestCases   []TC   `json:"test_cases"`
+	Answer      string `json:"answer"`
+}
+
+type TC struct {
+	Input  string `json:"input"`
+	Output string `json:"output"`
 }
 
 type CreateSubmissionRequest struct {
-	Answer string `json:"answer" required:"true"`
+	ProblemKind string `json:"problem_kind" required:"true"`
+	Answer      string `json:"answer"`
+	Code        string `json:"code"`
 }

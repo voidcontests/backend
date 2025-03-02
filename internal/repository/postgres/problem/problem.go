@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
@@ -19,12 +21,51 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, writerID int32, title string, statement string, difficulty string, input string, answer string) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32, tcs []request.TC) (int32, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	defer tx.Rollback()
+
+	var problemID int32
+
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&problemID); err != nil {
+		return 0, err
+	}
+
+	if len(tcs) > 0 {
+		query = `INSERT INTO test_cases (problem_id, input, output) VALUES `
+		values := make([]interface{}, 0, len(tcs)*3)
+		placeholders := make([]string, 0, len(tcs))
+
+		for i, tc := range tcs {
+			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			values = append(values, problemID, tc.Input, tc.Output)
+		}
+		query += strings.Join(placeholders, ", ")
+
+		if _, err := tx.ExecContext(ctx, query, values...); err != nil {
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return problemID, nil
+}
+
+func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO problems (writer_id, title, statement, difficulty, input, answer) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, writerID, title, statement, difficulty, input, answer).Scan(&id)
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&id)
 
 	return id, err
 }
@@ -46,6 +87,19 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 	}
 
 	return &problem, nil
+}
+
+func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+	var err error
+	var tcs []models.TestCase
+
+	query := `SELECT * FROM test_cases WHERE problem_id = $1`
+	err = p.db.SelectContext(ctx, &tcs, query, problemID)
+	if err != nil {
+		return nil, err
+	}
+
+	return tcs, nil
 }
 
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {

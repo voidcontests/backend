@@ -53,7 +53,16 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		}
 	}
 
-	problemID, err := h.repo.Problem.Create(ctx, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer)
+	var problemID int32
+	if body.Kind == models.TextAnswerProblem {
+		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0)
+	} else if body.Kind == models.CodingProblem {
+		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.TestCases)
+	} else {
+		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
+		return Error(http.StatusBadRequest, "unknown problem kind")
+	}
+
 	if err != nil {
 		log.Error("can't create problem", sl.Err(err))
 		return err
@@ -173,14 +182,16 @@ func (h *Handler) GetProblem(c echo.Context) error {
 	}
 
 	pdetailed := response.ProblemDetailed{
-		ID:         p.ID,
-		Charcode:   p.Charcode,
-		ContestID:  int32(contestID),
-		Title:      p.Title,
-		Statement:  p.Statement,
-		Difficulty: p.Difficulty,
-		Input:      p.Input,
-		CreatedAt:  p.CreatedAt,
+		ID:          p.ID,
+		Charcode:    p.Charcode,
+		ContestID:   int32(contestID),
+		Kind:        p.Kind,
+		Title:       p.Title,
+		Statement:   p.Statement,
+		Difficulty:  p.Difficulty,
+		Input:       p.Input,
+		CreatedAt:   p.CreatedAt,
+		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
 			ID:      p.WriterID,
 			Address: p.WriterAddress,

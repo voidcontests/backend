@@ -57,6 +57,53 @@ func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs 
 	return err
 }
 
+func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, keepAsTraining bool, isDraft bool, problemIDs ...int32) (int32, error) {
+	var contestID int32
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	defer tx.Rollback()
+
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join, keep_as_training, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
+	err = tx.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin, keepAsTraining, isDraft).Scan(&contestID)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(problemIDs) > 0 {
+		charcodes := strings.Split("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "")
+
+		if len(problemIDs) > len(charcodes) {
+			return 0, fmt.Errorf("not enough charcodes for the number of problems")
+		}
+
+		query := `INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES `
+		values := make([]interface{}, 0, len(problemIDs)*3)
+		placeholders := make([]string, 0, len(problemIDs))
+
+		for i, problemID := range problemIDs {
+			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			values = append(values, contestID, problemID, charcodes[i])
+		}
+
+		query += strings.Join(placeholders, ", ")
+
+		_, err = tx.ExecContext(ctx, query, values...)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return contestID, nil
+}
+
 func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
 	var err error
 	var contest models.Contest
