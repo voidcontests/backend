@@ -82,7 +82,7 @@ type SubmissionListItem struct {
 type TestingReport struct {
 	Passed     int               `json:"passed"`
 	Total      int               `json:"total"`
-	FailedTest runner.FailedTest `json:"failed_test,omitempty"`
+	FailedTest runner.FailedTest `json:"failed_test"`
 }
 
 type ProblemDetailed struct {
