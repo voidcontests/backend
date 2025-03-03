@@ -35,9 +35,9 @@ type TestingResponse struct {
 }
 
 type FailedTest struct {
-	Input          string `json:"input"`
-	ExpectedOutput string `json:"expected_output"`
-	ActualOutput   string `json:"actual_output"`
+	Input          string `json:"input,omitepty"`
+	ExpectedOutput string `json:"expected_output,omitepty"`
+	ActualOutput   string `json:"actual_output,omitepty"`
 }
 
 func ExecuteTesting(code string, tcs []request.TC) (*TestingResponse, error) {
