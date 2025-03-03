@@ -3,6 +3,7 @@ package response
 import (
 	"time"
 
+	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/ton"
 )
 
@@ -79,8 +80,9 @@ type SubmissionListItem struct {
 }
 
 type TestingReport struct {
-	Passed int `json:"passed"`
-	Total  int `json:"total"`
+	Passed     int               `json:"passed"`
+	Total      int               `json:"total"`
+	FailedTest runner.FailedTest `json:"failed_test,omitempty"`
 }
 
 type ProblemDetailed struct {

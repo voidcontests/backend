@@ -28,9 +28,16 @@ type TestingRequest struct {
 }
 
 type TestingResponse struct {
-	Verdict string `json:"verdict"`
-	Passed  int    `json:"passed"`
-	Total   int    `json:"total"`
+	Verdict    string     `json:"verdict"`
+	Passed     int        `json:"passed"`
+	Total      int        `json:"total"`
+	FailedTest FailedTest `json:"failed_test,omitempty"`
+}
+
+type FailedTest struct {
+	Input          string `json:"input"`
+	ExpectedOutput string `json:"expected_output"`
+	ActualOutput   string `json:"actual_output"`
 }
 
 func ExecuteTesting(code string, tcs []request.TC) (*TestingResponse, error) {

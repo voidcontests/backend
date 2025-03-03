@@ -134,8 +134,9 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			Verdict:   res.Verdict,
 			Code:      body.Code,
 			TestingReport: response.TestingReport{
-				Passed: res.Passed,
-				Total:  res.Total,
+				Passed:     res.Passed,
+				Total:      res.Total,
+				FailedTest: res.FailedTest,
 			},
 			CreatedAt: submission.CreatedAt,
 		})
