@@ -136,6 +136,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			TestingReport: response.TestingReport{
 				Passed:     res.Passed,
 				Total:      res.Total,
+				Stderr:     res.Stderr,
 				FailedTest: res.FailedTest,
 			},
 			CreatedAt: submission.CreatedAt,

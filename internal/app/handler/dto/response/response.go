@@ -82,6 +82,7 @@ type SubmissionListItem struct {
 type TestingReport struct {
 	Passed     int               `json:"passed"`
 	Total      int               `json:"total"`
+	Stderr     string            `json:"stderr"`
 	FailedTest runner.FailedTest `json:"failed_test"`
 }
 

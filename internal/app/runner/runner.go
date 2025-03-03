@@ -31,6 +31,7 @@ type TestingResponse struct {
 	Verdict    string     `json:"verdict"`
 	Passed     int        `json:"passed"`
 	Total      int        `json:"total"`
+	Stderr     string     `json:"stderr"`
 	FailedTest FailedTest `json:"failed_test,omitempty"`
 }
 
