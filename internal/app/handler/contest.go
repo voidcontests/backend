@@ -184,7 +184,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		switch verdicts[problems[i].ID] {
 		case submission.VerdictOK:
 			cdetailed.Problems[i].Status = "accepted"
-		case submission.VerdictWrongAnswer:
+		default:
 			cdetailed.Problems[i].Status = "tried"
 		}
 	}
