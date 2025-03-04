@@ -8,8 +8,10 @@ import (
 )
 
 const (
-	VerdictOK          = "ok"
-	VerdictWrongAnswer = "wrong_answer"
+	VerdictOK               = "ok"
+	VerdictWrongAnswer      = "wrong_answer"
+	VerdictRuntimeError     = "runtime_error"
+	VerdictCompilationError = "compilation_error"
 )
 
 type Postgres struct {

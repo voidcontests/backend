@@ -202,7 +202,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		switch submissions[i].Verdict {
 		case submission.VerdictOK:
 			pdetailed.Status = "accepted"
-		default:
+		case submission.VerdictWrongAnswer, submission.VerdictRuntimeError, submission.VerdictCompilationError:
 			pdetailed.Status = "tried"
 		}
 	}
