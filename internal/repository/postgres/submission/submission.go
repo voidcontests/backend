@@ -35,15 +35,16 @@ func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, v
 	return &submission, nil
 }
 
-func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, problemCharcode string) ([]models.Submission, error) {
+func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, charcode string) ([]models.Submission, error) {
 	var err error
 	var submissions []models.Submission
 
 	query := `SELECT s.* FROM submissions s
-JOIN contest_problems cp ON s.problem_id = cp.problem_id
-WHERE s.entry_id = $1 AND cp.charcode = $2`
+	JOIN entries e ON s.entry_id = e.id
+	JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
+	WHERE s.entry_id = $1 AND cp.charcode = $2`
 
-	err = p.db.SelectContext(ctx, &submissions, query, entryID, problemCharcode)
+	err = p.db.SelectContext(ctx, &submissions, query, entryID, charcode)
 	if err != nil {
 		return nil, err
 	}
