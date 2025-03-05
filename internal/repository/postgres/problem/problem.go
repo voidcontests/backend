@@ -93,15 +93,16 @@ func (p *Postgres) GetArchive(ctx context.Context) ([]models.Problem, error) {
 	var err error
 	var problems []models.Problem
 
-	query := `SELECT *
+	query := `SELECT p.*, u.address AS writer_address
 	FROM problems p
+	JOIN users u ON p.writer_id = u.id
 	WHERE p.keep_public = true
   	AND NOT EXISTS (
-    	SELECT 1
-    	FROM contest_problems cp
+	    SELECT 1
+		FROM contest_problems cp
     	JOIN contests c ON cp.contest_id = c.id
-    	WHERE cp.problem_id = p.id
-    	AND c.end_time > now()
+     	WHERE cp.problem_id = p.id
+      	AND c.end_time > now()
     )`
 	err = p.db.SelectContext(ctx, &problems, query)
 	if err != nil {
