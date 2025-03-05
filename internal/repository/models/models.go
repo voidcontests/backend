@@ -60,6 +60,7 @@ type Problem struct {
 	Answer        string    `db:"answer"`
 	Language      string    `db:"language"`
 	TimeLimitMS   int32     `db:"time_limit_ms"`
+	KeepPublic    bool      `db:"keep_public"`
 	CreatedAt     time.Time `db:"created_at"`
 }
 

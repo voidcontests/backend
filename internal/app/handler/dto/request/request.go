@@ -24,6 +24,7 @@ type CreateProblemRequest struct {
 	TimeLimitMS int    `json:"time_limit_ms"`
 	TestCases   []TC   `json:"test_cases"`
 	Answer      string `json:"answer"`
+	KeepPublic  bool   `json:"keep_public"`
 }
 
 type TC struct {

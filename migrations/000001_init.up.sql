@@ -53,6 +53,7 @@ CREATE TABLE problems
     input TEXT NOT NULL,
     answer TEXT NOT NULL,
     time_limit_ms INTEGER DEFAULT 0 NOT NULL,
+    keep_public BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 

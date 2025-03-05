@@ -21,7 +21,7 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32, tcs []request.TC) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32, keepPublic bool, tcs []request.TC) (int32, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -32,8 +32,8 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 	var problemID int32
 
 	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&problemID); err != nil {
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS, keepPublic).Scan(&problemID); err != nil {
 		return 0, err
 	}
 
@@ -60,12 +60,12 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 	return problemID, nil
 }
 
-func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, input string, answer string, timeLimitMS int32, keepPublic bool) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS).Scan(&id)
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS, keepPublic).Scan(&id)
 
 	return id, err
 }
@@ -87,6 +87,28 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 	}
 
 	return &problem, nil
+}
+
+func (p *Postgres) GetArchive(ctx context.Context) ([]models.Problem, error) {
+	var err error
+	var problems []models.Problem
+
+	query := `SELECT *
+	FROM problems p
+	WHERE p.keep_public = true
+  	AND NOT EXISTS (
+    	SELECT 1
+    	FROM contest_problems cp
+    	JOIN contests c ON cp.contest_id = c.id
+    	WHERE cp.problem_id = p.id
+    	AND c.end_time > now()
+    )`
+	err = p.db.SelectContext(ctx, &problems, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return problems, nil
 }
 
 func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCase, error) {

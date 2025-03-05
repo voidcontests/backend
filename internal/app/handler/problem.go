@@ -55,7 +55,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	var problemID int32
 	if body.Kind == models.TextAnswerProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0)
+		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0, body.KeepPublic)
 	} else if body.Kind == models.CodingProblem {
 		examplesCount := 0
 		for i := range body.TestCases {
@@ -67,7 +67,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 				body.TestCases[i].IsExample = false
 			}
 		}
-		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.TestCases)
+		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.KeepPublic, body.TestCases)
 	} else {
 		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
 		return Error(http.StatusBadRequest, "unknown problem kind")
@@ -88,7 +88,7 @@ func (h *Handler) GetProblems(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	// TODO: return problems splitted by chunks
-	ps, err := h.repo.Problem.GetAll(ctx)
+	ps, err := h.repo.Problem.GetArchive(ctx)
 	if err != nil {
 		log.Error("can't get contests", sl.Err(err))
 		return err
