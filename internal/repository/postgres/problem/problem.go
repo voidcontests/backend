@@ -97,10 +97,15 @@ func (p *Postgres) GetArchive(ctx context.Context) ([]models.Problem, error) {
 	FROM problems p
 	JOIN users u ON p.writer_id = u.id
 	WHERE p.keep_public = true
-  	AND NOT EXISTS (
-	    SELECT 1
-		FROM contest_problems cp
-    	JOIN contests c ON cp.contest_id = c.id
+  	AND EXISTS (
+    	SELECT 1
+     	FROM contest_problems cp
+      	WHERE cp.problem_id = p.id
+    )
+    AND NOT EXISTS (
+    	SELECT 1
+     	FROM contest_problems cp
+     	JOIN contests c ON cp.contest_id = c.id
      	WHERE cp.problem_id = p.id
       	AND c.end_time > now()
     )`
