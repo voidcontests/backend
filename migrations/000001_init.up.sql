@@ -61,7 +61,8 @@ CREATE TABLE test_cases
     id SERIAL PRIMARY KEY,
     problem_id INTEGER NOT NULL REFERENCES problems(id),
     input TEXT NOT NULL,
-    output TEXT NOT NULL
+    output TEXT NOT NULL,
+    is_example BOOLEAN DEFAULT false NOT NULL
 );
 
 CREATE TABLE contest_problems (

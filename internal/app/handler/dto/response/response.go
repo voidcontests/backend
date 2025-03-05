@@ -94,9 +94,15 @@ type ProblemDetailed struct {
 	Kind        string    `json:"kind"`
 	Title       string    `json:"title"`
 	Statement   string    `json:"statement"`
+	Examples    []TC      `json:"examples,omitempty"`
 	Difficulty  string    `json:"difficulty"`
 	Status      string    `json:"status,omitempty"`
 	Input       string    `json:"input,omitempty"`
 	TimeLimitMS int32     `json:"time_limit_ms,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+type TC struct {
+	Input  string `json:"input"`
+	Output string `json:"output"`
 }

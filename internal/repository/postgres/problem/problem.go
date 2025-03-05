@@ -38,13 +38,13 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 	}
 
 	if len(tcs) > 0 {
-		query = `INSERT INTO test_cases (problem_id, input, output) VALUES `
-		values := make([]interface{}, 0, len(tcs)*3)
+		query = `INSERT INTO test_cases (problem_id, input, output, is_example) VALUES `
+		values := make([]interface{}, 0, len(tcs)*4)
 		placeholders := make([]string, 0, len(tcs))
 
 		for i, tc := range tcs {
-			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
-			values = append(values, problemID, tc.Input, tc.Output)
+			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+			values = append(values, problemID, tc.Input, tc.Output, tc.IsExample)
 		}
 		query += strings.Join(placeholders, ", ")
 
@@ -94,6 +94,19 @@ func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCa
 	var tcs []models.TestCase
 
 	query := `SELECT * FROM test_cases WHERE problem_id = $1`
+	err = p.db.SelectContext(ctx, &tcs, query, problemID)
+	if err != nil {
+		return nil, err
+	}
+
+	return tcs, nil
+}
+
+func (p *Postgres) GetExamples(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+	var err error
+	var tcs []models.TestCase
+
+	query := `SELECT * FROM test_cases WHERE problem_id = $1 AND is_example = true`
 	err = p.db.SelectContext(ctx, &tcs, query, problemID)
 	if err != nil {
 		return nil, err

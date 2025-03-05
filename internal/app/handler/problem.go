@@ -57,6 +57,16 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 	if body.Kind == models.TextAnswerProblem {
 		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0)
 	} else if body.Kind == models.CodingProblem {
+		examplesCount := 0
+		for i := range body.TestCases {
+			if body.TestCases[i].IsExample {
+				examplesCount++
+			}
+
+			if examplesCount > 3 && body.TestCases[i].IsExample {
+				body.TestCases[i].IsExample = false
+			}
+		}
 		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.TestCases)
 	} else {
 		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
@@ -181,6 +191,21 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return err
 	}
 
+	etc, err := h.repo.Problem.GetExamples(ctx, p.ID)
+	if err != nil {
+		log.Error("can't get examples", sl.Err(err))
+		return err
+	}
+
+	n := len(etc)
+	examples := make([]response.TC, n, n)
+	for i := 0; i < n; i++ {
+		examples[i] = response.TC{
+			Input:  etc[i].Input,
+			Output: etc[i].Output,
+		}
+	}
+
 	pdetailed := response.ProblemDetailed{
 		ID:          p.ID,
 		Charcode:    p.Charcode,
@@ -188,6 +213,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		Kind:        p.Kind,
 		Title:       p.Title,
 		Statement:   p.Statement,
+		Examples:    examples,
 		Difficulty:  p.Difficulty,
 		Input:       p.Input,
 		CreatedAt:   p.CreatedAt,

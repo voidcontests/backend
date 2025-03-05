@@ -27,8 +27,9 @@ type CreateProblemRequest struct {
 }
 
 type TC struct {
-	Input  string `json:"input"`
-	Output string `json:"output"`
+	Input     string `json:"input"`
+	Output    string `json:"output"`
+	IsExample bool   `json:"is_example"`
 }
 
 type CreateSubmissionRequest struct {

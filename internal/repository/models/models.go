@@ -68,6 +68,7 @@ type TestCase struct {
 	ProblemID int32  `db:"problem_id"`
 	Input     string `db:"input"`
 	Output    string `db:"output"`
+	IsExample bool   `db:"is_example"`
 }
 
 type Entry struct {
