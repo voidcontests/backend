@@ -33,7 +33,7 @@ if [ "$1" == "image" ]; then
     GIT_COMMIT=$(git rev-parse --short HEAD)
 
     echo -e "Building a docker image from commit ${bold}$GIT_COMMIT${normal}"
-    docker build -t jus1d/void-server:latest .
+    docker build -t jus1d/void-server:latest --platform linux/amd64 .
 
     if [ "$2" == "push" ]; then
         docker tag jus1d/void-server:latest jus1d/void-server:$GIT_COMMIT
