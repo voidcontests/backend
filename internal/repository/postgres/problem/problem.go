@@ -89,6 +89,24 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 	return &problem, nil
 }
 
+func (p *Postgres) GetArchivedByID(ctx context.Context, problemID int32) (*models.Problem, error) {
+	var problem models.Problem
+
+	query := `SELECT p.*, u.address AS writer_address FROM problems p
+		JOIN users u ON p.writer_id = u.id WHERE p.keep_public = true AND p.id = $1
+		AND NOT EXISTS (SELECT 1 FROM contest_problems cp JOIN contests c ON cp.contest_id = c.id WHERE cp.problem_id = p.id AND c.end_time >= NOW())
+		LIMIT 1`
+	err := p.db.GetContext(ctx, &problem, query, problemID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, repoerr.ErrProblemNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &problem, nil
+}
+
 func (p *Postgres) GetArchive(ctx context.Context) ([]models.Problem, error) {
 	var err error
 	var problems []models.Problem
@@ -117,7 +135,7 @@ func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCa
 	return tcs, nil
 }
 
-func (p *Postgres) GetExamples(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
 	var err error
 	var tcs []models.TestCase
 

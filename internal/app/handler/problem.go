@@ -151,6 +151,61 @@ func (h *Handler) GetProblem(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetProblem"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
+	pid := c.Param("pid")
+	problemID, err := strconv.Atoi(pid)
+	if err != nil {
+		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`pid` should be integer")
+	}
+
+	p, err := h.repo.Problem.GetArchivedByID(ctx, int32(problemID))
+	if errors.Is(err, repoerr.ErrProblemNotFound) {
+		return Error(http.StatusNotFound, "problem not found")
+	}
+	if err != nil {
+		log.Debug("can't get problem", sl.Err(err))
+		return err
+	}
+
+	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
+	if err != nil {
+		log.Error("can't get examples", sl.Err(err))
+		return err
+	}
+
+	n := len(etc)
+	examples := make([]response.TC, n, n)
+	for i := 0; i < n; i++ {
+		examples[i] = response.TC{
+			Input:  etc[i].Input,
+			Output: etc[i].Output,
+		}
+	}
+
+	pdetailed := response.ProblemDetailed{
+		ID:          p.ID,
+		Charcode:    p.Charcode,
+		Kind:        p.Kind,
+		Title:       p.Title,
+		Statement:   p.Statement,
+		Examples:    examples,
+		Difficulty:  p.Difficulty,
+		Input:       p.Input,
+		CreatedAt:   p.CreatedAt,
+		TimeLimitMS: p.TimeLimitMS,
+		Writer: response.User{
+			ID:      p.WriterID,
+			Address: p.WriterAddress,
+		},
+	}
+
+	return c.JSON(http.StatusOK, pdetailed)
+}
+
+func (h *Handler) GetContestProblem(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetContestProblem"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
 	claims, _ := ExtractClaims(c)
 
 	cid := c.Param("cid")
@@ -191,7 +246,7 @@ func (h *Handler) GetProblem(c echo.Context) error {
 		return err
 	}
 
-	etc, err := h.repo.Problem.GetExamples(ctx, p.ID)
+	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
 	if err != nil {
 		log.Error("can't get examples", sl.Err(err))
 		return err

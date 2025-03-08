@@ -91,6 +91,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/problems", r.handler.GetProblems)
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
+		api.GET("/problems/:pid", r.handler.GetProblem)
+
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
 
@@ -98,7 +100,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
 		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
 
-		api.GET("/contests/:cid/problems/:charcode", r.handler.GetProblem, r.handler.MustIdentify())
+		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problems/:charcode/submissions",
 			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
