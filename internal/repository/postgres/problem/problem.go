@@ -64,7 +64,7 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 	var id int32
 	var err error
 
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms, keep_public) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
 	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS, keepPublic).Scan(&id)
 
 	return id, err
