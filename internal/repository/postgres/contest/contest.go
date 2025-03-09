@@ -137,7 +137,7 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1`
+		WHERE cp.contest_id = $1 ORDER BY charcode ASC`
 
 	err := p.db.SelectContext(ctx, &problems, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
