@@ -31,7 +31,7 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 
 	var problemID int32
 
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms)
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, input, answer, time_limit_ms, keep_public)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
 	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, input, answer, timeLimitMS, keepPublic).Scan(&problemID); err != nil {
 		return 0, err
