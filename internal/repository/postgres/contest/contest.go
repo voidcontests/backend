@@ -21,12 +21,12 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, keepAsTraining bool, isDraft bool) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join, keep_as_training, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin, keepAsTraining, isDraft).Scan(&id)
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
 
 	return id, err
 }
@@ -57,7 +57,7 @@ func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs 
 	return err
 }
 
-func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, keepAsTraining bool, isDraft bool, problemIDs ...int32) (int32, error) {
+func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error) {
 	var contestID int32
 
 	tx, err := p.db.BeginTx(ctx, nil)
@@ -67,8 +67,8 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 
 	defer tx.Rollback()
 
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join, keep_as_training, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
-	err = tx.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin, keepAsTraining, isDraft).Scan(&contestID)
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = tx.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
 	if err != nil {
 		return 0, err
 	}

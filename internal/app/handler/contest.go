@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -69,7 +68,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
 	}
 
-	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.KeepAsTraining, false, body.ProblemsIDs...)
+	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
@@ -102,11 +101,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return err
 	}
 
-	if contest.IsDraft && (!authenticated || claims.ID != contest.CreatorID) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
-
-	if contest.EndTime.Before(time.Now()) && !contest.KeepAsTraining {
+	// TODO: allow check previuos contests
+	if contest.EndTime.Before(time.Now()) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 
@@ -132,7 +128,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		DurationMins:  contest.DurationMins,
 		MaxEntries:    contest.MaxEntries,
 		AllowLateJoin: contest.AllowLateJoin,
-		IsDraft:       contest.IsDraft,
 		CreatedAt:     contest.CreatedAt,
 	}
 
@@ -248,10 +243,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 
 	filtered := make([]response.ContestListItem, 0)
 	for _, c := range contests {
-		if c.IsDraft {
-			continue
-		}
-		if c.EndTime.Before(time.Now()) && !c.KeepAsTraining {
+		if c.EndTime.Before(time.Now()) {
 			continue
 		}
 
@@ -288,18 +280,11 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`cid` should be integer")
 	}
 
-	// TODO: get all users that are participating in current contest
-	// and return their points (if no submisisons - 0)
 	leaderboard, err := h.repo.Contest.GetLeaderboard(ctx, contestID)
 	if err != nil {
 		log.Error("can't get leaderboard", sl.Err(err))
 		return err
 	}
-
-	sort.Slice(leaderboard, func(i, j int) bool {
-		// NOTE: points in non-ascending order
-		return leaderboard[i].Points > leaderboard[j].Points
-	})
 
 	return c.JSON(http.StatusOK, map[string]any{
 		"data": leaderboard,

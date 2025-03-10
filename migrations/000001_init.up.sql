@@ -35,8 +35,6 @@ CREATE TABLE contests
     duration_mins INTEGER NOT NULL,
     max_entries INTEGER DEFAULT 0 NOT NULL, -- 0 - not limited
     allow_late_join BOOLEAN DEFAULT true NOT NULL,
-    keep_as_training BOOLEAN DEFAULT false NOT NULL,
-    is_draft BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
@@ -50,10 +48,8 @@ CREATE TABLE problems
     title VARCHAR(64) NOT NULL,
     statement TEXT DEFAULT '' NOT NULL,
     difficulty VARCHAR(10) NOT NULL,
-    input TEXT NOT NULL,
     answer TEXT NOT NULL,
     time_limit_ms INTEGER DEFAULT 0 NOT NULL,
-    keep_public BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
@@ -66,7 +62,8 @@ CREATE TABLE test_cases
     is_example BOOLEAN DEFAULT false NOT NULL
 );
 
-CREATE TABLE contest_problems (
+CREATE TABLE contest_problems
+(
     contest_id INTEGER NOT NULL REFERENCES contests(id),
     problem_id INTEGER NOT NULL REFERENCES problems(id),
     charcode VARCHAR(2) NOT NULL,

@@ -41,8 +41,6 @@ type Contest struct {
 	DurationMins   int32     `db:"duration_mins"`
 	MaxEntries     int32     `db:"max_entries"`
 	AllowLateJoin  bool      `db:"allow_late_join"`
-	KeepAsTraining bool      `db:"keep_as_training"`
-	IsDraft        bool      `db:"is_draft"`
 	Participants   int32     `db:"participants"`
 	CreatedAt      time.Time `db:"created_at"`
 }
@@ -56,11 +54,8 @@ type Problem struct {
 	Title         string    `db:"title"`
 	Statement     string    `db:"statement"`
 	Difficulty    string    `db:"difficulty"`
-	Input         string    `db:"input"`
 	Answer        string    `db:"answer"`
-	Language      string    `db:"language"`
 	TimeLimitMS   int32     `db:"time_limit_ms"`
-	KeepPublic    bool      `db:"keep_public"`
 	CreatedAt     time.Time `db:"created_at"`
 }
 

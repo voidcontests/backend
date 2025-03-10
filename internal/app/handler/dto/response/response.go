@@ -33,7 +33,6 @@ type ContestDetailed struct {
 	DurationMins  int32             `json:"duration_mins"`
 	MaxEntries    int32             `json:"max_entries,omitempty"`
 	Participants  int32             `json:"participants"`
-	IsDraft       bool              `json:"is_draft,omitempty"`
 	AllowLateJoin bool              `json:"allow_late_join"`
 	IsParticipant bool              `json:"is_participant,omitempty"`
 	Problems      []ProblemListItem `json:"problems"`
@@ -68,7 +67,6 @@ type User struct {
 	Address string `json:"address"`
 }
 
-// TODO: Add info about last executed test
 type SubmissionListItem struct {
 	ID            int32         `json:"id"`
 	ProblemID     int32         `json:"problem_id"`
@@ -97,7 +95,6 @@ type ProblemDetailed struct {
 	Examples    []TC      `json:"examples,omitempty"`
 	Difficulty  string    `json:"difficulty"`
 	Status      string    `json:"status,omitempty"`
-	Input       string    `json:"input,omitempty"`
 	TimeLimitMS int32     `json:"time_limit_ms,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }

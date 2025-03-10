@@ -55,7 +55,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	var problemID int32
 	if body.Kind == models.TextAnswerProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Input, body.Answer, 0, body.KeepPublic)
+		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Answer, 0)
 	} else if body.Kind == models.CodingProblem {
 		examplesCount := 0
 		for i := range body.TestCases {
@@ -67,7 +67,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 				body.TestCases[i].IsExample = false
 			}
 		}
-		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", "", int32(body.TimeLimitMS), body.KeepPublic, body.TestCases)
+		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
 	} else {
 		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
 		return Error(http.StatusBadRequest, "unknown problem kind")
@@ -80,37 +80,6 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, response.ContestID{
 		ID: problemID,
-	})
-}
-
-func (h *Handler) GetProblems(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetProblems"), slog.String("request_id", requestid.Get(c)))
-	ctx := c.Request().Context()
-
-	// TODO: return problems splitted by chunks
-	ps, err := h.repo.Problem.GetArchive(ctx)
-	if err != nil {
-		log.Error("can't get contests", sl.Err(err))
-		return err
-	}
-
-	n := len(ps)
-	problems := make([]response.ProblemListItem, n, n)
-	for i, p := range ps {
-		problems[i] = response.ProblemListItem{
-			ID:         p.ID,
-			Title:      p.Title,
-			Difficulty: p.Difficulty,
-			CreatedAt:  p.CreatedAt,
-			Writer: response.User{
-				ID:      p.WriterID,
-				Address: p.WriterAddress,
-			},
-		}
-	}
-
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": problems,
 	})
 }
 
@@ -145,61 +114,6 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{
 		"data": problems,
 	})
-}
-
-func (h *Handler) GetProblem(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetProblem"), slog.String("request_id", requestid.Get(c)))
-	ctx := c.Request().Context()
-
-	pid := c.Param("pid")
-	problemID, err := strconv.Atoi(pid)
-	if err != nil {
-		log.Debug("`pid` param is not an integer", slog.String("pid", pid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`pid` should be integer")
-	}
-
-	p, err := h.repo.Problem.GetArchivedByID(ctx, int32(problemID))
-	if errors.Is(err, repoerr.ErrProblemNotFound) {
-		return Error(http.StatusNotFound, "problem not found")
-	}
-	if err != nil {
-		log.Debug("can't get problem", sl.Err(err))
-		return err
-	}
-
-	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
-	if err != nil {
-		log.Error("can't get examples", sl.Err(err))
-		return err
-	}
-
-	n := len(etc)
-	examples := make([]response.TC, n, n)
-	for i := 0; i < n; i++ {
-		examples[i] = response.TC{
-			Input:  etc[i].Input,
-			Output: etc[i].Output,
-		}
-	}
-
-	pdetailed := response.ProblemDetailed{
-		ID:          p.ID,
-		Charcode:    p.Charcode,
-		Kind:        p.Kind,
-		Title:       p.Title,
-		Statement:   p.Statement,
-		Examples:    examples,
-		Difficulty:  p.Difficulty,
-		Input:       p.Input,
-		CreatedAt:   p.CreatedAt,
-		TimeLimitMS: p.TimeLimitMS,
-		Writer: response.User{
-			ID:      p.WriterID,
-			Address: p.WriterAddress,
-		},
-	}
-
-	return c.JSON(http.StatusOK, pdetailed)
 }
 
 func (h *Handler) GetContestProblem(c echo.Context) error {
@@ -270,7 +184,6 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		Statement:   p.Statement,
 		Examples:    examples,
 		Difficulty:  p.Difficulty,
-		Input:       p.Input,
 		CreatedAt:   p.CreatedAt,
 		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
