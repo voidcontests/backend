@@ -23,8 +23,9 @@ type ExecutionResponse struct {
 }
 
 type TestingRequest struct {
-	Code string       `json:"code"`
-	TCs  []request.TC `json:"tcs"`
+	Code        string       `json:"code"`
+	TimeLimitMS int          `json:"time_limit_ms"`
+	TCs         []request.TC `json:"tcs"`
 }
 
 type TestingResponse struct {
@@ -41,10 +42,11 @@ type FailedTest struct {
 	ActualOutput   string `json:"actual_output"`
 }
 
-func ExecuteTesting(code string, tcs []request.TC) (*TestingResponse, error) {
+func ExecuteTesting(code string, timeLimitMS int, tcs []request.TC) (*TestingResponse, error) {
 	body := TestingRequest{
-		Code: code,
-		TCs:  tcs,
+		Code:        code,
+		TimeLimitMS: timeLimitMS,
+		TCs:         tcs,
 	}
 
 	raw, err := json.Marshal(body)

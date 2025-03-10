@@ -49,7 +49,7 @@ CREATE TABLE problems
     statement TEXT DEFAULT '' NOT NULL,
     difficulty VARCHAR(10) NOT NULL,
     answer TEXT NOT NULL,
-    time_limit_ms INTEGER DEFAULT 0 NOT NULL,
+    time_limit_ms INTEGER DEFAULT 5000 NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
