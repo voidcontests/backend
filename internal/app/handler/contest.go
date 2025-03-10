@@ -179,7 +179,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		switch verdicts[problems[i].ID] {
 		case submission.VerdictOK:
 			cdetailed.Problems[i].Status = "accepted"
-		case submission.VerdictWrongAnswer, submission.VerdictRuntimeError, submission.VerdictCompilationError:
+		case submission.VerdictWrongAnswer, submission.VerdictRuntimeError, submission.VerdictCompilationError, submission.VerdictTimeLimitExceeded:
 			cdetailed.Problems[i].Status = "tried"
 		}
 	}
