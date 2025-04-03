@@ -12,8 +12,9 @@ import (
 const BASEPATH = "http://localhost:21003"
 
 type ExecutionRequest struct {
-	Code  string `json:"code" required:"true"`
-	Input string `json:"input"`
+	Code     string `json:"code" required:"true"`
+	Language string `json:"language" required:"true"`
+	Input    string `json:"input"`
 }
 
 type ExecutionResponse struct {
@@ -24,6 +25,7 @@ type ExecutionResponse struct {
 
 type TestingRequest struct {
 	Code        string       `json:"code"`
+	Language    string       `json:"language" required:"true"`
 	TimeLimitMS int          `json:"time_limit_ms"`
 	TCs         []request.TC `json:"tcs"`
 }
@@ -42,9 +44,10 @@ type FailedTest struct {
 	ActualOutput   string `json:"actual_output"`
 }
 
-func ExecuteTesting(code string, timeLimitMS int, tcs []request.TC) (*TestingResponse, error) {
+func ExecuteTesting(code, language string, timeLimitMS int, tcs []request.TC) (*TestingResponse, error) {
 	body := TestingRequest{
 		Code:        code,
+		Language:    language,
 		TimeLimitMS: timeLimitMS,
 		TCs:         tcs,
 	}
@@ -83,46 +86,4 @@ func ExecuteTesting(code string, timeLimitMS int, tcs []request.TC) (*TestingRes
 	}
 
 	return &tr, nil
-}
-
-func ExecuteWithInput(code string, input string) (*ExecutionResponse, error) {
-	body := ExecutionRequest{
-		Code:  code,
-		Input: input,
-	}
-
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", BASEPATH+"/run", bytes.NewBuffer(raw))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, err
-	}
-
-	var er ExecutionResponse
-	response, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(response, &er)
-	if err != nil {
-		return nil, err
-	}
-
-	return &er, nil
 }
