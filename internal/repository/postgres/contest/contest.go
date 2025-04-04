@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -20,21 +21,104 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, isDraft bool) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool) (int32, error) {
 	var id int32
 	var err error
 
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, is_draft) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, isDraft).Scan(&id)
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = p.db.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
 
 	return id, err
+}
+
+func (p *Postgres) AddProblems(ctx context.Context, contestID int32, problemIDs ...int32) error {
+	if len(problemIDs) == 0 {
+		return nil
+	}
+
+	charcodes := strings.Split("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "")
+
+	if len(problemIDs) > len(charcodes) {
+		return fmt.Errorf("not enough charcodes for the number of problems")
+	}
+
+	query := `INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES `
+	values := make([]interface{}, 0, len(problemIDs)*3)
+	placeholders := make([]string, 0, len(problemIDs))
+
+	for i, problemID := range problemIDs {
+		placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+		values = append(values, contestID, problemID, charcodes[i])
+	}
+
+	query += strings.Join(placeholders, ", ")
+
+	_, err := p.db.ExecContext(ctx, query, values...)
+	return err
+}
+
+func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title string, description string, startTime time.Time, endTime time.Time, durationMins int32, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error) {
+	var contestID int32
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	defer tx.Rollback()
+
+	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	err = tx.QueryRowContext(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(problemIDs) > 0 {
+		charcodes := strings.Split("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "")
+
+		if len(problemIDs) > len(charcodes) {
+			return 0, fmt.Errorf("not enough charcodes for the number of problems")
+		}
+
+		query := `INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES `
+		values := make([]interface{}, 0, len(problemIDs)*3)
+		placeholders := make([]string, 0, len(problemIDs))
+
+		for i, problemID := range problemIDs {
+			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			values = append(values, contestID, problemID, charcodes[i])
+		}
+
+		query += strings.Join(placeholders, ", ")
+
+		_, err = tx.ExecContext(ctx, query, values...)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return contestID, nil
 }
 
 func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
 	var err error
 	var contest models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id WHERE contests.id = $1`
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+FROM
+    contests
+JOIN
+    users ON users.id = contests.creator_id
+LEFT JOIN
+    entries ON entries.contest_id = contests.id
+WHERE
+    contests.id = $1
+GROUP BY
+    contests.id, users.address`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrContestNotFound
@@ -49,7 +133,12 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE contest_id = $1`
+	query := `SELECT cp.charcode, p.*, u.address AS writer_address
+		FROM problems p
+		JOIN contest_problems cp ON p.id = cp.problem_id
+		JOIN users u ON u.id = p.writer_id
+		WHERE cp.contest_id = $1 ORDER BY charcode ASC`
+
 	err := p.db.SelectContext(ctx, &problems, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return problems, nil
@@ -65,7 +154,11 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	var err error
 	var contests []models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address FROM contests JOIN users ON users.id = contests.creator_id`
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants FROM contests
+		JOIN users ON users.id = contests.creator_id
+		LEFT JOIN entries ON entries.contest_id = contests.id
+		GROUP BY contests.id, users.address
+		ORDER BY contests.id ASC`
 	err = p.db.SelectContext(ctx, &contests, query)
 	if err != nil {
 		return nil, err
@@ -74,7 +167,30 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	return contests, nil
 }
 
-func (p *Postgres) GetParticipantsCount(ctx context.Context, contestID int32) (int32, error) {
+func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32) ([]models.Contest, error) {
+	var err error
+	var contests []models.Contest
+
+	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+FROM
+    contests
+JOIN
+    users ON users.id = contests.creator_id
+LEFT JOIN
+    entries ON entries.contest_id = contests.id
+WHERE
+    contests.creator_id = $1
+GROUP BY
+    contests.id, users.address`
+	err = p.db.SelectContext(ctx, &contests, query, creatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	return contests, nil
+}
+
+func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int32) (int32, error) {
 	var err error
 	var count int32
 
@@ -98,4 +214,43 @@ func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, err
 	}
 
 	return count > 0, nil
+}
+
+func (p *Postgres) GetLeaderboard(ctx context.Context, contestID int) ([]models.LeaderboardEntry, error) {
+	var err error
+	var leaderboard []models.LeaderboardEntry
+
+	query := `SELECT
+    u.id AS user_id,
+    u.address AS user_address,
+    COALESCE(SUM(
+        CASE
+            WHEN p.difficulty = 'easy' THEN 1
+            WHEN p.difficulty = 'mid' THEN 3
+            WHEN p.difficulty = 'hard' THEN 5
+            ELSE 0
+        END
+    ), 0) AS points
+FROM users u
+JOIN entries e ON u.id = e.user_id
+JOIN contests c ON e.contest_id = c.id
+LEFT JOIN
+    (SELECT DISTINCT entry_id, problem_id
+     FROM submissions
+     WHERE verdict = 'ok') s ON e.id = s.entry_id
+LEFT JOIN problems p ON s.problem_id = p.id
+WHERE c.id = $1
+GROUP BY u.id, u.address
+ORDER BY points DESC`
+
+	err = p.db.SelectContext(ctx, &leaderboard, query, contestID)
+	if err != nil {
+		return nil, err
+	}
+
+	if leaderboard == nil {
+		return []models.LeaderboardEntry{}, nil
+	}
+
+	return leaderboard, nil
 }

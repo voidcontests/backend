@@ -10,7 +10,6 @@ import (
 
 	jwtgo "github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -53,8 +52,6 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid request body")
 	}
 
-	slog.Debug("tonproof request structure", slog.Any("ton.Proof", tp))
-
 	var tcs *tonconnect.Server
 	switch tp.Network {
 	case ton.MainnetID:
@@ -76,8 +73,6 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		},
 	}
 
-	slog.Debug("proof structure", slog.Any("tonconnect.Proof", proof))
-
 	verified, _, err := tcs.CheckProof(ctx, &proof, tcs.CheckPayload, tonconnect.StaticDomain(proof.Proof.Domain))
 	if err != nil || !verified {
 		return Error(http.StatusUnauthorized, "tonproof verification failed")
@@ -87,46 +82,23 @@ func (h *Handler) CheckProof(c echo.Context) error {
 	if errors.Is(err, repoerr.ErrUserNotFound) {
 		user, err = h.repo.User.Create(c.Request().Context(), tp.Address)
 		if err != nil {
+			slog.Error("can't create user instance in database", sl.Err(err))
 			return err
 		}
 	} else if err != nil {
+		slog.Error("can't get user by address", sl.Err(err))
 		return err
 	}
 
 	token, err := jwt.GenerateToken(tp.Address, user.ID, h.tonconnectMainnet.GetSecret())
 	if err != nil {
+		slog.Error("can't generate token", sl.Err(err))
 		return err
 	}
-
-	slog.Debug("token generated", slog.String("token", token))
 
 	return c.JSON(http.StatusOK, map[string]any{
 		"token": token,
 	})
-}
-
-func (h *Handler) GetAccount(c echo.Context) error {
-	user := c.Get("account").(*jwtgo.Token)
-	claims := user.Claims.(*jwt.CustomClaims)
-
-	address, err := tongo.ParseAddress(claims.Address)
-	if err != nil {
-		return Error(http.StatusBadRequest, "can't parse account")
-	}
-
-	net := ton.Networks[c.QueryParam("network")]
-	if net == nil {
-		return Error(http.StatusBadRequest, "undefined network")
-	}
-
-	account, err := ton.GetAccountInfo(c.Request().Context(), address.ID, net)
-	if err != nil {
-		return Error(http.StatusBadRequest, "can't get account info")
-	}
-
-	slog.Info("account info", slog.Any("account", account))
-
-	return c.JSON(http.StatusOK, account)
 }
 
 func (h *Handler) TryIdentify() echo.MiddlewareFunc {
