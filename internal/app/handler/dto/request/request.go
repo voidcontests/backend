@@ -34,4 +34,5 @@ type CreateSubmissionRequest struct {
 	ProblemKind string `json:"problem_kind" required:"true"`
 	Answer      string `json:"answer"`
 	Code        string `json:"code"`
+	Language    string `json:"language"`
 }

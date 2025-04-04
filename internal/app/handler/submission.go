@@ -116,7 +116,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			rtcs[i].Output = tcs[i].Output
 		}
 
-		res, err := runner.ExecuteTesting(body.Code, int(problem.TimeLimitMS), rtcs)
+		res, err := runner.ExecuteTesting(body.Code, body.Language, int(problem.TimeLimitMS), rtcs)
 		if err != nil {
 			log.Error("can't test user's solution", sl.Err(err))
 			return err
