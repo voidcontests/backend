@@ -73,6 +73,7 @@ type SubmissionListItem struct {
 	Verdict       string        `json:"verdict"`
 	Answer        string        `json:"answer,omitempty"`
 	Code          string        `json:"code,omitempty"`
+	Language      string        `json:"language,omitempty"`
 	TestingReport TestingReport `json:"testing_report,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
 }

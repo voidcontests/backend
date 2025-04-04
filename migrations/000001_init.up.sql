@@ -88,6 +88,7 @@ CREATE TABLE submissions
     verdict verdict NOT NULL,
     answer TEXT NOT NULL,
     code TEXT NOT NULL,
+    language VARCHAR(10) NOT NULL,
     passed_tests_count INTEGER DEFAULT 0 NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

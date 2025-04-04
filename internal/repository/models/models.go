@@ -81,6 +81,7 @@ type Submission struct {
 	Verdict          string    `db:"verdict"`
 	Answer           string    `db:"answer"`
 	Code             string    `db:"code"`
+	Language         string    `db:"language"`
 	PassedTestsCount int32     `db:"passed_tests_count"`
 	CreatedAt        time.Time `db:"created_at"`
 }

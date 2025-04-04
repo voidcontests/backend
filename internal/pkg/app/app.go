@@ -86,6 +86,8 @@ func (a *App) Run() {
 		return
 	}
 
+	slog.Info("runner is ok")
+
 	repo := repository.New(db)
 	r := router.New(a.config, repo, mainnet, testnet)
 

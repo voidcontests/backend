@@ -90,7 +90,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			verdict = submission.VerdictOK
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", 0)
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0)
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
@@ -122,7 +122,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			return err
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, res.Verdict, "", body.Code, int32(res.Passed))
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, res.Verdict, "", body.Code, body.Language, int32(res.Passed))
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
@@ -133,6 +133,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			ProblemID: submission.ProblemID,
 			Verdict:   res.Verdict,
 			Code:      body.Code,
+			Language:  body.Language,
 			TestingReport: response.TestingReport{
 				Passed:     res.Passed,
 				Total:      res.Total,
