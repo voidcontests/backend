@@ -44,6 +44,22 @@ type FailedTest struct {
 	ActualOutput   string `json:"actual_output"`
 }
 
+func Ping() bool {
+	req, err := http.NewRequest("GET", BASEPATH+"/healthcheck", nil)
+	if err != nil {
+		return false
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
+
 func ExecuteTesting(code, language string, timeLimitMS int, tcs []request.TC) (*TestingResponse, error) {
 	body := TestingRequest{
 		Code:        code,

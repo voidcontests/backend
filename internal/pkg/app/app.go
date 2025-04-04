@@ -12,6 +12,7 @@ import (
 	"github.com/tonkeeper/tongo/liteapi"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/router"
+	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -78,6 +79,12 @@ func (a *App) Run() {
 	}
 
 	slog.Info("successfully connected to postgresql")
+
+	ok := runner.Ping()
+	if !ok {
+		slog.Error("could not connect to runner service")
+		return
+	}
 
 	repo := repository.New(db)
 	r := router.New(a.config, repo, mainnet, testnet)
