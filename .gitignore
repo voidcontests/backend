@@ -6,7 +6,7 @@ config/*.yaml
 .db
 
 # Ignore output
-.bin
+build
 
 # Ignore TODO
 TODO

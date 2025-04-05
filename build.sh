@@ -10,7 +10,7 @@ blue='\033[0;34m'
 yellow='\033[0;33m'
 normal='\033[0m'
 
-out=".bin/server"
+out="build/server"
 
 help() {
     echo -e "${underl}Usage:${normal}\n"
@@ -77,7 +77,7 @@ elif [ "$1" == "run" ]; then
 	   docker compose -f ./docker-compose.local.yaml up -d
 	fi
 
-	CONFIG_PATH="./config/${env}.yaml" ./.bin/server
+	CONFIG_PATH="./config/${env}.yaml" ./build/server
 
 	echo "Shutting down environment containers"
 	docker compose down
