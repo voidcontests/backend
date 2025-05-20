@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v4"
 )
 
 type CustomClaims struct {
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 	Address string `json:"address"`
 	ID      int32  `json:"id"`
 }
 
 func GenerateToken(address string, id int32, secret string) (string, error) {
 	claims := &CustomClaims{
-		jwt.StandardClaims{
-			ExpiresAt: time.Now().AddDate(100, 0, 0).Unix(),
+		jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(100, 0, 0)),
 		},
 		address,
 		id,

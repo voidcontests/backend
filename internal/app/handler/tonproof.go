@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	jwtgo "github.com/golang-jwt/jwt"
+	jwtgo "github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/jwt"
@@ -142,8 +142,9 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 				}
 				return []byte(h.config.TonProof.PayloadSignatureKey), nil
 			})
-			if err != nil || !token.Valid {
-				log.Debug("invalid or expired token", sl.Err(err))
+
+			if err != nil {
+				log.Debug("token parsing failed", sl.Err(err))
 				if skiperr {
 					return next(c)
 				} else {
@@ -151,7 +152,24 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 				}
 			}
 
-			claims := token.Claims.(*jwt.CustomClaims)
+			if !token.Valid {
+				log.Debug("invalid token")
+				if skiperr {
+					return next(c)
+				} else {
+					return Error(http.StatusUnauthorized, "invalid or malformed token")
+				}
+			}
+
+			claims, ok := token.Claims.(*jwt.CustomClaims)
+			if !ok {
+				log.Debug("invalid token claims")
+				if skiperr {
+					return next(c)
+				} else {
+					return Error(http.StatusUnauthorized, "invalid or malformed token")
+				}
+			}
 
 			c.Set("account", *claims)
 
