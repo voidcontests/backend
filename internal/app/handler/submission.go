@@ -63,7 +63,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusForbidden, "contest alreay ended")
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Debug("trying to create submission without entry")
 		return Error(http.StatusForbidden, "no entry for contest")
@@ -166,7 +166,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 	charcode = strings.ToUpper(charcode)
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
 		return Error(http.StatusForbidden, "no entry for contest")
 	}

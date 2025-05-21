@@ -18,12 +18,15 @@ func New(db *sqlx.DB) *Postgres {
 	return &Postgres{db}
 }
 
-func (p *Postgres) Create(ctx context.Context, address string) (*models.User, error) {
+func (p *Postgres) GetByCredentials(ctx context.Context, username string, passwordHash string) (*models.User, error) {
 	var err error
 	var user models.User
 
-	query := `INSERT INTO users (address, role_id) VALUES ($1, (SELECT id FROM roles WHERE is_default=true LIMIT 1)) RETURNING id`
-	err = p.db.GetContext(ctx, &user, query, address)
+	query := `SELECT * FROM users WHERE username = $1 AND password_hash = $2`
+	err = p.db.GetContext(ctx, &user, query, username, passwordHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, repoerr.ErrUserNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -31,12 +34,25 @@ func (p *Postgres) Create(ctx context.Context, address string) (*models.User, er
 	return &user, nil
 }
 
-func (p *Postgres) GetByAddress(ctx context.Context, address string) (*models.User, error) {
+func (p *Postgres) Create(ctx context.Context, username string, passwordHash string) (*models.User, error) {
 	var err error
 	var user models.User
 
-	query := `SELECT * FROM users WHERE address = $1`
-	err = p.db.GetContext(ctx, &user, query, address)
+	query := `INSERT INTO users (username, password_hash, role_id) VALUES ($1, $2, (SELECT id FROM roles WHERE is_default=true LIMIT 1)) RETURNING id`
+	err = p.db.GetContext(ctx, &user, query, username, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (p *Postgres) GetByID(ctx context.Context, id int32) (*models.User, error) {
+	var err error
+	var user models.User
+
+	query := `SELECT * FROM users WHERE id = $1`
+	err = p.db.GetContext(ctx, &user, query, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrUserNotFound
 	}

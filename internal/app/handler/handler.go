@@ -4,25 +4,20 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/repository"
 )
 
 type Handler struct {
-	config            *config.Config
-	repo              *repository.Repository
-	tonconnectMainnet *tonconnect.Server
-	tonconnectTestnet *tonconnect.Server
+	config *config.Config
+	repo   *repository.Repository
 }
 
-func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Handler {
+func New(c *config.Config, r *repository.Repository) *Handler {
 	return &Handler{
-		config:            c,
-		repo:              r,
-		tonconnectMainnet: mainnet,
-		tonconnectTestnet: testnet,
+		config: c,
+		repo:   r,
 	}
 }
 

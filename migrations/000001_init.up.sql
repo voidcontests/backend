@@ -19,7 +19,8 @@ VALUES
 CREATE TABLE users
 (
     id SERIAL PRIMARY KEY,
-    address VARCHAR(70) UNIQUE NOT NULL,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(64) NOT NULL,
     role_id INTEGER NOT NULL REFERENCES roles(id),
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );

@@ -7,7 +7,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -22,8 +21,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Router {
-	h := handler.New(c, r, mainnet, testnet)
+func New(c *config.Config, r *repository.Repository) *Router {
+	h := handler.New(c, r)
 	return &Router{config: c, handler: h}
 }
 
@@ -76,17 +75,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	api := router.Group("/api")
 	{
-		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
-
 		api.GET("/healthcheck", r.handler.Healthcheck)
 
-		tonproof := api.Group("/tonproof")
-		tonproof.POST("/payload", r.handler.GeneratePayload)
-		tonproof.POST("/check", r.handler.CheckProof)
+		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
+		api.POST("/account", r.handler.CreateAccount)
+		api.POST("/session", r.handler.CreateSession)
 
-		creator := api.Group("/creator", r.handler.MustIdentify())
-		creator.GET("/contests", r.handler.GetCreatedContests)
-		creator.GET("/problems", r.handler.GetCreatedProblems)
+		api.GET("/creator/contests", r.handler.GetCreatedContests)
+		api.GET("/creator/problems", r.handler.GetCreatedProblems)
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 

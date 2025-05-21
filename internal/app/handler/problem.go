@@ -30,7 +30,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.ID)
+	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
 	if err != nil {
 		log.Error("can't get user's role", sl.Err(err))
 		return err
@@ -42,7 +42,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 	}
 
 	if userrole.Name == models.RoleLimited {
-		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.ID)
+		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.UserID)
 		if err != nil {
 			log.Debug("can't get created problems count", sl.Err(err))
 			return err
@@ -55,7 +55,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	var problemID int32
 	if body.Kind == models.TextAnswerProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.ID, body.Title, body.Statement, body.Difficulty, body.Answer, 0)
+		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, body.Answer, 0)
 	} else if body.Kind == models.CodingProblem {
 		examplesCount := 0
 		for i := range body.TestCases {
@@ -67,7 +67,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 				body.TestCases[i].IsExample = false
 			}
 		}
-		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.ID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
+		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
 	} else {
 		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
 		return Error(http.StatusBadRequest, "unknown problem kind")
@@ -78,7 +78,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, response.ContestID{
+	return c.JSON(http.StatusCreated, response.ID{
 		ID: problemID,
 	})
 }
@@ -90,7 +90,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	claims, _ := ExtractClaims(c)
 
 	// TODO: return problems splitted by chunks
-	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.ID)
+	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID)
 	if err != nil {
 		log.Error("can't get created contests", sl.Err(err))
 		return err
@@ -105,8 +105,8 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 			Difficulty: p.Difficulty,
 			CreatedAt:  p.CreatedAt,
 			Writer: response.User{
-				ID:      p.WriterID,
-				Address: p.WriterAddress,
+				ID:       p.WriterID,
+				Username: p.WriterUsername,
 			},
 		}
 	}
@@ -135,7 +135,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	}
 	charcode = strings.ToUpper(charcode)
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Debug("no entry for contest")
 		return Error(http.StatusForbidden, "no entry")
@@ -187,8 +187,8 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		CreatedAt:   p.CreatedAt,
 		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
-			ID:      p.WriterID,
-			Address: p.WriterAddress,
+			ID:       p.WriterID,
+			Username: p.WriterUsername,
 		},
 	}
 

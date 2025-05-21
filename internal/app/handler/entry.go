@@ -51,7 +51,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusForbidden, "application time is over")
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Error("can't get entry", sl.Err(err))
 		return err
@@ -60,7 +60,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusConflict, "user already has entry for this contest")
 	}
 
-	_, err = h.repo.Entry.Create(ctx, int32(contestID), claims.ID)
+	_, err = h.repo.Entry.Create(ctx, int32(contestID), claims.UserID)
 	if err != nil {
 		log.Error("can't create entry for contest", sl.Err(err))
 		return err

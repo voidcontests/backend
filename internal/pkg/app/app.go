@@ -9,8 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/tonkeeper/tongo/liteapi"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/router"
 	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/config"
@@ -18,7 +16,6 @@ import (
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
 	"github.com/voidcontests/backend/internal/repository/postgres"
-	"github.com/voidcontests/backend/internal/ton"
 )
 
 type App struct {
@@ -48,48 +45,26 @@ func (a *App) Run() {
 
 	slog.SetDefault(logger)
 
-	slog.Info("starting API server...", slog.String("env", a.config.Env))
-
-	slog.Debug("connecting to liteapi mainnet server")
-
-	var err error
-	ton.Networks[ton.MainnetID], err = liteapi.NewClientWithDefaultMainnet()
-	if err != nil {
-		slog.Error("failed init mainnet liteapi client", sl.Err(err))
-		return
-	}
-
-	slog.Debug("connecting to liteapi testnet server")
-
-	ton.Networks[ton.TestnetID], err = liteapi.NewClientWithDefaultTestnet()
-	if err != nil {
-		slog.Error("failed init testnet liteapi client", sl.Err(err))
-		return
-	}
-
-	slog.Debug("successfully connected to liteapi servers")
-
-	mainnet, _ := tonconnect.NewTonConnect(ton.Mainnet(), a.config.TonProof.PayloadSignatureKey, tonconnect.WithLifeTimePayload(a.config.TonProof.PayloadLifetimeSeconds.Nanoseconds()), tonconnect.WithLifeTimeProof(int64(a.config.TonProof.ProofLifetimeSeconds.Nanoseconds())))
-	testnet, _ := tonconnect.NewTonConnect(ton.Testnet(), a.config.TonProof.PayloadSignatureKey, tonconnect.WithLifeTimePayload(a.config.TonProof.PayloadLifetimeSeconds.Nanoseconds()), tonconnect.WithLifeTimeProof(int64(a.config.TonProof.ProofLifetimeSeconds.Nanoseconds())))
+	slog.Info("api: starting...", slog.String("env", a.config.Env))
 
 	db, err := postgres.New(&a.config.Postgres)
 	if err != nil {
-		slog.Error("could not connect to postgresql", sl.Err(err))
+		slog.Error("postgresql: could not connect establish connection", sl.Err(err))
 		return
 	}
 
-	slog.Info("successfully connected to postgresql")
+	slog.Info("postgresql: ok")
 
 	ok := runner.Ping()
 	if !ok {
-		slog.Error("could not connect to runner service")
+		slog.Error("runner: could not establich connection")
 		return
 	}
 
-	slog.Info("runner is ok")
+	slog.Info("runner: ok")
 
 	repo := repository.New(db)
-	r := router.New(a.config, repo, mainnet, testnet)
+	r := router.New(a.config, repo)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,
@@ -109,19 +84,19 @@ func (a *App) Run() {
 		}
 	}()
 
-	slog.Info("server started", slog.String("address", server.Addr))
+	slog.Info("api: started", slog.String("address", server.Addr))
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
-	slog.Info("server shutting down")
+	slog.Info("api: shutting down...")
 
 	err = server.Shutdown(ctx)
 	if err != nil {
-		slog.Error("error occurred on server shutting down", sl.Err(err))
+		slog.Error("api: error occurred on server shutting down", sl.Err(err))
 		os.Exit(1)
 	}
 
-	slog.Info("API server stopped")
+	slog.Info("api: server stopped")
 }

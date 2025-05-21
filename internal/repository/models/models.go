@@ -15,10 +15,11 @@ const (
 )
 
 type User struct {
-	ID        int32     `db:"id"`
-	Address   string    `db:"address"`
-	RoleID    int32     `db:"role_id"`
-	CreatedAt time.Time `db:"created_at"`
+	ID           int32     `db:"id"`
+	Username     string    `db:"username"`
+	PasswordHash string    `db:"password_hash"`
+	RoleID       int32     `db:"role_id"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 type Role struct {
@@ -31,32 +32,32 @@ type Role struct {
 }
 
 type Contest struct {
-	ID             int32     `db:"id"`
-	CreatorID      int32     `db:"creator_id"`
-	CreatorAddress string    `db:"creator_address"`
-	Title          string    `db:"title"`
-	Description    string    `db:"description"`
-	StartTime      time.Time `db:"start_time"`
-	EndTime        time.Time `db:"end_time"`
-	DurationMins   int32     `db:"duration_mins"`
-	MaxEntries     int32     `db:"max_entries"`
-	AllowLateJoin  bool      `db:"allow_late_join"`
-	Participants   int32     `db:"participants"`
-	CreatedAt      time.Time `db:"created_at"`
+	ID              int32     `db:"id"`
+	CreatorID       int32     `db:"creator_id"`
+	CreatorUsername string    `db:"creator_username"`
+	Title           string    `db:"title"`
+	Description     string    `db:"description"`
+	StartTime       time.Time `db:"start_time"`
+	EndTime         time.Time `db:"end_time"`
+	DurationMins    int32     `db:"duration_mins"`
+	MaxEntries      int32     `db:"max_entries"`
+	AllowLateJoin   bool      `db:"allow_late_join"`
+	Participants    int32     `db:"participants"`
+	CreatedAt       time.Time `db:"created_at"`
 }
 
 type Problem struct {
-	ID            int32     `db:"id"`
-	Charcode      string    `db:"charcode"`
-	Kind          string    `db:"kind"`
-	WriterID      int32     `db:"writer_id"`
-	WriterAddress string    `db:"writer_address"`
-	Title         string    `db:"title"`
-	Statement     string    `db:"statement"`
-	Difficulty    string    `db:"difficulty"`
-	Answer        string    `db:"answer"`
-	TimeLimitMS   int32     `db:"time_limit_ms"`
-	CreatedAt     time.Time `db:"created_at"`
+	ID             int32     `db:"id"`
+	Charcode       string    `db:"charcode"`
+	Kind           string    `db:"kind"`
+	WriterID       int32     `db:"writer_id"`
+	WriterUsername string    `db:"writer_username"`
+	Title          string    `db:"title"`
+	Statement      string    `db:"statement"`
+	Difficulty     string    `db:"difficulty"`
+	Answer         string    `db:"answer"`
+	TimeLimitMS    int32     `db:"time_limit_ms"`
+	CreatedAt      time.Time `db:"created_at"`
 }
 
 type TestCase struct {
@@ -87,7 +88,7 @@ type Submission struct {
 }
 
 type LeaderboardEntry struct {
-	UserID      int32  `db:"user_id" json:"user_id"`
-	UserAddress string `db:"user_address" json:"user_address"`
-	Points      int    `db:"points" json:"points"`
+	UserID   int32  `db:"user_id" json:"user_id"`
+	Username string `db:"username" json:"username"`
+	Points   int    `db:"points" json:"points"`
 }

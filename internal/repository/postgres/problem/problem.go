@@ -73,7 +73,7 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
 	var problem models.Problem
 
-	query := `SELECT p.*, cp.charcode, u.address AS writer_address
+	query := `SELECT p.*, cp.charcode, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id
@@ -119,7 +119,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	var err error
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id`
+	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id`
 	err = p.db.SelectContext(ctx, &problems, query)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32) ([]model
 	var err error
 	var problems []models.Problem
 
-	query := `SELECT problems.*, users.address AS writer_address FROM problems JOIN users ON users.id = problems.writer_id WHERE writer_id = $1`
+	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id WHERE writer_id = $1`
 	err = p.db.SelectContext(ctx, &problems, query, writerID)
 	if err != nil {
 		return nil, err

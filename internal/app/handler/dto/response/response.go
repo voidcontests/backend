@@ -4,17 +4,20 @@ import (
 	"time"
 
 	"github.com/voidcontests/backend/internal/app/runner"
-	"github.com/voidcontests/backend/internal/ton"
 )
 
-type ContestID struct {
+type ID struct {
 	ID int32 `json:"id"`
 }
 
+type Token struct {
+	Token string `json:"token"`
+}
+
 type Account struct {
-	ID         int32       `json:"id"`
-	TonAccount ton.Account `json:"ton_account"`
-	Role       Role        `json:"role"`
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
+	Role     Role   `json:"role"`
 }
 
 type Role struct {
@@ -63,8 +66,8 @@ type ContestListItem struct {
 }
 
 type User struct {
-	ID      int32  `json:"id"`
-	Address string `json:"address"`
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
 }
 
 type SubmissionListItem struct {

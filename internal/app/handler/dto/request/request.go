@@ -2,6 +2,16 @@ package request
 
 import "time"
 
+type CreateAccount struct {
+	Username string `json:"username" required:"true"`
+	Password string `json:"password" required:"true"`
+}
+
+type CreateSession struct {
+	Username string `json:"username" required:"true"`
+	Password string `json:"password" required:"true"`
+}
+
 // TODO: think about draft contests
 type CreateContestRequest struct {
 	Title         string    `json:"title" required:"true"`

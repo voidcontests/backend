@@ -31,7 +31,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.ID)
+	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
 	if err != nil {
 		log.Error("can't get user's role", sl.Err(err))
 		return err
@@ -43,7 +43,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	}
 
 	if userrole.Name == models.RoleLimited {
-		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.ID)
+		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.UserID)
 		if err != nil {
 			log.Debug("can't get created contests count", sl.Err(err))
 			return err
@@ -68,13 +68,13 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
 	}
 
-	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.ID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
+	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
 	if err != nil {
 		log.Error("can't create contest", sl.Err(err))
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, response.ContestID{
+	return c.JSON(http.StatusCreated, response.ID{
 		ID: contestID,
 	})
 }
@@ -119,8 +119,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		Description: contest.Description,
 		Problems:    make([]response.ProblemListItem, n, n),
 		Creator: response.User{
-			ID:      contest.CreatorID,
-			Address: contest.CreatorAddress,
+			ID:       contest.CreatorID,
+			Username: contest.CreatorUsername,
 		},
 		Participants:  contest.Participants,
 		StartTime:     contest.StartTime,
@@ -138,8 +138,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Title:      problems[i].Title,
 			Difficulty: problems[i].Difficulty,
 			Writer: response.User{
-				ID:      problems[i].WriterID,
-				Address: problems[i].WriterAddress,
+				ID:       problems[i].WriterID,
+				Username: problems[i].WriterUsername,
 			},
 		}
 	}
@@ -150,7 +150,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return c.JSON(http.StatusOK, cdetailed)
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, contest.ID, claims.ID)
+	entry, err := h.repo.Entry.Get(ctx, contest.ID, claims.UserID)
 	if err != nil && !errors.Is(err, repoerr.ErrEntryNotFound) {
 		log.Error("can't get entry", sl.Err(err))
 		return err
@@ -197,7 +197,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	contests, err := h.repo.Contest.GetWithCreatorID(ctx, claims.ID)
+	contests, err := h.repo.Contest.GetWithCreatorID(ctx, claims.UserID)
 	if err != nil {
 		log.Error("can't get created contests", sl.Err(err))
 		return err
@@ -208,8 +208,8 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 		item := response.ContestListItem{
 			ID: c.ID,
 			Creator: response.User{
-				ID:      c.CreatorID,
-				Address: c.CreatorAddress,
+				ID:       c.CreatorID,
+				Username: c.CreatorUsername,
 			},
 			Title:        c.Title,
 			StartTime:    c.StartTime,
@@ -250,8 +250,8 @@ func (h *Handler) GetContests(c echo.Context) error {
 		item := response.ContestListItem{
 			ID: c.ID,
 			Creator: response.User{
-				ID:      c.CreatorID,
-				Address: c.CreatorAddress,
+				ID:       c.CreatorID,
+				Username: c.CreatorUsername,
 			},
 			Title:        c.Title,
 			StartTime:    c.StartTime,

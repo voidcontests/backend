@@ -108,7 +108,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 	var err error
 	var contest models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 FROM
     contests
 JOIN
@@ -118,7 +118,7 @@ LEFT JOIN
 WHERE
     contests.id = $1
 GROUP BY
-    contests.id, users.address`
+    contests.id, users.username`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, repoerr.ErrContestNotFound
@@ -133,7 +133,7 @@ GROUP BY
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
 	var problems []models.Problem
 
-	query := `SELECT cp.charcode, p.*, u.address AS writer_address
+	query := `SELECT cp.charcode, p.*, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id
@@ -154,10 +154,10 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Contest, error) {
 	var err error
 	var contests []models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants FROM contests
+	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants FROM contests
 		JOIN users ON users.id = contests.creator_id
 		LEFT JOIN entries ON entries.contest_id = contests.id
-		GROUP BY contests.id, users.address
+		GROUP BY contests.id, users.username
 		ORDER BY contests.id ASC`
 	err = p.db.SelectContext(ctx, &contests, query)
 	if err != nil {
@@ -171,7 +171,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32) ([]mod
 	var err error
 	var contests []models.Contest
 
-	query := `SELECT contests.*, users.address AS creator_address, COUNT(entries.id) AS participants
+	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 FROM
     contests
 JOIN
@@ -181,7 +181,7 @@ LEFT JOIN
 WHERE
     contests.creator_id = $1
 GROUP BY
-    contests.id, users.address`
+    contests.id, users.username`
 	err = p.db.SelectContext(ctx, &contests, query, creatorID)
 	if err != nil {
 		return nil, err
@@ -222,7 +222,7 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID int) ([]models.
 
 	query := `SELECT
     u.id AS user_id,
-    u.address AS user_address,
+    u.username AS user_username,
     COALESCE(SUM(
         CASE
             WHEN p.difficulty = 'easy' THEN 1
@@ -240,7 +240,7 @@ LEFT JOIN
      WHERE verdict = 'ok') s ON e.id = s.entry_id
 LEFT JOIN problems p ON s.problem_id = p.id
 WHERE c.id = $1
-GROUP BY u.id, u.address
+GROUP BY u.id, u.username
 ORDER BY points DESC`
 
 	err = p.db.SelectContext(ctx, &leaderboard, query, contestID)

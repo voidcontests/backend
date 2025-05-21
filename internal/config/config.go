@@ -19,7 +19,7 @@ const (
 type Config struct {
 	Env      string   `yaml:"env" env-required:"true"`
 	Server   Server   `yaml:"http" env-required:"true"`
-	TonProof TonProof `yaml:"ton_proof" env-required:"true"`
+	Security Security `yaml:"security" env-required:"true"`
 	Postgres Postgres `yaml:"postgres" env-required:"true"`
 }
 
@@ -29,10 +29,9 @@ type Server struct {
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
 
-type TonProof struct {
-	PayloadSignatureKey    string        `yaml:"payload_signature_key" env-required:"true"`
-	PayloadLifetimeSeconds time.Duration `yaml:"payload_lifetime_seconds" env-default:"300s"`
-	ProofLifetimeSeconds   time.Duration `yaml:"proof_lifetime_seconds" env-default:"300s"`
+type Security struct {
+	SignatureKey string `yaml:"signature_key" env-required:"true"`
+	Salt         string `yaml:"salt" env-required:"true"`
 }
 
 type Postgres struct {
