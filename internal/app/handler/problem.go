@@ -89,7 +89,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	// TODO: return problems splitted by chunks
+	// TODO: return problems splitted by chunks (pages)
 	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID)
 	if err != nil {
 		log.Error("can't get created contests", sl.Err(err))

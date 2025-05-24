@@ -32,6 +32,7 @@ func (h *Handler) CreateAccount(c echo.Context) error {
 	user, err := h.repo.User.Create(ctx, body.Username, passwordHash)
 	if err != nil {
 		log.Debug("can't create user", sl.Err(err))
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
@@ -51,11 +52,6 @@ func (h *Handler) CreateSession(c echo.Context) error {
 
 	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
 	user, err := h.repo.User.GetByCredentials(ctx, body.Username, passwordHash)
-	if err != nil {
-		log.Debug("can't create user", sl.Err(err))
-		return err
-	}
-
 	if errors.Is(err, repoerr.ErrUserNotFound) {
 		return Error(http.StatusUnauthorized, "invalid credentials")
 	}

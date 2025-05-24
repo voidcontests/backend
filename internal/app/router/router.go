@@ -81,8 +81,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.POST("/account", r.handler.CreateAccount)
 		api.POST("/session", r.handler.CreateSession)
 
-		api.GET("/creator/contests", r.handler.GetCreatedContests)
-		api.GET("/creator/problems", r.handler.GetCreatedProblems)
+		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
+		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
