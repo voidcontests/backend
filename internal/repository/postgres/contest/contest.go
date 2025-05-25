@@ -10,7 +10,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
 
 type Postgres struct {
@@ -120,9 +119,6 @@ WHERE
 GROUP BY
     contests.id, users.username`
 	err = p.db.GetContext(ctx, &contest, query, contestID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, repoerr.ErrContestNotFound
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +218,7 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID int) ([]models.
 
 	query := `SELECT
     u.id AS user_id,
-    u.username AS user_username,
+    u.username AS username,
     COALESCE(SUM(
         CASE
             WHEN p.difficulty = 'easy' THEN 1

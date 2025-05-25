@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"errors"
-	"log/slog"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,42 +11,35 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
-	"github.com/voidcontests/backend/internal/repository/repoerr"
-	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
 func (h *Handler) CreateProblem(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.CreateProblem"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.CreateProblem"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
 
 	var body request.CreateProblemRequest
 	if err := validate.Bind(c, &body); err != nil {
-		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
 	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
 	if err != nil {
-		log.Error("can't get user's role", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get role: %v", op, err)
 	}
 
 	if userrole.Name == models.RoleBanned {
-		log.Debug("banned mf tried to create new problem")
 		return Error(http.StatusForbidden, "you are banned from creating problems")
 	}
 
 	if userrole.Name == models.RoleLimited {
 		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.UserID)
 		if err != nil {
-			log.Debug("can't get created problems count", sl.Err(err))
-			return err
+			return fmt.Errorf("%s: can't get created problems count: %v", op, err)
 		}
 
 		if pscount >= int(userrole.CreatedProblemsLimit) {
@@ -69,13 +63,11 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		}
 		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
 	} else {
-		log.Debug("unknown problem kind", slog.String("problem_kind", body.Kind))
 		return Error(http.StatusBadRequest, "unknown problem kind")
 	}
 
 	if err != nil {
-		log.Error("can't create problem", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't create problem: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
@@ -84,7 +76,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 }
 
 func (h *Handler) GetCreatedProblems(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetCreatedProblems"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.GetCreatedProblems"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -92,8 +84,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	// TODO: return problems splitted by chunks (pages)
 	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID)
 	if err != nil {
-		log.Error("can't get created contests", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get created contests: %v", op, err)
 	}
 
 	n := len(ps)
@@ -117,7 +108,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 }
 
 func (h *Handler) GetContestProblem(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetContestProblem"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.GetContestProblem"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -125,45 +116,39 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	cid := c.Param("cid")
 	contestID, err := strconv.Atoi(cid)
 	if err != nil {
-		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`cid` should be integer")
+		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
 	charcode := c.Param("charcode")
 	if len(charcode) > 2 {
-		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
+		return Error(http.StatusBadRequest, "problem charcode couldn't be longer than 2 characters")
 	}
 	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, repoerr.ErrEntryNotFound) {
-		log.Debug("no entry for contest")
+	if errors.Is(err, sql.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry")
 	}
 	if err != nil {
-		log.Debug("can't get entry", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get entry: %v", op, err)
 	}
 
 	p, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, repoerr.ErrProblemNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
 	if err != nil {
-		log.Debug("can't get problem", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get problem: %v", op, err)
 	}
 
 	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, charcode)
 	if err != nil {
-		log.Error("can't get submissions", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get submissions: %v", op, err)
 	}
 
 	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
 	if err != nil {
-		log.Error("can't get examples", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get tc examples: %v", op, err)
 	}
 
 	n := len(etc)

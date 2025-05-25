@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
-	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/validate"
 )
@@ -46,7 +46,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, repoerr.ErrContestNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
@@ -64,7 +64,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, repoerr.ErrEntryNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		log.Debug("trying to create submission without entry")
 		return Error(http.StatusForbidden, "no entry for contest")
 	}
@@ -74,7 +74,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, repoerr.ErrProblemNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
 	if err != nil {
@@ -167,7 +167,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, repoerr.ErrEntryNotFound) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry for contest")
 	}
 	if err != nil {

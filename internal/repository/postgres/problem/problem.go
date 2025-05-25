@@ -2,15 +2,12 @@ package problem
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/repoerr"
 )
 
 type Postgres struct {
@@ -79,9 +76,6 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 		JOIN users u ON u.id = p.writer_id
 		WHERE cp.contest_id = $1 AND cp.charcode = $2`
 	err := p.db.GetContext(ctx, &problem, query, contestID, charcode)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, repoerr.ErrProblemNotFound
-	}
 	if err != nil {
 		return nil, err
 	}

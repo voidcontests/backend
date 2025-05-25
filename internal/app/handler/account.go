@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,26 +15,32 @@ import (
 	"github.com/voidcontests/backend/internal/hasher"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository/repoerr"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
 func (h *Handler) CreateAccount(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.CreateAccount"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.CreateAccount"
 	ctx := c.Request().Context()
 
 	var body request.CreateAccount
 	if err := validate.Bind(c, &body); err != nil {
-		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	exists, err := h.repo.User.Exists(ctx, body.Username)
+	if err != nil {
+		return fmt.Errorf("%s: can't verify that user exists or not: %v", op, err)
+	}
+
+	if exists {
+		return Error(http.StatusConflict, "user already exists")
 	}
 
 	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
 	user, err := h.repo.User.Create(ctx, body.Username, passwordHash)
 	if err != nil {
-		log.Debug("can't create user", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: failed to create user: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
@@ -41,29 +49,26 @@ func (h *Handler) CreateAccount(c echo.Context) error {
 }
 
 func (h *Handler) CreateSession(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.CreateSession"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.CreateSession"
 	ctx := c.Request().Context()
 
 	var body request.CreateSession
 	if err := validate.Bind(c, &body); err != nil {
-		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
 	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
 	user, err := h.repo.User.GetByCredentials(ctx, body.Username, passwordHash)
-	if errors.Is(err, repoerr.ErrUserNotFound) {
-		return Error(http.StatusUnauthorized, "invalid credentials")
+	if errors.Is(err, sql.ErrNoRows) {
+		return Error(http.StatusUnauthorized, "user not found")
 	}
 	if err != nil {
-		log.Error("can't create user", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't create user: %v", op, err)
 	}
 
 	token, err := jwt.GenerateToken(user.ID, h.config.Security.SignatureKey)
 	if err != nil {
-		slog.Error("jwt: can't generate token", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't generate token: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.Token{
@@ -72,21 +77,22 @@ func (h *Handler) CreateSession(c echo.Context) error {
 }
 
 func (h *Handler) GetAccount(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetAccount"), slog.String("request_id", requestid.Get(c)))
+	op := "handler.GetAccount"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
 
 	user, err := h.repo.User.GetByID(ctx, claims.UserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Error(http.StatusNotFound, "user not found")
+	}
 	if err != nil {
-		log.Debug("can't get user", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get user: %v", op, err)
 	}
 
 	role, err := h.repo.User.GetRole(ctx, claims.UserID)
 	if err != nil {
-		log.Debug("can't get user role", sl.Err(err))
-		return err
+		return fmt.Errorf("%s: can't get role: %v", op, err)
 	}
 
 	return c.JSON(http.StatusOK, response.Account{
