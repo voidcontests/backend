@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -58,7 +59,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusForbidden, "contest is not started yet")
 	}
 
-	// TODO: maybe allow to submit solutions after end time if `keep_as_training` is enabled
+	// TODO: maybe allow to submit solutions after end time if `contest.keep_as_training` is enabled
 	if contest.EndTime.Before(time.Now()) {
 		return Error(http.StatusForbidden, "contest alreay ended")
 	}
@@ -90,13 +91,13 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			verdict = submission.VerdictOK
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0)
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0, "")
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
 
-		return c.JSON(http.StatusCreated, response.SubmissionListItem{
+		return c.JSON(http.StatusCreated, response.Submission{
 			ID:        submission.ID,
 			ProblemID: submission.ProblemID,
 			Verdict:   string(submission.Verdict),
@@ -116,35 +117,111 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			rtcs[i].Output = tcs[i].Output
 		}
 
-		res, err := runner.ExecuteTesting(body.Code, body.Language, int(problem.TimeLimitMS), rtcs)
-		if err != nil {
-			log.Error("can't test user's solution", sl.Err(err))
-			return err
-		}
-
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, res.Verdict, "", body.Code, body.Language, int32(res.Passed))
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictRunning, "", body.Code, body.Language, 0, "")
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
 
-		return c.JSON(http.StatusCreated, response.SubmissionListItem{
-			ID:        submission.ID,
-			ProblemID: submission.ProblemID,
-			Verdict:   res.Verdict,
-			Code:      body.Code,
-			Language:  body.Language,
-			TestingReport: response.TestingReport{
-				Passed:     res.Passed,
-				Total:      res.Total,
-				Stderr:     res.Stderr,
-				FailedTest: res.FailedTest,
-			},
-			CreatedAt: submission.CreatedAt,
+		// TODO: goroutine leak is possible here
+		go func() {
+			res, err := runner.ExecuteTesting(body.Code, body.Language, int(problem.TimeLimitMS), rtcs)
+			if err != nil {
+				log.Error("can't test user's solution", sl.Err(err))
+				return
+			}
+
+			ctx := context.TODO()
+			err = h.repo.Submission.UpdateVerdict(ctx, submission.ID, res.Verdict, int32(res.Passed), res.Stderr)
+			if err != nil {
+				log.Error("can't create submission", sl.Err(err))
+				return
+			}
+
+			if res.Passed < res.Total {
+				err = h.repo.Submission.AddFailedTest(ctx, submission.ID, res.FailedTest.Input, res.FailedTest.ExpectedOutput, res.FailedTest.ActualOutput, res.Stderr)
+				if err != nil {
+					log.Error("can't create failed test record for submission", sl.Err(err))
+					return
+				}
+			}
+		}()
+
+		return c.JSON(http.StatusCreated, response.ID{
+			ID: submission.ID,
 		})
 	}
 
 	return Error(http.StatusBadRequest, "unknown problem kind")
+}
+
+func (h *Handler) GetSubmissionByID(c echo.Context) error {
+	log := slog.With(slog.String("op", "handler.GetSubmissionByID"), slog.String("request_id", requestid.Get(c)))
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	sid := c.Param("sid")
+	submissionID, err := strconv.Atoi(sid)
+	if err != nil {
+		log.Debug("`sid` param is not an integer", slog.String("sid", sid), sl.Err(err))
+		return Error(http.StatusBadRequest, "`sid` should be integer")
+	}
+
+	submission, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Error(http.StatusNotFound, "submission not found")
+	}
+	if err != nil {
+		log.Error("can't get submissions", sl.Err(err))
+		return err
+	}
+
+	ttc, err := h.repo.Submission.GetTotalTestsCount(ctx, submission.ProblemID)
+	if err != nil {
+		log.Error("can't get total tests count", sl.Err(err))
+		return err
+	}
+
+	failedTest, err := h.repo.Submission.GetFailedTest(ctx, submission.ID)
+	// TODO: check if submission.Passed == submission.Total
+	if errors.Is(err, sql.ErrNoRows) {
+		return c.JSON(http.StatusCreated, response.Submission{
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Verdict:   submission.Verdict,
+			Code:      submission.Code,
+			Language:  submission.Language,
+			TestingReport: response.TestingReport{
+				Passed: int(submission.PassedTestsCount),
+				Total:  int(ttc),
+			},
+			CreatedAt: submission.CreatedAt,
+		})
+	}
+	if err != nil {
+		log.Error("can't get submissions", sl.Err(err))
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, response.Submission{
+		ID:        submission.ID,
+		ProblemID: submission.ProblemID,
+		Verdict:   submission.Verdict,
+		Code:      submission.Code,
+		Language:  submission.Language,
+		TestingReport: response.TestingReport{
+			Passed: int(submission.PassedTestsCount),
+			Total:  int(ttc),
+			Stderr: submission.Stderr, // TODO: Add stderr to `failed_tests` table
+			FailedTest: &runner.FailedTest{
+				Input:          failedTest.Input,
+				ExpectedOutput: failedTest.ExpectedOutput,
+				ActualOutput:   failedTest.ActualOutput,
+			},
+		},
+		CreatedAt: submission.CreatedAt,
+	})
 }
 
 func (h *Handler) GetSubmissions(c echo.Context) error {
@@ -182,9 +259,9 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 
 	n := len(submissions)
-	ss := make([]response.SubmissionListItem, n, n)
+	ss := make([]response.Submission, n, n)
 	for i, s := range submissions {
-		ss[i] = response.SubmissionListItem{
+		ss[i] = response.Submission{
 			ID:        s.ID,
 			ProblemID: s.ProblemID,
 			Verdict:   string(s.Verdict),

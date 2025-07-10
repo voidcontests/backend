@@ -84,6 +84,7 @@ type Submission struct {
 	Code             string    `db:"code"`
 	Language         string    `db:"language"`
 	PassedTestsCount int32     `db:"passed_tests_count"`
+	Stderr           string    `db:"stderr"`
 	CreatedAt        time.Time `db:"created_at"`
 }
 
@@ -91,4 +92,13 @@ type LeaderboardEntry struct {
 	UserID   int32  `db:"user_id" json:"user_id"`
 	Username string `db:"username" json:"username"`
 	Points   int    `db:"points" json:"points"`
+}
+
+type FailedTest struct {
+	ID             int32     `db:"id"`
+	SubmissionID   int32     `db:"submission_id"`
+	Input          string    `db:"input"`
+	ExpectedOutput string    `db:"expected_output"`
+	ActualOutput   string    `db:"actual_output"`
+	CreatedAt      time.Time `db:"created_at"`
 }

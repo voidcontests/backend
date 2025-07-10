@@ -70,7 +70,7 @@ type User struct {
 	Username string `json:"username"`
 }
 
-type SubmissionListItem struct {
+type Submission struct {
 	ID            int32         `json:"id"`
 	ProblemID     int32         `json:"problem_id"`
 	Verdict       string        `json:"verdict"`
@@ -82,10 +82,10 @@ type SubmissionListItem struct {
 }
 
 type TestingReport struct {
-	Passed     int               `json:"passed"`
-	Total      int               `json:"total"`
-	Stderr     string            `json:"stderr"`
-	FailedTest runner.FailedTest `json:"failed_test"`
+	Passed     int                `json:"passed"`
+	Total      int                `json:"total"`
+	Stderr     string             `json:"stderr,omitempty"`
+	FailedTest *runner.FailedTest `json:"failed_test,omitempty"`
 }
 
 type ProblemDetailed struct {
