@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	VerdictPending           = "pending"
 	VerdictRunning           = "running"
 	VerdictOK                = "ok"
 	VerdictWrongAnswer       = "wrong_answer"

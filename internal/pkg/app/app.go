@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/voidcontests/backend/internal/app/router"
-	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -54,14 +53,6 @@ func (a *App) Run() {
 	}
 
 	slog.Info("postgresql: ok")
-
-	ok := runner.Ping()
-	if !ok {
-		slog.Error("runner: could not establich connection")
-		return
-	}
-
-	slog.Info("runner: ok")
 
 	repo := repository.New(db)
 	r := router.New(a.config, repo)

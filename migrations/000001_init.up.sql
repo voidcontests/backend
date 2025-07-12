@@ -79,7 +79,7 @@ CREATE TABLE entries
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE verdict AS ENUM ('running', 'ok', 'wrong_answer', 'runtime_error', 'compilation_error', 'time_limit_exceeded');
+CREATE TYPE verdict AS ENUM ('pending', 'running', 'ok', 'wrong_answer', 'runtime_error', 'compilation_error', 'time_limit_exceeded');
 
 CREATE TABLE submissions
 (
@@ -92,6 +92,7 @@ CREATE TABLE submissions
     language VARCHAR(10) NOT NULL,
     passed_tests_count INTEGER DEFAULT 0 NOT NULL,
     stderr TEXT NOT NULL,
+    locked_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 

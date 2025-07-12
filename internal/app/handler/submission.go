@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -13,7 +12,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/app/runner"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/internal/repository/postgres/submission"
@@ -117,35 +115,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			rtcs[i].Output = tcs[i].Output
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictRunning, "", body.Code, body.Language, 0, "")
+		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictPending, "", body.Code, body.Language, 0, "")
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
-
-		// TODO: goroutine leak is possible here
-		go func() {
-			res, err := runner.ExecuteTesting(body.Code, body.Language, int(problem.TimeLimitMS), rtcs)
-			if err != nil {
-				log.Error("can't test user's solution", sl.Err(err))
-				return
-			}
-
-			ctx := context.TODO()
-			err = h.repo.Submission.UpdateVerdict(ctx, submission.ID, res.Verdict, int32(res.Passed), res.Stderr)
-			if err != nil {
-				log.Error("can't create submission", sl.Err(err))
-				return
-			}
-
-			if res.Passed < res.Total {
-				err = h.repo.Submission.AddFailedTest(ctx, submission.ID, res.FailedTest.Input, res.FailedTest.ExpectedOutput, res.FailedTest.ActualOutput, res.Stderr)
-				if err != nil {
-					log.Error("can't create failed test record for submission", sl.Err(err))
-					return
-				}
-			}
-		}()
 
 		return c.JSON(http.StatusCreated, response.ID{
 			ID: submission.ID,
@@ -213,8 +187,8 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		TestingReport: response.TestingReport{
 			Passed: int(submission.PassedTestsCount),
 			Total:  int(ttc),
-			Stderr: submission.Stderr, // TODO: Add stderr to `failed_tests` table
-			FailedTest: &runner.FailedTest{
+			Stderr: submission.Stderr,
+			FailedTest: &response.FailedTest{
 				Input:          failedTest.Input,
 				ExpectedOutput: failedTest.ExpectedOutput,
 				ActualOutput:   failedTest.ActualOutput,

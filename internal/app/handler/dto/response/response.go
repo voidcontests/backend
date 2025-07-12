@@ -2,8 +2,6 @@ package response
 
 import (
 	"time"
-
-	"github.com/voidcontests/backend/internal/app/runner"
 )
 
 type ID struct {
@@ -82,10 +80,19 @@ type Submission struct {
 }
 
 type TestingReport struct {
-	Passed     int                `json:"passed"`
-	Total      int                `json:"total"`
-	Stderr     string             `json:"stderr,omitempty"`
-	FailedTest *runner.FailedTest `json:"failed_test,omitempty"`
+	Passed int    `json:"passed"`
+	Total  int    `json:"total"`
+	Stderr string `json:"stderr,omitempty"`
+
+	// FailedTest is a pointer, just to avoid this structure appearing
+	// in the final JSON response if there are actually no failed tests.
+	FailedTest *FailedTest `json:"failed_test,omitempty"`
+}
+
+type FailedTest struct {
+	Input          string `json:"input"`
+	ExpectedOutput string `json:"expected_output"`
+	ActualOutput   string `json:"actual_output"`
 }
 
 type ProblemDetailed struct {
