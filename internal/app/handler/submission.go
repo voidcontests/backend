@@ -142,7 +142,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "`sid` should be integer")
 	}
 
-	submission, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
+	s, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "submission not found")
 	}
@@ -151,26 +151,38 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	ttc, err := h.repo.Submission.GetTotalTestsCount(ctx, submission.ProblemID)
+	ttc, err := h.repo.Submission.GetTotalTestsCount(ctx, s.ProblemID)
 	if err != nil {
 		log.Error("can't get total tests count", sl.Err(err))
 		return err
 	}
 
-	failedTest, err := h.repo.Submission.GetFailedTest(ctx, submission.ID)
+	switch s.Verdict {
+	case submission.VerdictRunning, submission.VerdictPending:
+		return c.JSON(http.StatusOK, response.Submission{
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
+			CreatedAt: s.CreatedAt,
+		})
+	}
+
+	failedTest, err := h.repo.Submission.GetFailedTest(ctx, s.ID)
 	// TODO: check if submission.Passed == submission.Total
 	if errors.Is(err, pgx.ErrNoRows) {
-		return c.JSON(http.StatusCreated, response.Submission{
-			ID:        submission.ID,
-			ProblemID: submission.ProblemID,
-			Verdict:   submission.Verdict,
-			Code:      submission.Code,
-			Language:  submission.Language,
-			TestingReport: response.TestingReport{
-				Passed: int(submission.PassedTestsCount),
+		return c.JSON(http.StatusOK, response.Submission{
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
+			TestingReport: &response.TestingReport{
+				Passed: int(s.PassedTestsCount),
 				Total:  int(ttc),
 			},
-			CreatedAt: submission.CreatedAt,
+			CreatedAt: s.CreatedAt,
 		})
 	}
 	if err != nil {
@@ -178,23 +190,23 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusCreated, response.Submission{
-		ID:        submission.ID,
-		ProblemID: submission.ProblemID,
-		Verdict:   submission.Verdict,
-		Code:      submission.Code,
-		Language:  submission.Language,
-		TestingReport: response.TestingReport{
-			Passed: int(submission.PassedTestsCount),
+	return c.JSON(http.StatusOK, response.Submission{
+		ID:        s.ID,
+		ProblemID: s.ProblemID,
+		Verdict:   s.Verdict,
+		Code:      s.Code,
+		Language:  s.Language,
+		TestingReport: &response.TestingReport{
+			Passed: int(s.PassedTestsCount),
 			Total:  int(ttc),
-			Stderr: submission.Stderr,
+			Stderr: s.Stderr,
 			FailedTest: &response.FailedTest{
 				Input:          failedTest.Input,
 				ExpectedOutput: failedTest.ExpectedOutput,
 				ActualOutput:   failedTest.ActualOutput,
 			},
 		},
-		CreatedAt: submission.CreatedAt,
+		CreatedAt: s.CreatedAt,
 	})
 }
 

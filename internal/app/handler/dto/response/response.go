@@ -69,23 +69,20 @@ type User struct {
 }
 
 type Submission struct {
-	ID            int32         `json:"id"`
-	ProblemID     int32         `json:"problem_id"`
-	Verdict       string        `json:"verdict"`
-	Answer        string        `json:"answer,omitempty"`
-	Code          string        `json:"code,omitempty"`
-	Language      string        `json:"language,omitempty"`
-	TestingReport TestingReport `json:"testing_report,omitempty"`
-	CreatedAt     time.Time     `json:"created_at"`
+	ID            int32          `json:"id"`
+	ProblemID     int32          `json:"problem_id"`
+	Verdict       string         `json:"verdict"`
+	Answer        string         `json:"answer,omitempty"`
+	Code          string         `json:"code,omitempty"`
+	Language      string         `json:"language,omitempty"`
+	TestingReport *TestingReport `json:"testing_report,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 type TestingReport struct {
-	Passed int    `json:"passed"`
-	Total  int    `json:"total"`
-	Stderr string `json:"stderr,omitempty"`
-
-	// FailedTest is a pointer, just to avoid this structure appearing
-	// in the final JSON response if there are actually no failed tests.
+	Passed     int         `json:"passed"`
+	Total      int         `json:"total"`
+	Stderr     string      `json:"stderr,omitempty"`
 	FailedTest *FailedTest `json:"failed_test,omitempty"`
 }
 
