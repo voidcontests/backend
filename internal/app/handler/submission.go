@@ -116,14 +116,18 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			rtcs[i].Output = tcs[i].Output
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictPending, "", body.Code, body.Language, 0, "")
+		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictPending, "", body.Code, body.Language, 0, "")
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
 
-		return c.JSON(http.StatusCreated, response.ID{
-			ID: submission.ID,
+		return c.JSON(http.StatusCreated, response.Submission{
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     submission.VerdictPending,
+			CreatedAt:   s.CreatedAt,
 		})
 	}
 
@@ -195,6 +199,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 			TestingReport: &response.TestingReport{
 				Passed: int(s.PassedTestsCount),
 				Total:  int(ttc),
+				Stderr: s.Stderr,
 			},
 			CreatedAt: s.CreatedAt,
 		})
