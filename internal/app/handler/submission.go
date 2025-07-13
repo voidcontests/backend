@@ -89,18 +89,19 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			verdict = submission.VerdictOK
 		}
 
-		submission, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0, "")
+		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0, "")
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
 
 		return c.JSON(http.StatusCreated, response.Submission{
-			ID:        submission.ID,
-			ProblemID: submission.ProblemID,
-			Verdict:   string(submission.Verdict),
-			Answer:    body.Answer,
-			CreatedAt: submission.CreatedAt,
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     string(s.Verdict),
+			Answer:      body.Answer,
+			CreatedAt:   s.CreatedAt,
 		})
 	} else if body.ProblemKind == models.CodingProblem {
 		tcs, err := h.repo.Problem.GetTestCases(ctx, problem.ID)
@@ -151,6 +152,17 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
+	if s.ProblemKind == models.TextAnswerProblem {
+		return c.JSON(http.StatusOK, response.Submission{
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     s.Verdict,
+			Answer:      s.Answer,
+			CreatedAt:   s.CreatedAt,
+		})
+	}
+
 	ttc, err := h.repo.Submission.GetTotalTestsCount(ctx, s.ProblemID)
 	if err != nil {
 		log.Error("can't get total tests count", sl.Err(err))
@@ -160,12 +172,13 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	switch s.Verdict {
 	case submission.VerdictRunning, submission.VerdictPending:
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:        s.ID,
-			ProblemID: s.ProblemID,
-			Verdict:   s.Verdict,
-			Code:      s.Code,
-			Language:  s.Language,
-			CreatedAt: s.CreatedAt,
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     s.Verdict,
+			Code:        s.Code,
+			Language:    s.Language,
+			CreatedAt:   s.CreatedAt,
 		})
 	}
 
@@ -173,11 +186,12 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	// TODO: check if submission.Passed == submission.Total
 	if errors.Is(err, pgx.ErrNoRows) {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:        s.ID,
-			ProblemID: s.ProblemID,
-			Verdict:   s.Verdict,
-			Code:      s.Code,
-			Language:  s.Language,
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     s.Verdict,
+			Code:        s.Code,
+			Language:    s.Language,
 			TestingReport: &response.TestingReport{
 				Passed: int(s.PassedTestsCount),
 				Total:  int(ttc),
@@ -191,11 +205,12 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, response.Submission{
-		ID:        s.ID,
-		ProblemID: s.ProblemID,
-		Verdict:   s.Verdict,
-		Code:      s.Code,
-		Language:  s.Language,
+		ID:          s.ID,
+		ProblemID:   s.ProblemID,
+		ProblemKind: s.ProblemKind,
+		Verdict:     s.Verdict,
+		Code:        s.Code,
+		Language:    s.Language,
 		TestingReport: &response.TestingReport{
 			Passed: int(s.PassedTestsCount),
 			Total:  int(ttc),
@@ -248,10 +263,11 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	ss := make([]response.Submission, n, n)
 	for i, s := range submissions {
 		ss[i] = response.Submission{
-			ID:        s.ID,
-			ProblemID: s.ProblemID,
-			Verdict:   string(s.Verdict),
-			CreatedAt: s.CreatedAt,
+			ID:          s.ID,
+			ProblemID:   s.ProblemID,
+			ProblemKind: s.ProblemKind,
+			Verdict:     string(s.Verdict),
+			CreatedAt:   s.CreatedAt,
 		}
 	}
 

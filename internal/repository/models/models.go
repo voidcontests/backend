@@ -79,6 +79,7 @@ type Submission struct {
 	ID               int32     `db:"id"`
 	EntryID          int32     `db:"entry_id"`
 	ProblemID        int32     `db:"problem_id"`
+	ProblemKind      string    `db:"problem_kind"`
 	Verdict          string    `db:"verdict"`
 	Answer           string    `db:"answer"`
 	Code             string    `db:"code"`

@@ -71,6 +71,7 @@ type User struct {
 type Submission struct {
 	ID            int32          `json:"id"`
 	ProblemID     int32          `json:"problem_id"`
+	ProblemKind   string         `json:"problem_kind"`
 	Verdict       string         `json:"verdict"`
 	Answer        string         `json:"answer,omitempty"`
 	Code          string         `json:"code,omitempty"`

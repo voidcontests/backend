@@ -31,13 +31,14 @@ func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, v
 	query := `
 		INSERT INTO submissions (entry_id, problem_id, verdict, answer, code, language, passed_tests_count, stderr)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, entry_id, problem_id, verdict, answer, code, language, passed_tests_count, stderr, created_at
+		RETURNING id, entry_id, problem_id, (SELECT kind FROM problems WHERE id = $2) AS problem_kind, verdict, answer, code, language, passed_tests_count, stderr, created_at
 	`
 
 	err := p.pool.QueryRow(ctx, query, entryID, problemID, verdict, answer, code, language, passedTestsCount, stderr).Scan(
 		&submission.ID,
 		&submission.EntryID,
 		&submission.ProblemID,
+		&submission.ProblemKind,
 		&submission.Verdict,
 		&submission.Answer,
 		&submission.Code,
@@ -52,7 +53,6 @@ func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, v
 
 func (p *Postgres) GetTotalTestsCount(ctx context.Context, problemID int32) (int32, error) {
 	var count int32
-
 	query := `SELECT COUNT(*) FROM test_cases WHERE problem_id = $1`
 	err := p.pool.QueryRow(ctx, query, problemID).Scan(&count)
 	return count, err
@@ -76,8 +76,9 @@ func (p *Postgres) GetFailedTest(ctx context.Context, submissionID int32) (model
 
 func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, charcode string) ([]models.Submission, error) {
 	query := `
-		SELECT s.id, s.entry_id, s.problem_id, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
 		FROM submissions s
+		JOIN problems p ON p.id = s.problem_id
 		JOIN entries e ON s.entry_id = e.id
 		JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
 		WHERE s.entry_id = $1 AND cp.charcode = $2
@@ -96,6 +97,7 @@ func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, charcode st
 			&s.ID,
 			&s.EntryID,
 			&s.ProblemID,
+			&s.ProblemKind,
 			&s.Verdict,
 			&s.Answer,
 			&s.Code,
@@ -115,8 +117,10 @@ func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, charcode st
 
 func (p *Postgres) GetForEntry(ctx context.Context, entryID int32) ([]models.Submission, error) {
 	query := `
-		SELECT id, entry_id, problem_id, verdict, answer, code, language, passed_tests_count, stderr, created_at
-		FROM submissions WHERE entry_id = $1
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
+		FROM submissions s
+		JOIN problems p ON p.id = s.problem_id
+		WHERE s.entry_id = $1
 	`
 
 	rows, err := p.pool.Query(ctx, query, entryID)
@@ -132,6 +136,7 @@ func (p *Postgres) GetForEntry(ctx context.Context, entryID int32) ([]models.Sub
 			&s.ID,
 			&s.EntryID,
 			&s.ProblemID,
+			&s.ProblemKind,
 			&s.Verdict,
 			&s.Answer,
 			&s.Code,
@@ -153,8 +158,9 @@ func (p *Postgres) GetByID(ctx context.Context, userID int32, submissionID int32
 	var submission models.Submission
 
 	query := `
-		SELECT s.id, s.entry_id, s.problem_id, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
 		FROM submissions s
+		JOIN problems p ON p.id = s.problem_id
 		JOIN entries e ON s.entry_id = e.id
 		JOIN users u ON e.user_id = u.id
 		WHERE s.id = $1 AND u.id = $2
@@ -164,6 +170,7 @@ func (p *Postgres) GetByID(ctx context.Context, userID int32, submissionID int32
 		&submission.ID,
 		&submission.EntryID,
 		&submission.ProblemID,
+		&submission.ProblemKind,
 		&submission.Verdict,
 		&submission.Answer,
 		&submission.Code,
