@@ -5,77 +5,86 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/repository/models"
 )
 
 type Postgres struct {
-	db *sqlx.DB
+	pool *pgxpool.Pool
 }
 
-func New(db *sqlx.DB) *Postgres {
-	return &Postgres{db}
+func New(pool *pgxpool.Pool) *Postgres {
+	return &Postgres{pool}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, answer string, timeLimitMS int, tcs []request.TC) (int32, error) {
-	tx, err := p.db.BeginTx(ctx, nil)
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []request.TC) (int32, error) {
+	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	var problemID int32
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+
+	err = tx.QueryRow(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
 	if err != nil {
 		return 0, err
 	}
 
-	defer tx.Rollback()
-
-	var problemID int32
-
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-	if err := tx.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID); err != nil {
-		return 0, err
-	}
-
 	if len(tcs) > 0 {
-		query = `INSERT INTO test_cases (problem_id, input, output, is_example) VALUES `
-		values := make([]interface{}, 0, len(tcs)*4)
-		placeholders := make([]string, 0, len(tcs))
+		queryBuilder := strings.Builder{}
+		queryBuilder.WriteString(`INSERT INTO test_cases (problem_id, input, output, is_example) VALUES `)
 
+		args := make([]interface{}, 0, len(tcs)*4)
 		for i, tc := range tcs {
-			placeholders = append(placeholders, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
-			values = append(values, problemID, tc.Input, tc.Output, tc.IsExample)
+			if i > 0 {
+				queryBuilder.WriteString(", ")
+			}
+			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+			args = append(args, problemID, tc.Input, tc.Output, tc.IsExample)
 		}
-		query += strings.Join(placeholders, ", ")
 
-		if _, err := tx.ExecContext(ctx, query, values...); err != nil {
+		_, err := tx.Exec(ctx, queryBuilder.String(), args...)
+		if err != nil {
 			return 0, err
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return 0, err
 	}
 
 	return problemID, nil
 }
 
-func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title string, statement string, difficulty string, answer string, timeLimitMS int32) (int32, error) {
+func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int32) (int32, error) {
 	var id int32
-	var err error
+	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-	err = p.db.QueryRowContext(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&id)
-
+	err := p.pool.QueryRow(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&id)
 	return id, err
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
-	var problem models.Problem
-
 	query := `SELECT p.*, cp.charcode, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
 		JOIN users u ON u.id = p.writer_id
 		WHERE cp.contest_id = $1 AND cp.charcode = $2`
-	err := p.db.GetContext(ctx, &problem, query, contestID, charcode)
+
+	row := p.pool.QueryRow(ctx, query, contestID, charcode)
+
+	var problem models.Problem
+	err := row.Scan(
+		&problem.ID, &problem.Kind, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt,
+		&problem.Charcode, &problem.WriterUsername,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -83,64 +92,100 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 	return &problem, nil
 }
 
-func (p *Postgres) GetTCs(ctx context.Context, problemID int32) ([]models.TestCase, error) {
-	var err error
-	var tcs []models.TestCase
-
-	query := `SELECT * FROM test_cases WHERE problem_id = $1`
-	err = p.db.SelectContext(ctx, &tcs, query, problemID)
+func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+	query := `SELECT id, problem_id, input, output, is_example FROM test_cases WHERE problem_id = $1`
+	rows, err := p.pool.Query(ctx, query, problemID)
 	if err != nil {
 		return nil, err
+	}
+	defer rows.Close()
+
+	var tcs []models.TestCase
+	for rows.Next() {
+		var tc models.TestCase
+		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
+			return nil, err
+		}
+		tcs = append(tcs, tc)
 	}
 
 	return tcs, nil
 }
 
 func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
-	var err error
-	var tcs []models.TestCase
-
 	query := `SELECT * FROM test_cases WHERE problem_id = $1 AND is_example = true`
-	err = p.db.SelectContext(ctx, &tcs, query, problemID)
+
+	rows, err := p.pool.Query(ctx, query, problemID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	return tcs, nil
+	var tcs []models.TestCase
+	for rows.Next() {
+		var tc models.TestCase
+		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
+			return nil, err
+		}
+		tcs = append(tcs, tc)
+	}
+
+	return tcs, rows.Err()
 }
 
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
-	var err error
-	var problems []models.Problem
-
 	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id`
-	err = p.db.SelectContext(ctx, &problems, query)
+
+	rows, err := p.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	return problems, nil
+	var problems []models.Problem
+	for rows.Next() {
+		var p models.Problem
+		if err := rows.Scan(
+			&p.ID, &p.Kind, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
+			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
+		); err != nil {
+			return nil, err
+		}
+		problems = append(problems, p)
+	}
+
+	return problems, rows.Err()
 }
 
 func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32) ([]models.Problem, error) {
-	var err error
-	var problems []models.Problem
-
 	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id WHERE writer_id = $1`
-	err = p.db.SelectContext(ctx, &problems, query, writerID)
+
+	rows, err := p.pool.Query(ctx, query, writerID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	return problems, nil
+	var problems []models.Problem
+	for rows.Next() {
+		var p models.Problem
+		if err := rows.Scan(
+			&p.ID, &p.Kind, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
+			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
+		); err != nil {
+			return nil, err
+		}
+		problems = append(problems, p)
+	}
+
+	return problems, rows.Err()
 }
 
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
-	var err error
-	var count int
-
 	query := `SELECT COUNT(*) FROM problems WHERE LOWER(title) = $1`
-	err = p.db.QueryRowContext(ctx, query, strings.ToLower(title)).Scan(&count)
+
+	var count int
+	err := p.pool.QueryRow(ctx, query, strings.ToLower(title)).Scan(&count)
 	if err != nil {
 		return false, err
 	}

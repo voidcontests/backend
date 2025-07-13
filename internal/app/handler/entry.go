@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 )
 
@@ -24,7 +24,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	}
 
 	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
@@ -45,18 +45,18 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusForbidden, "application time is over")
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	_, err = h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_, err = h.repo.Entry.Create(ctx, int32(contestID), claims.UserID)
+		if err != nil {
+			return fmt.Errorf("%s: can't create entry: %v", op, err)
+		}
+
+		return c.NoContent(http.StatusCreated)
+	}
+	if err != nil {
 		return fmt.Errorf("%s: can't get entry: %v", op, err)
 	}
-	if entry != nil {
-		return Error(http.StatusConflict, "user already has entry for this contest")
-	}
 
-	_, err = h.repo.Entry.Create(ctx, int32(contestID), claims.UserID)
-	if err != nil {
-		return fmt.Errorf("%s: can't create entry: %v", op, err)
-	}
-
-	return c.NoContent(http.StatusCreated)
+	return Error(http.StatusConflict, "user already has entry for this contest")
 }

@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
@@ -126,7 +126,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry")
 	}
 	if err != nil {
@@ -134,7 +134,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	}
 
 	p, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
 	if err != nil {

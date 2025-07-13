@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
@@ -84,7 +84,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
@@ -140,10 +140,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, contest.ID, claims.UserID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("%s: can't get entry: %v", op, err)
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return c.JSON(http.StatusOK, cdetailed)
 	}
 

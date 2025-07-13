@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	jwtgo "github.com/golang-jwt/jwt/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
@@ -59,7 +59,7 @@ func (h *Handler) CreateSession(c echo.Context) error {
 
 	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
 	user, err := h.repo.User.GetByCredentials(ctx, body.Username, passwordHash)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusUnauthorized, "user not found")
 	}
 	if err != nil {
@@ -83,7 +83,7 @@ func (h *Handler) GetAccount(c echo.Context) error {
 	claims, _ := ExtractClaims(c)
 
 	user, err := h.repo.User.GetByID(ctx, claims.UserID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "user not found")
 	}
 	if err != nil {

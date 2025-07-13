@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
@@ -45,7 +45,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "contest not found")
 	}
 	if err != nil {
@@ -63,7 +63,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		log.Debug("trying to create submission without entry")
 		return Error(http.StatusForbidden, "no entry for contest")
 	}
@@ -73,7 +73,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "problem not found")
 	}
 	if err != nil {
@@ -103,7 +103,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			CreatedAt: submission.CreatedAt,
 		})
 	} else if body.ProblemKind == models.CodingProblem {
-		tcs, err := h.repo.Problem.GetTCs(ctx, problem.ID)
+		tcs, err := h.repo.Problem.GetTestCases(ctx, problem.ID)
 		if err != nil {
 			log.Error("can't get test cases for problem", sl.Err(err))
 			return err
@@ -143,7 +143,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	}
 
 	submission, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "submission not found")
 	}
 	if err != nil {
@@ -159,7 +159,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 
 	failedTest, err := h.repo.Submission.GetFailedTest(ctx, submission.ID)
 	// TODO: check if submission.Passed == submission.Total
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return c.JSON(http.StatusCreated, response.Submission{
 			ID:        submission.ID,
 			ProblemID: submission.ProblemID,
@@ -218,7 +218,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	charcode = strings.ToUpper(charcode)
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry for contest")
 	}
 	if err != nil {

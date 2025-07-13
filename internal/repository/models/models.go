@@ -76,20 +76,17 @@ type Entry struct {
 }
 
 type Submission struct {
-	ID               int32  `db:"id"`
-	EntryID          int32  `db:"entry_id"`
-	ProblemID        int32  `db:"problem_id"`
-	Verdict          string `db:"verdict"`
-	Answer           string `db:"answer"`
-	Code             string `db:"code"`
-	Language         string `db:"language"`
-	PassedTestsCount int32  `db:"passed_tests_count"`
-	Stderr           string `db:"stderr"`
-	// TODO: LockedAt can be NULL, when migrated to pgx,
-	// remove LockedAt at all from models,
-	// and just do not query it from database.
-	LockedAt  *time.Time `db:"locked_at"`
-	CreatedAt time.Time  `db:"created_at"`
+	ID               int32     `db:"id"`
+	EntryID          int32     `db:"entry_id"`
+	ProblemID        int32     `db:"problem_id"`
+	Verdict          string    `db:"verdict"`
+	Answer           string    `db:"answer"`
+	Code             string    `db:"code"`
+	Language         string    `db:"language"`
+	PassedTestsCount int32     `db:"passed_tests_count"`
+	Stderr           string    `db:"stderr"`
+	CreatedAt        time.Time `db:"created_at"`
+	// NOTE: locked_at is invisible fields in models, because it is never used outside of database.
 }
 
 type LeaderboardEntry struct {
