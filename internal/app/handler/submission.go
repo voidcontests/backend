@@ -249,6 +249,16 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 	charcode = strings.ToUpper(charcode)
 
+	var limit int
+	if limitStr := c.QueryParam("limit"); limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit < 0 {
+			return Error(http.StatusBadRequest, "`limit` must be a positive integer")
+		}
+	} else {
+		limit = 10
+	}
+
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry for contest")
@@ -258,7 +268,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return err
 	}
 
-	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, charcode)
+	submissions, err := h.repo.Submission.GetForProblemWithLimit(ctx, entry.ID, charcode, limit)
 	if err != nil {
 		log.Error("can't get submissions", sl.Err(err))
 		return err
