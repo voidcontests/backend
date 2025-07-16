@@ -28,7 +28,7 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 
 	var problemID int32
 	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
 	err = tx.QueryRow(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
 	if err != nil {
@@ -36,21 +36,22 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 	}
 
 	if len(tcs) > 0 {
-		queryBuilder := strings.Builder{}
-		queryBuilder.WriteString(`INSERT INTO test_cases (problem_id, input, output, is_example) VALUES `)
-
-		args := make([]interface{}, 0, len(tcs)*4)
-		for i, tc := range tcs {
-			if i > 0 {
-				queryBuilder.WriteString(", ")
-			}
-			queryBuilder.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
-			args = append(args, problemID, tc.Input, tc.Output, tc.IsExample)
+		batch := &pgx.Batch{}
+		for _, tc := range tcs {
+			batch.Queue(
+				`INSERT INTO test_cases (problem_id, input, output, is_example)
+				 VALUES ($1, $2, $3, $4)`,
+				problemID, tc.Input, tc.Output, tc.IsExample,
+			)
 		}
 
-		_, err := tx.Exec(ctx, queryBuilder.String(), args...)
-		if err != nil {
-			return 0, err
+		br := tx.SendBatch(ctx, batch)
+		defer br.Close()
+
+		for i := 0; i < len(tcs); i++ {
+			if _, err := br.Exec(); err != nil {
+				return 0, fmt.Errorf("failed to insert test case %d: %w", i, err)
+			}
 		}
 	}
 

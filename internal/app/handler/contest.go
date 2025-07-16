@@ -13,7 +13,6 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
@@ -149,26 +148,14 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	cdetailed.IsParticipant = true
 
-	submissions, err := h.repo.Submission.GetForEntry(ctx, entry.ID)
+	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
 	if err != nil {
 		return fmt.Errorf("%s: can't get submissions: %v", op, err)
 	}
 
-	verdicts := make(map[int32]string) // map problem_id -> verdict
-	for _, s := range submissions {
-		if v, ok := verdicts[s.ProblemID]; ok && v == submission.VerdictOK {
-			continue
-		}
-		verdicts[s.ProblemID] = s.Verdict
-	}
-
 	for i := range n {
-		switch verdicts[problems[i].ID] {
-		case submission.VerdictOK:
-			cdetailed.Problems[i].Status = "accepted"
-		case submission.VerdictWrongAnswer, submission.VerdictRuntimeError, submission.VerdictCompilationError, submission.VerdictTimeLimitExceeded:
-			cdetailed.Problems[i].Status = "tried"
-		}
+		problemID := cdetailed.Problems[i].ID
+		cdetailed.Problems[i].Status = statuses[problemID]
 	}
 
 	return c.JSON(http.StatusOK, cdetailed)

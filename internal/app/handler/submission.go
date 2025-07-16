@@ -167,7 +167,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		})
 	}
 
-	ttc, err := h.repo.Submission.GetTotalTestsCount(ctx, s.ProblemID)
+	ttc, err := h.repo.Submission.CountTestsForProblem(ctx, s.ProblemID)
 	if err != nil {
 		log.Error("can't get total tests count", sl.Err(err))
 		return err
@@ -249,14 +249,14 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 	charcode = strings.ToUpper(charcode)
 
-	var limit int
-	if limitStr := c.QueryParam("limit"); limitStr != "" {
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil || limit < 0 {
-			return Error(http.StatusBadRequest, "`limit` must be a positive integer")
-		}
-	} else {
+	limit, ok := ExtractQueryParamInt(c, "limit")
+	if !ok {
 		limit = 10
+	}
+
+	offset, ok := ExtractQueryParamInt(c, "offset")
+	if !ok {
+		offset = 0
 	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
@@ -268,25 +268,32 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		return err
 	}
 
-	submissions, err := h.repo.Submission.GetForProblemWithLimit(ctx, entry.ID, charcode, limit)
+	submissions, total, err := h.repo.Submission.ListByProblem(ctx, entry.ID, charcode, limit, offset)
 	if err != nil {
 		log.Error("can't get submissions", sl.Err(err))
 		return err
 	}
 
 	n := len(submissions)
-	ss := make([]response.Submission, n, n)
-	for i, s := range submissions {
-		ss[i] = response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     string(s.Verdict),
-			CreatedAt:   s.CreatedAt,
+	items := make([]response.Submission, n, n)
+	for i, submission := range submissions {
+		items[i] = response.Submission{
+			ID:          submission.ID,
+			ProblemID:   submission.ProblemID,
+			ProblemKind: submission.ProblemKind,
+			Verdict:     submission.Verdict,
+			CreatedAt:   submission.CreatedAt,
 		}
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": ss,
+	return c.JSON(http.StatusOK, response.Pagination[response.Submission]{
+		Meta: response.Meta{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasNext: offset+limit < total,
+			HasPrev: offset > 0,
+		},
+		Items: items,
 	})
 }

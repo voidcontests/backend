@@ -2,8 +2,10 @@ package submission
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/backend/internal/repository/models"
 )
@@ -16,6 +18,8 @@ const (
 	VerdictRuntimeError      = "runtime_error"
 	VerdictCompilationError  = "compilation_error"
 	VerdictTimeLimitExceeded = "time_limit_exceeded"
+
+	defaultLimit = 100
 )
 
 type Postgres struct {
@@ -26,15 +30,16 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, verdict string, answer string, code string, language string, passedTestsCount int32, stderr string) (models.Submission, error) {
-	var submission models.Submission
-
+func (p *Postgres) Create(ctx context.Context, entryID, problemID int32, verdict, answer, code, language string, passedTestsCount int32, stderr string) (models.Submission, error) {
 	query := `
 		INSERT INTO submissions (entry_id, problem_id, verdict, answer, code, language, passed_tests_count, stderr)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, entry_id, problem_id, (SELECT kind FROM problems WHERE id = $2) AS problem_kind, verdict, answer, code, language, passed_tests_count, stderr, created_at
+		RETURNING id, entry_id, problem_id,
+		          (SELECT kind FROM problems WHERE id = $2) AS problem_kind,
+		          verdict, answer, code, language, passed_tests_count, stderr, created_at
 	`
 
+	var submission models.Submission
 	err := p.pool.QueryRow(ctx, query, entryID, problemID, verdict, answer, code, language, passedTestsCount, stderr).Scan(
 		&submission.ID,
 		&submission.EntryID,
@@ -52,99 +57,161 @@ func (p *Postgres) Create(ctx context.Context, entryID int32, problemID int32, v
 	return submission, err
 }
 
-func (p *Postgres) GetTotalTestsCount(ctx context.Context, problemID int32) (int32, error) {
+func (p *Postgres) CountTestsForProblem(ctx context.Context, problemID int32) (int32, error) {
 	var count int32
-	query := `SELECT COUNT(*) FROM test_cases WHERE problem_id = $1`
-	err := p.pool.QueryRow(ctx, query, problemID).Scan(&count)
+	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM test_cases WHERE problem_id = $1`, problemID).Scan(&count)
 	return count, err
 }
 
 func (p *Postgres) GetFailedTest(ctx context.Context, submissionID int32) (models.FailedTest, error) {
-	var failedTest models.FailedTest
-
 	query := `SELECT id, submission_id, input, expected_output, actual_output, created_at FROM failed_tests WHERE submission_id = $1`
+	var ft models.FailedTest
 	err := p.pool.QueryRow(ctx, query, submissionID).Scan(
-		&failedTest.ID,
-		&failedTest.SubmissionID,
-		&failedTest.Input,
-		&failedTest.ExpectedOutput,
-		&failedTest.ActualOutput,
-		&failedTest.CreatedAt,
+		&ft.ID,
+		&ft.SubmissionID,
+		&ft.Input,
+		&ft.ExpectedOutput,
+		&ft.ActualOutput,
+		&ft.CreatedAt,
 	)
-
-	return failedTest, err
+	return ft, err
 }
 
-func (p *Postgres) GetForProblem(ctx context.Context, entryID int32, charcode string) ([]models.Submission, error) {
-	return p.getForProblem(ctx, entryID, charcode, 100)
-}
-
-func (p *Postgres) GetForProblemWithLimit(ctx context.Context, entryID int32, charcode string, limit int) ([]models.Submission, error) {
-	return p.getForProblem(ctx, entryID, charcode, limit)
-}
-
-func (p *Postgres) getForProblem(ctx context.Context, entryID int32, charcode string, limit int) ([]models.Submission, error) {
+func (p *Postgres) GetProblemStatus(ctx context.Context, entryID int32, problemID int32) (string, error) {
 	query := `
-        SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict,
-               s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
-        FROM submissions s
-        JOIN problems p ON p.id = s.problem_id
-        JOIN entries e ON s.entry_id = e.id
-        JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
-        WHERE s.entry_id = $1 AND cp.charcode = $2
-        ORDER BY s.created_at DESC LIMIT $3
-    `
+		SELECT
+			CASE
+				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
+				WHEN COUNT(*) > 0 THEN 'tried'
+				ELSE NULL
+			END AS status
+		FROM submissions s
+		WHERE s.entry_id = $1 AND s.problem_id = $2
+	`
 
-	submissions := make([]models.Submission, 0, min(limit, 100))
+	var status sql.NullString
+	err := p.pool.QueryRow(ctx, query, entryID, problemID).Scan(&status)
+	if err != nil {
+		return "", fmt.Errorf("query failed: %w", err)
+	}
 
-	rows, err := p.pool.Query(ctx, query, entryID, charcode, limit)
+	if status.Valid {
+		return status.String, nil
+	}
+	return "", nil
+}
+
+func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int32) (map[int32]string, error) {
+	query := `
+		SELECT
+			s.problem_id,
+			CASE
+				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'ok'
+				WHEN COUNT(*) > 0 THEN 'tried'
+				ELSE NULL
+			END AS status
+		FROM submissions s
+		WHERE s.entry_id = $1
+		GROUP BY s.problem_id
+	`
+
+	rows, err := p.pool.Query(ctx, query, entryID)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
 
+	statuses := make(map[int32]string)
+
 	for rows.Next() {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			var s models.Submission
-			if err := rows.Scan(
-				&s.ID, &s.EntryID, &s.ProblemID, &s.ProblemKind, &s.Verdict,
-				&s.Answer, &s.Code, &s.Language, &s.PassedTestsCount,
-				&s.Stderr, &s.CreatedAt,
-			); err != nil {
-				return nil, fmt.Errorf("scan failed: %w", err)
-			}
-			submissions = append(submissions, s)
+		var problemID int32
+		var status sql.NullString
+
+		if err := rows.Scan(&problemID, &status); err != nil {
+			return nil, fmt.Errorf("scan failed: %w", err)
+		}
+
+		if status.Valid {
+			statuses[problemID] = status.String
+		} else {
+			statuses[problemID] = "" // or "not_submitted"
 		}
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows error: %w", err)
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
-	return submissions, nil
+	return statuses, nil
 }
 
-func (p *Postgres) GetForEntry(ctx context.Context, entryID int32) ([]models.Submission, error) {
+func (p *Postgres) GetByID(ctx context.Context, userID, submissionID int32) (models.Submission, error) {
 	query := `
-		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict,
+		       s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
 		FROM submissions s
 		JOIN problems p ON p.id = s.problem_id
-		WHERE s.entry_id = $1
+		JOIN entries e ON s.entry_id = e.id
+		JOIN users u ON e.user_id = u.id
+		WHERE s.id = $1 AND u.id = $2
 	`
 
-	rows, err := p.pool.Query(ctx, query, entryID)
+	var s models.Submission
+	err := p.pool.QueryRow(ctx, query, submissionID, userID).Scan(
+		&s.ID,
+		&s.EntryID,
+		&s.ProblemID,
+		&s.ProblemKind,
+		&s.Verdict,
+		&s.Answer,
+		&s.Code,
+		&s.Language,
+		&s.PassedTestsCount,
+		&s.Stderr,
+		&s.CreatedAt,
+	)
+
+	return s, err
+}
+
+func (p *Postgres) ListByProblem(ctx context.Context, entryID int32, charcode string, limit int, offset int) (items []models.Submission, total int, err error) {
+	if limit < 0 {
+		limit = defaultLimit
+	}
+
+	batch := &pgx.Batch{}
+
+	batch.Queue(`
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict,
+		       s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
+		FROM submissions s
+		JOIN problems p ON p.id = s.problem_id
+		JOIN entries e ON s.entry_id = e.id
+		JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
+		WHERE s.entry_id = $1 AND cp.charcode = $2
+		ORDER BY s.created_at DESC LIMIT $3 OFFSET $4
+	`, entryID, charcode, limit, offset)
+
+	batch.Queue(`
+		SELECT COUNT(*)
+		FROM submissions s
+		JOIN entries e ON s.entry_id = e.id
+		JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
+		WHERE s.entry_id = $1 AND cp.charcode = $2
+	`, entryID, charcode)
+
+	br := p.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	rows, err := br.Query()
 	if err != nil {
-		return nil, err
+		return nil, 0, fmt.Errorf("query rows failed: %w", err)
 	}
 	defer rows.Close()
 
-	var submissions []models.Submission
 	for rows.Next() {
 		var s models.Submission
-		err := rows.Scan(
+		if err := rows.Scan(
 			&s.ID,
 			&s.EntryID,
 			&s.ProblemID,
@@ -156,48 +223,18 @@ func (p *Postgres) GetForEntry(ctx context.Context, entryID int32) ([]models.Sub
 			&s.PassedTestsCount,
 			&s.Stderr,
 			&s.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
+		); err != nil {
+			return nil, 0, fmt.Errorf("row scan failed: %w", err)
 		}
-		submissions = append(submissions, s)
+		items = append(items, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	return submissions, nil
-}
-
-func (p *Postgres) GetByID(ctx context.Context, userID int32, submissionID int32) (models.Submission, error) {
-	var submission models.Submission
-
-	query := `
-		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict, s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
-		FROM submissions s
-		JOIN problems p ON p.id = s.problem_id
-		JOIN entries e ON s.entry_id = e.id
-		JOIN users u ON e.user_id = u.id
-		WHERE s.id = $1 AND u.id = $2
-	`
-
-	err := p.pool.QueryRow(ctx, query, submissionID, userID).Scan(
-		&submission.ID,
-		&submission.EntryID,
-		&submission.ProblemID,
-		&submission.ProblemKind,
-		&submission.Verdict,
-		&submission.Answer,
-		&submission.Code,
-		&submission.Language,
-		&submission.PassedTestsCount,
-		&submission.Stderr,
-		&submission.CreatedAt,
-	)
-
-	return submission, err
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
+	if err := br.QueryRow().Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count query failed: %w", err)
 	}
-	return b
+
+	return items, total, nil
 }

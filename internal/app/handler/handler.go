@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/config"
@@ -35,6 +36,20 @@ func ExtractClaims(c echo.Context) (jwt.CustomClaims, bool) {
 		return jwt.CustomClaims{}, false
 	}
 	return claims, true
+}
+
+func ExtractQueryParamInt(c echo.Context, key string) (int, bool) {
+	param := c.QueryParam(key)
+	if param == "" {
+		return 0, false
+	}
+
+	value, err := strconv.Atoi(param)
+	if err != nil {
+		return 0, false
+	}
+
+	return value, true
 }
 
 type APIError struct {

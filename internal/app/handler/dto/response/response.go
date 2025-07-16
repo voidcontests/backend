@@ -4,6 +4,19 @@ import (
 	"time"
 )
 
+type Pagination[T any] struct {
+	Meta  Meta `json:"meta"`
+	Items []T  `json:"items"`
+}
+
+type Meta struct {
+	Total   int  `json:"total"`
+	Limit   int  `json:"limit"`
+	Offset  int  `json:"offset"`
+	HasNext bool `json:"has_next"`
+	HasPrev bool `json:"has_prev"`
+}
+
 type ID struct {
 	ID int32 `json:"id"`
 }

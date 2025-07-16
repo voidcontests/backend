@@ -12,7 +12,6 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/postgres/submission"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
@@ -141,11 +140,6 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return fmt.Errorf("%s: can't get problem: %v", op, err)
 	}
 
-	submissions, err := h.repo.Submission.GetForProblem(ctx, entry.ID, charcode)
-	if err != nil {
-		return fmt.Errorf("%s: can't get submissions: %v", op, err)
-	}
-
 	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
 	if err != nil {
 		return fmt.Errorf("%s: can't get tc examples: %v", op, err)
@@ -160,6 +154,11 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		}
 	}
 
+	status, err := h.repo.Submission.GetProblemStatus(ctx, entry.ID, p.ID)
+	if err != nil {
+		return err
+	}
+
 	pdetailed := response.ProblemDetailed{
 		ID:          p.ID,
 		Charcode:    p.Charcode,
@@ -169,21 +168,13 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		Statement:   p.Statement,
 		Examples:    examples,
 		Difficulty:  p.Difficulty,
+		Status:      status,
 		CreatedAt:   p.CreatedAt,
 		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
 		},
-	}
-
-	for i := 0; i < len(submissions) && pdetailed.Status != "accepted"; i++ {
-		switch submissions[i].Verdict {
-		case submission.VerdictOK:
-			pdetailed.Status = "accepted"
-		case submission.VerdictWrongAnswer, submission.VerdictRuntimeError, submission.VerdictCompilationError:
-			pdetailed.Status = "tried"
-		}
 	}
 
 	return c.JSON(http.StatusOK, pdetailed)
