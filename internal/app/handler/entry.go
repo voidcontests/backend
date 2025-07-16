@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -17,9 +16,8 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 

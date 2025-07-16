@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -76,9 +75,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	claims, authenticated := ExtractClaims(c)
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
@@ -171,73 +169,99 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	contests, err := h.repo.Contest.GetWithCreatorID(ctx, claims.UserID)
+	limit, ok := ExtractQueryParamInt(c, "limit")
+	if !ok {
+		limit = 10
+	}
+
+	offset, ok := ExtractQueryParamInt(c, "offset")
+	if !ok {
+		offset = 0
+	}
+
+	contests, total, err := h.repo.Contest.GetWithCreatorID(ctx, claims.UserID, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get created contests: %v", op, err)
 	}
 
-	filtered := make([]response.ContestListItem, 0)
-	for _, c := range contests {
+	items := make([]response.ContestListItem, 0)
+	for _, contest := range contests {
 		item := response.ContestListItem{
-			ID: c.ID,
+			ID: contest.ID,
 			Creator: response.User{
-				ID:       c.CreatorID,
-				Username: c.CreatorUsername,
+				ID:       contest.CreatorID,
+				Username: contest.CreatorUsername,
 			},
-			Title:        c.Title,
-			StartTime:    c.StartTime,
-			EndTime:      c.EndTime,
-			DurationMins: c.DurationMins,
-			MaxEntries:   c.MaxEntries,
-			Participants: c.Participants,
-			CreatedAt:    c.CreatedAt,
+			Title:        contest.Title,
+			StartTime:    contest.StartTime,
+			EndTime:      contest.EndTime,
+			DurationMins: contest.DurationMins,
+			MaxEntries:   contest.MaxEntries,
+			Participants: contest.Participants,
+			CreatedAt:    contest.CreatedAt,
 		}
-		filtered = append(filtered, item)
+		items = append(items, item)
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": filtered,
+	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
+		Meta: response.Meta{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasNext: offset+limit < total,
+			HasPrev: offset > 0,
+		},
+		Items: items,
 	})
 }
 
 func (h *Handler) GetContests(c echo.Context) error {
-	// TODO: do not return all contests:
-	// - return only active contests
-	// - return by chunks (pages)
-
 	op := "handler.GetContests"
 	ctx := c.Request().Context()
 
-	contests, err := h.repo.Contest.GetAll(ctx)
+	limit, ok := ExtractQueryParamInt(c, "limit")
+	if !ok {
+		limit = 10
+	}
+
+	offset, ok := ExtractQueryParamInt(c, "offset")
+	if !ok {
+		offset = 0
+	}
+
+	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get contests: %v", op, err)
 	}
 
-	filtered := make([]response.ContestListItem, 0)
-	for _, c := range contests {
-		if c.EndTime.Before(time.Now()) {
-			continue
-		}
-
+	items := make([]response.ContestListItem, 0)
+	for _, contest := range contests {
 		item := response.ContestListItem{
-			ID: c.ID,
+			ID: contest.ID,
 			Creator: response.User{
-				ID:       c.CreatorID,
-				Username: c.CreatorUsername,
+				ID:       contest.CreatorID,
+				Username: contest.CreatorUsername,
 			},
-			Title:        c.Title,
-			StartTime:    c.StartTime,
-			EndTime:      c.EndTime,
-			DurationMins: c.DurationMins,
-			MaxEntries:   c.MaxEntries,
-			Participants: c.Participants,
-			CreatedAt:    c.CreatedAt,
+			Title:        contest.Title,
+			StartTime:    contest.StartTime,
+			EndTime:      contest.EndTime,
+			DurationMins: contest.DurationMins,
+			MaxEntries:   contest.MaxEntries,
+			Participants: contest.Participants,
+			CreatedAt:    contest.CreatedAt,
 		}
-		filtered = append(filtered, item)
+		items = append(items, item)
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": filtered,
+	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
+		Meta: response.Meta{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasNext: offset+limit < total,
+			HasPrev: offset > 0,
+		},
+		Items: items,
 	})
 }
 
@@ -245,18 +269,34 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 	op := "handler.GetLeaderboard"
 	ctx := c.Request().Context()
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	leaderboard, err := h.repo.Contest.GetLeaderboard(ctx, contestID)
+	limit, ok := ExtractQueryParamInt(c, "limit")
+	if !ok {
+		limit = 50
+	}
+
+	offset, ok := ExtractQueryParamInt(c, "offset")
+	if !ok {
+		offset = 0
+	}
+
+	leaderboard, total, err := h.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get leaderboard: %v", op, err)
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": leaderboard,
+	return c.JSON(http.StatusOK, response.Pagination[models.LeaderboardEntry]{
+		Meta: response.Meta{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasNext: offset+limit < total,
+			HasPrev: offset > 0,
+		},
+		Items: leaderboard,
 	})
 }

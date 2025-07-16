@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,11 +24,9 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
-		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`cid` should be integer")
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
+		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
 	charcode := c.Param("charcode")
@@ -140,11 +137,9 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	sid := c.Param("sid")
-	submissionID, err := strconv.Atoi(sid)
-	if err != nil {
-		log.Debug("`sid` param is not an integer", slog.String("sid", sid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`sid` should be integer")
+	submissionID, ok := ExtractParamInt(c, "cid")
+	if !ok {
+		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
 	s, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
@@ -236,11 +231,9 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
-		log.Debug("`cid` param is not an integer", slog.String("cid", cid), sl.Err(err))
-		return Error(http.StatusBadRequest, "`cid` should be integer")
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
+		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
 	charcode := c.Param("charcode")

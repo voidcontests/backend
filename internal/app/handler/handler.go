@@ -52,6 +52,12 @@ func ExtractQueryParamInt(c echo.Context, key string) (int, bool) {
 	return value, true
 }
 
+func ExtractParamInt(c echo.Context, key string) (int, bool) {
+	param := c.Param(key)
+	value, err := strconv.Atoi(param)
+	return value, err == nil
+}
+
 type APIError struct {
 	Status  int
 	Message string

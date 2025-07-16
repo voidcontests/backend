@@ -158,28 +158,47 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	return problems, rows.Err()
 }
 
-func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32) ([]models.Problem, error) {
-	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id WHERE writer_id = $1`
+func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error) {
+	batch := &pgx.Batch{}
 
-	rows, err := p.pool.Query(ctx, query, writerID)
+	batch.Queue(`
+		SELECT problems.*, users.username AS writer_username
+		FROM problems
+		JOIN users ON users.id = problems.writer_id
+		WHERE writer_id = $1
+		ORDER BY problems.id ASC
+		LIMIT $2 OFFSET $3
+	`, writerID, limit, offset)
+
+	batch.Queue(`
+		SELECT COUNT(*) FROM problems WHERE writer_id = $1
+	`, writerID)
+
+	br := p.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	rows, err := br.Query()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var problems []models.Problem
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
 			&p.ID, &p.Kind, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
 			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		problems = append(problems, p)
 	}
 
-	return problems, rows.Err()
+	if err := br.QueryRow().Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	return problems, total, nil
 }
 
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {

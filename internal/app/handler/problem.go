@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -80,8 +79,17 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	// TODO: return problems splitted by chunks (pages)
-	ps, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID)
+	limit, ok := ExtractQueryParamInt(c, "limit")
+	if !ok {
+		limit = 10
+	}
+
+	offset, ok := ExtractQueryParamInt(c, "offset")
+	if !ok {
+		offset = 0
+	}
+
+	ps, total, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get created contests: %v", op, err)
 	}
@@ -101,8 +109,15 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{
-		"data": problems,
+	return c.JSON(http.StatusOK, response.Pagination[response.ProblemListItem]{
+		Meta: response.Meta{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasNext: offset+limit < total,
+			HasPrev: offset > 0,
+		},
+		Items: problems,
 	})
 }
 
@@ -112,9 +127,8 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	cid := c.Param("cid")
-	contestID, err := strconv.Atoi(cid)
-	if err != nil {
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
