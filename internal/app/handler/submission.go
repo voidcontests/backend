@@ -137,7 +137,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	submissionID, ok := ExtractParamInt(c, "cid")
+	submissionID, ok := ExtractParamInt(c, "sid")
 	if !ok {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}

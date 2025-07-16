@@ -78,7 +78,7 @@ func (p *Postgres) GetRole(ctx context.Context, userID int32) (models.Role, erro
 	var role models.Role
 
 	query := `
-		SELECT r.id, r.name, r.is_default
+		SELECT r.id, r.name, r.created_problems_limit, r.created_contests_limit, r.is_default, r.created_at
 		FROM users u
 		JOIN roles r ON u.role_id = r.id
 		WHERE u.id = $1
@@ -86,7 +86,10 @@ func (p *Postgres) GetRole(ctx context.Context, userID int32) (models.Role, erro
 	err := p.pool.QueryRow(ctx, query, userID).Scan(
 		&role.ID,
 		&role.Name,
+		&role.CreatedProblemsLimit,
+		&role.CreatedContestsLimit,
 		&role.IsDefault,
+		&role.CreatedAt,
 	)
 	return role, err
 }
