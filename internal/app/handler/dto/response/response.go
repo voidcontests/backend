@@ -2,19 +2,33 @@ package response
 
 import (
 	"time"
-
-	"github.com/voidcontests/backend/internal/app/runner"
-	"github.com/voidcontests/backend/internal/ton"
 )
 
-type ContestID struct {
+type Pagination[T any] struct {
+	Meta  Meta `json:"meta"`
+	Items []T  `json:"items"`
+}
+
+type Meta struct {
+	Total   int  `json:"total"`
+	Limit   int  `json:"limit"`
+	Offset  int  `json:"offset"`
+	HasNext bool `json:"has_next"`
+	HasPrev bool `json:"has_prev"`
+}
+
+type ID struct {
 	ID int32 `json:"id"`
 }
 
+type Token struct {
+	Token string `json:"token"`
+}
+
 type Account struct {
-	ID         int32       `json:"id"`
-	TonAccount ton.Account `json:"ton_account"`
-	Role       Role        `json:"role"`
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
+	Role     Role   `json:"role"`
 }
 
 type Role struct {
@@ -63,32 +77,40 @@ type ContestListItem struct {
 }
 
 type User struct {
-	ID      int32  `json:"id"`
-	Address string `json:"address"`
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
 }
 
-type SubmissionListItem struct {
-	ID            int32         `json:"id"`
-	ProblemID     int32         `json:"problem_id"`
-	Verdict       string        `json:"verdict"`
-	Answer        string        `json:"answer,omitempty"`
-	Code          string        `json:"code,omitempty"`
-	Language      string        `json:"language,omitempty"`
-	TestingReport TestingReport `json:"testing_report,omitempty"`
-	CreatedAt     time.Time     `json:"created_at"`
+type Submission struct {
+	ID            int32          `json:"id"`
+	ProblemID     int32          `json:"problem_id"`
+	ProblemKind   string         `json:"problem_kind"`
+	Verdict       string         `json:"verdict"`
+	Answer        string         `json:"answer,omitempty"`
+	Code          string         `json:"code,omitempty"`
+	Language      string         `json:"language,omitempty"`
+	TestingReport *TestingReport `json:"testing_report,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 type TestingReport struct {
-	Passed     int               `json:"passed"`
-	Total      int               `json:"total"`
-	Stderr     string            `json:"stderr"`
-	FailedTest runner.FailedTest `json:"failed_test"`
+	Passed     int         `json:"passed"`
+	Total      int         `json:"total"`
+	Stderr     string      `json:"stderr,omitempty"`
+	FailedTest *FailedTest `json:"failed_test,omitempty"`
 }
 
+type FailedTest struct {
+	Input          string `json:"input"`
+	ExpectedOutput string `json:"expected_output"`
+	ActualOutput   string `json:"actual_output"`
+}
+
+// TODO: Rename this structure into ContestProblem
 type ProblemDetailed struct {
 	ID          int32     `json:"id"`
-	Charcode    string    `json:"charcode,omitempty"`
-	ContestID   int32     `json:"contest_id,omitempty"`
+	Charcode    string    `json:"charcode"`
+	ContestID   int32     `json:"contest_id"`
 	Writer      User      `json:"writer"`
 	Kind        string    `json:"kind"`
 	Title       string    `json:"title"`

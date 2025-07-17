@@ -2,27 +2,23 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/repository"
 )
 
 type Handler struct {
-	config            *config.Config
-	repo              *repository.Repository
-	tonconnectMainnet *tonconnect.Server
-	tonconnectTestnet *tonconnect.Server
+	config *config.Config
+	repo   *repository.Repository
 }
 
-func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Handler {
+func New(c *config.Config, r *repository.Repository) *Handler {
 	return &Handler{
-		config:            c,
-		repo:              r,
-		tonconnectMainnet: mainnet,
-		tonconnectTestnet: testnet,
+		config: c,
+		repo:   r,
 	}
 }
 
@@ -40,6 +36,26 @@ func ExtractClaims(c echo.Context) (jwt.CustomClaims, bool) {
 		return jwt.CustomClaims{}, false
 	}
 	return claims, true
+}
+
+func ExtractQueryParamInt(c echo.Context, key string) (int, bool) {
+	param := c.QueryParam(key)
+	if param == "" {
+		return 0, false
+	}
+
+	value, err := strconv.Atoi(param)
+	if err != nil {
+		return 0, false
+	}
+
+	return value, true
+}
+
+func ExtractParamInt(c echo.Context, key string) (int, bool) {
+	param := c.Param(key)
+	value, err := strconv.Atoi(param)
+	return value, err == nil
 }
 
 type APIError struct {

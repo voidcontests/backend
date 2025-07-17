@@ -7,7 +7,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -22,8 +21,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, mainnet, testnet *tonconnect.Server) *Router {
-	h := handler.New(c, r, mainnet, testnet)
+func New(c *config.Config, r *repository.Repository) *Router {
+	h := handler.New(c, r)
 	return &Router{config: c, handler: h}
 }
 
@@ -31,8 +30,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
 	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		slog.Error("something went wrong", sl.Err(err))
-
 		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
 			c.JSON(http.StatusNotFound, map[string]string{
 				"message": "resource not found",
@@ -41,12 +38,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 		}
 
 		if ae, ok := err.(*handler.APIError); ok {
+			slog.Debug("responded with API error", sl.Err(err), slog.String("request_id", requestid.Get(c)))
 			c.JSON(ae.Status, map[string]any{
 				"message": ae.Message,
 			})
 			return
 		}
 
+		slog.Error("something went wrong", sl.Err(err), slog.String("request_id", requestid.Get(c)))
 		c.JSON(http.StatusInternalServerError, map[string]any{
 			"message": "internal server error",
 		})
@@ -76,17 +75,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 	api := router.Group("/api")
 	{
-		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
-
 		api.GET("/healthcheck", r.handler.Healthcheck)
 
-		tonproof := api.Group("/tonproof")
-		tonproof.POST("/payload", r.handler.GeneratePayload)
-		tonproof.POST("/check", r.handler.CheckProof)
+		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
+		api.POST("/account", r.handler.CreateAccount)
+		api.POST("/session", r.handler.CreateSession)
 
-		creator := api.Group("/creator", r.handler.MustIdentify())
-		creator.GET("/contests", r.handler.GetCreatedContests)
-		creator.GET("/problems", r.handler.GetCreatedProblems)
+		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
+		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
@@ -101,6 +97,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problems/:charcode/submissions",
 			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
+		api.GET("/submissions/:sid", r.handler.GetSubmissionByID, r.handler.MustIdentify())
 	}
 
 	return router

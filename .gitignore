@@ -1,12 +1,11 @@
 # Ignore config files
-config/*.yaml
 .env
 
 # Ignore database files
 .db
 
 # Ignore output
-.bin
+build
 
 # Ignore TODO
 TODO

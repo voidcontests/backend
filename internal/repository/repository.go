@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/backend/internal/repository/postgres/contest"
 	"github.com/voidcontests/backend/internal/repository/postgres/entry"
 	"github.com/voidcontests/backend/internal/repository/postgres/problem"
@@ -17,12 +17,12 @@ type Repository struct {
 	Submission *submission.Postgres
 }
 
-func New(db *sqlx.DB) *Repository {
+func New(pool *pgxpool.Pool) *Repository {
 	return &Repository{
-		User:       user.New(db),
-		Contest:    contest.New(db),
-		Problem:    problem.New(db),
-		Entry:      entry.New(db),
-		Submission: submission.New(db),
+		User:       user.New(pool),
+		Contest:    contest.New(pool),
+		Problem:    problem.New(pool),
+		Entry:      entry.New(pool),
+		Submission: submission.New(pool),
 	}
 }

@@ -1,19 +1,18 @@
 env: "local" # local, dev or prod
 
 http:
-  address: ":6969"
-  timeout: 4s
-  idle_timeout: 60s
+    address: ":6969"
+    timeout: 4s
+    idle_timeout: 60s
 
-ton_proof:
-  payload_signature_key: "somesecretkey"
-  payload_lifetime_seconds: "300s"
-  proof_lifetime_seconds: "300s"
+security:
+    signature_key: "some secret key"
+    salt: "salt for hashing"
 
 postgres:
-  host: "localhost"
-  port: "1337"
-  user: "postgres"
-  name: "postgres"
-  password: "my-unhackable-password"
-  sslmode: "disable"
+    host: "localhost"
+    port: "1337"
+    user: "postgres"
+    name: "postgres"
+    password: "unhackable password"
+    sslmode: "disable"
