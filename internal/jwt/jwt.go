@@ -9,16 +9,14 @@ import (
 
 type CustomClaims struct {
 	jwt.RegisteredClaims
-	Address string `json:"address"`
-	ID      int32  `json:"id"`
+	UserID int32 `json:"id"`
 }
 
-func GenerateToken(address string, id int32, secret string) (string, error) {
+func GenerateToken(id int32, secret string) (string, error) {
 	claims := &CustomClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(100, 0, 0)),
 		},
-		address,
 		id,
 	}
 
@@ -32,7 +30,7 @@ func GenerateToken(address string, id int32, secret string) (string, error) {
 	return signedToken, nil
 }
 
-func Parse(token, secret string) (address string, err error) {
+func Parse(token, secret string) (id int32, err error) {
 	jsonwebtoken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -41,14 +39,13 @@ func Parse(token, secret string) (address string, err error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	claims, ok := jsonwebtoken.Claims.(CustomClaims)
 	if !ok || !jsonwebtoken.Valid {
-		return "", fmt.Errorf("token.ParseToID: can't parse invalid jsonwebtoken")
+		return 0, fmt.Errorf("token.Parse: can't parse invalid jsonwebtoken")
 	}
-	address = claims.Address
 
-	return address, nil
+	return claims.UserID, nil
 }

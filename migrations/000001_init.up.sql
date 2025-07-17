@@ -19,7 +19,8 @@ VALUES
 CREATE TABLE users
 (
     id SERIAL PRIMARY KEY,
-    address VARCHAR(70) UNIQUE NOT NULL,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(64) NOT NULL,
     role_id INTEGER NOT NULL REFERENCES roles(id),
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
@@ -78,7 +79,7 @@ CREATE TABLE entries
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE verdict AS ENUM ('ok', 'wrong_answer', 'runtime_error', 'compilation_error', 'time_limit_exceeded');
+CREATE TYPE verdict AS ENUM ('pending', 'running', 'ok', 'wrong_answer', 'runtime_error', 'compilation_error', 'time_limit_exceeded');
 
 CREATE TABLE submissions
 (
@@ -90,5 +91,17 @@ CREATE TABLE submissions
     code TEXT NOT NULL,
     language VARCHAR(10) NOT NULL,
     passed_tests_count INTEGER DEFAULT 0 NOT NULL,
+    stderr TEXT NOT NULL,
+    locked_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+CREATE TABLE failed_tests
+(
+    id SERIAL PRIMARY KEY,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id),
+    input TEXT NOT NULL,
+    expected_output TEXT NOT NULL,
+    actual_output TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
