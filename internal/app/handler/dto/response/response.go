@@ -106,10 +106,11 @@ type FailedTest struct {
 	ActualOutput   string `json:"actual_output"`
 }
 
+// TODO: Rename this structure into ContestProblem
 type ProblemDetailed struct {
 	ID          int32     `json:"id"`
-	Charcode    string    `json:"charcode,omitempty"`
-	ContestID   int32     `json:"contest_id,omitempty"`
+	Charcode    string    `json:"charcode"`
+	ContestID   int32     `json:"contest_id"`
 	Writer      User      `json:"writer"`
 	Kind        string    `json:"kind"`
 	Title       string    `json:"title"`
