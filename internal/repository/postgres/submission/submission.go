@@ -106,7 +106,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int32) (map[i
 		SELECT
 			s.problem_id,
 			CASE
-				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'ok'
+				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
 				WHEN COUNT(*) > 0 THEN 'tried'
 				ELSE NULL
 			END AS status
