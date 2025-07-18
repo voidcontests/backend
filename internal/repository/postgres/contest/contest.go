@@ -289,6 +289,10 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 	}
 	rows.Close()
 
+	if leaderboard == nil {
+		leaderboard = make([]models.LeaderboardEntry, 0)
+	}
+
 	if err := br.QueryRow().Scan(&total); err != nil {
 		br.Close()
 		return nil, 0, fmt.Errorf("total count query failed: %w", err)
