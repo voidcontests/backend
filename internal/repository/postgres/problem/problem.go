@@ -22,41 +22,45 @@ func New(pool *pgxpool.Pool) *Postgres {
 func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []request.TC) (int32, error) {
 	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("tx begin failed: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	var problemID int32
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-
-	err = tx.QueryRow(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
+	err = tx.QueryRow(ctx, `
+        INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+    `, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("insert problem failed: %w", err)
 	}
 
 	if len(tcs) > 0 {
 		batch := &pgx.Batch{}
 		for _, tc := range tcs {
-			batch.Queue(
-				`INSERT INTO test_cases (problem_id, input, output, is_example)
-				 VALUES ($1, $2, $3, $4)`,
-				problemID, tc.Input, tc.Output, tc.IsExample,
-			)
+			batch.Queue(`
+                INSERT INTO test_cases (problem_id, input, output, is_example)
+                VALUES ($1, $2, $3, $4)
+            `, problemID, tc.Input, tc.Output, tc.IsExample)
 		}
 
 		br := tx.SendBatch(ctx, batch)
-		defer br.Close()
 
-		for i := 0; i < len(tcs); i++ {
+		for i := 0; i < batch.Len(); i++ {
 			if _, err := br.Exec(); err != nil {
-				return 0, fmt.Errorf("failed to insert test case %d: %w", i, err)
+				br.Close()
+				return 0, fmt.Errorf("insert test case %d failed: %w", i, err)
 			}
+		}
+
+		if err := br.Close(); err != nil {
+			return 0, fmt.Errorf("batch close failed: %w", err)
 		}
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return 0, err
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit failed: %w", err)
 	}
 
 	return problemID, nil
