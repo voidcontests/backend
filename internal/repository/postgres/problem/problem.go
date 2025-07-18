@@ -182,7 +182,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 
 	rows, err := br.Query()
 	if err != nil {
-		_ = br.Close()
+		br.Close()
 		return nil, 0, fmt.Errorf("query failed: %w", err)
 	}
 
@@ -193,7 +193,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
 			rows.Close()
-			_ = br.Close()
+			br.Close()
 			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		problems = append(problems, p)
@@ -201,7 +201,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
-		_ = br.Close()
+		br.Close()
 		return nil, 0, fmt.Errorf("count scan failed: %w", err)
 	}
 
