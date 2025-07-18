@@ -179,13 +179,12 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 	`, writerID)
 
 	br := p.pool.SendBatch(ctx, batch)
-	defer br.Close()
 
 	rows, err := br.Query()
 	if err != nil {
-		return nil, 0, err
+		_ = br.Close()
+		return nil, 0, fmt.Errorf("query failed: %w", err)
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		var p models.Problem
@@ -193,13 +192,21 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 			&p.ID, &p.Kind, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
 			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
-			return nil, 0, err
+			rows.Close()
+			_ = br.Close()
+			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		problems = append(problems, p)
 	}
+	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
-		return nil, 0, err
+		_ = br.Close()
+		return nil, 0, fmt.Errorf("count scan failed: %w", err)
+	}
+
+	if err := br.Close(); err != nil {
+		return nil, 0, fmt.Errorf("batch close failed: %w", err)
 	}
 
 	return problems, total, nil
