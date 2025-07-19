@@ -37,6 +37,11 @@ type Role struct {
 	CreatedContestsLimit int32  `json:"created_contests_limit"`
 }
 
+type User struct {
+	ID       int32  `json:"id"`
+	Username string `json:"username"`
+}
+
 type ContestDetailed struct {
 	ID            int32                    `json:"id"`
 	Creator       User                     `json:"creator"`
@@ -65,11 +70,6 @@ type ContestListItem struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-type User struct {
-	ID       int32  `json:"id"`
-	Username string `json:"username"`
-}
-
 type Submission struct {
 	ID            int32          `json:"id"`
 	ProblemID     int32          `json:"problem_id"`
@@ -95,7 +95,6 @@ type FailedTest struct {
 	ActualOutput   string `json:"actual_output"`
 }
 
-// TODO: Rename this structure into ContestProblem
 type ContestProblemDetailed struct {
 	ID          int32     `json:"id"`
 	Charcode    string    `json:"charcode"`
@@ -113,8 +112,8 @@ type ContestProblemDetailed struct {
 
 type ContestProblemListItem struct {
 	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode,omitempty"`
-	ContestID  int32     `json:"contest_id,omitempty"`
+	Charcode   string    `json:"charcode"`
+	ContestID  int32     `json:"contest_id"`
 	Writer     User      `json:"writer"`
 	Title      string    `json:"title"`
 	Difficulty string    `json:"difficulty"`
