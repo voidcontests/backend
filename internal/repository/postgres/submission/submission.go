@@ -206,6 +206,8 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int32, charcode st
 	if err != nil {
 		return nil, 0, fmt.Errorf("query rows failed: %w", err)
 	}
+
+	items = make([]models.Submission, 0)
 	for rows.Next() {
 		var s models.Submission
 		if err := rows.Scan(

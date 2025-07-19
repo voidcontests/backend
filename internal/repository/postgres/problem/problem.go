@@ -75,7 +75,7 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 	return id, err
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
+func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error) {
 	query := `SELECT p.*, cp.charcode, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
@@ -90,11 +90,8 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 		&problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt,
 		&problem.Charcode, &problem.WriterUsername,
 	)
-	if err != nil {
-		return nil, err
-	}
 
-	return &problem, nil
+	return problem, err
 }
 
 func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
@@ -105,7 +102,7 @@ func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.
 	}
 	defer rows.Close()
 
-	var tcs []models.TestCase
+	tcs := make([]models.TestCase, 0)
 	for rows.Next() {
 		var tc models.TestCase
 		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
@@ -126,7 +123,7 @@ func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]mode
 	}
 	defer rows.Close()
 
-	var tcs []models.TestCase
+	tcs := make([]models.TestCase, 0)
 	for rows.Next() {
 		var tc models.TestCase
 		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
@@ -147,7 +144,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	}
 	defer rows.Close()
 
-	var problems []models.Problem
+	problems := make([]models.Problem, 0)
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
@@ -186,6 +183,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 		return nil, 0, fmt.Errorf("query failed: %w", err)
 	}
 
+	problems = make([]models.Problem, 0)
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(

@@ -80,7 +80,7 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 	return contestID, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int32) (models.Contest, error) {
 	var contest models.Contest
 	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 		FROM contests
@@ -89,10 +89,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 		WHERE contests.id = $1
 		GROUP BY contests.id, users.username`
 	err := p.pool.QueryRow(ctx, query, contestID).Scan(&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime, &contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
-	if err != nil {
-		return nil, err
-	}
-	return &contest, nil
+	return contest, err
 }
 
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
@@ -146,6 +143,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 		return nil, 0, fmt.Errorf("contests query failed: %w", err)
 	}
 
+	contests = make([]models.Contest, 0)
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
@@ -197,6 +195,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 		return nil, 0, err
 	}
 
+	contests = make([]models.Contest, 0)
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
@@ -278,6 +277,7 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 		return nil, 0, fmt.Errorf("leaderboard query failed: %w", err)
 	}
 
+	leaderboard = make([]models.LeaderboardEntry, 0)
 	for rows.Next() {
 		var entry models.LeaderboardEntry
 		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points); err != nil {
@@ -288,10 +288,6 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 		leaderboard = append(leaderboard, entry)
 	}
 	rows.Close()
-
-	if leaderboard == nil {
-		leaderboard = make([]models.LeaderboardEntry, 0)
-	}
 
 	if err := br.QueryRow().Scan(&total); err != nil {
 		br.Close()
