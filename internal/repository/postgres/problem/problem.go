@@ -94,6 +94,27 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (m
 	return problem, err
 }
 
+func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem, error) {
+	query := `SELECT
+			p.id, p.kind, p.writer_id, p.title, p.statement,
+			p.difficulty, p.answer, p.time_limit_ms, p.created_at,
+			u.username AS writer_username
+		FROM problems p
+		JOIN users u ON u.id = p.writer_id
+		WHERE p.id = $1`
+
+	row := p.pool.QueryRow(ctx, query, problemID)
+
+	var problem models.Problem
+	err := row.Scan(
+		&problem.ID, &problem.Kind, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt,
+		&problem.WriterUsername,
+	)
+
+	return problem, err
+}
+
 func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
 	query := `SELECT id, problem_id, input, output, is_example FROM test_cases WHERE problem_id = $1`
 	rows, err := p.pool.Query(ctx, query, problemID)

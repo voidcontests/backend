@@ -81,10 +81,15 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.POST("/account", r.handler.CreateAccount)
 		api.POST("/session", r.handler.CreateSession)
 
+		// TODO: make this endpoints as filter to general endpoint, like:
+		// GET /contests?creator_id=69
+		// GET /problems?writer_id=420
 		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
 		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
+
+		api.GET("/problems/:pid", r.handler.GetProblemByID, r.handler.MustIdentify())
 
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())

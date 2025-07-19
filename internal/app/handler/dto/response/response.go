@@ -38,30 +38,19 @@ type Role struct {
 }
 
 type ContestDetailed struct {
-	ID            int32             `json:"id"`
-	Creator       User              `json:"creator"`
-	Title         string            `json:"title"`
-	Description   string            `json:"description"`
-	StartTime     time.Time         `json:"start_time"`
-	EndTime       time.Time         `json:"end_time"`
-	DurationMins  int32             `json:"duration_mins"`
-	MaxEntries    int32             `json:"max_entries,omitempty"`
-	Participants  int32             `json:"participants"`
-	AllowLateJoin bool              `json:"allow_late_join"`
-	IsParticipant bool              `json:"is_participant,omitempty"`
-	Problems      []ProblemListItem `json:"problems"`
-	CreatedAt     time.Time         `json:"created_at"`
-}
-
-type ProblemListItem struct {
-	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode,omitempty"`
-	ContestID  int32     `json:"contest_id,omitempty"`
-	Writer     User      `json:"writer"`
-	Title      string    `json:"title"`
-	Difficulty string    `json:"difficulty"`
-	Status     string    `json:"status,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            int32                    `json:"id"`
+	Creator       User                     `json:"creator"`
+	Title         string                   `json:"title"`
+	Description   string                   `json:"description"`
+	StartTime     time.Time                `json:"start_time"`
+	EndTime       time.Time                `json:"end_time"`
+	DurationMins  int32                    `json:"duration_mins"`
+	MaxEntries    int32                    `json:"max_entries,omitempty"`
+	Participants  int32                    `json:"participants"`
+	AllowLateJoin bool                     `json:"allow_late_join"`
+	IsParticipant bool                     `json:"is_participant,omitempty"`
+	Problems      []ContestProblemListItem `json:"problems"`
+	CreatedAt     time.Time                `json:"created_at"`
 }
 
 type ContestListItem struct {
@@ -107,7 +96,7 @@ type FailedTest struct {
 }
 
 // TODO: Rename this structure into ContestProblem
-type ProblemDetailed struct {
+type ContestProblemDetailed struct {
 	ID          int32     `json:"id"`
 	Charcode    string    `json:"charcode"`
 	ContestID   int32     `json:"contest_id"`
@@ -118,8 +107,39 @@ type ProblemDetailed struct {
 	Examples    []TC      `json:"examples,omitempty"`
 	Difficulty  string    `json:"difficulty"`
 	Status      string    `json:"status,omitempty"`
-	TimeLimitMS int32     `json:"time_limit_ms,omitempty"`
+	TimeLimitMS int32     `json:"time_limit_ms"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ContestProblemListItem struct {
+	ID         int32     `json:"id"`
+	Charcode   string    `json:"charcode,omitempty"`
+	ContestID  int32     `json:"contest_id,omitempty"`
+	Writer     User      `json:"writer"`
+	Title      string    `json:"title"`
+	Difficulty string    `json:"difficulty"`
+	Status     string    `json:"status,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type ProblemDetailed struct {
+	ID          int32     `json:"id"`
+	Writer      User      `json:"writer"`
+	Kind        string    `json:"kind"`
+	Title       string    `json:"title"`
+	Statement   string    `json:"statement"`
+	Examples    []TC      `json:"examples,omitempty"`
+	Difficulty  string    `json:"difficulty"`
+	TimeLimitMS int32     `json:"time_limit_ms"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ProblemListItem struct {
+	ID         int32     `json:"id"`
+	Writer     User      `json:"writer"`
+	Title      string    `json:"title"`
+	Difficulty string    `json:"difficulty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type TC struct {

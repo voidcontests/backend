@@ -98,7 +98,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		ID:          contest.ID,
 		Title:       contest.Title,
 		Description: contest.Description,
-		Problems:    make([]response.ProblemListItem, n, n),
+		Problems:    make([]response.ContestProblemListItem, n, n),
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
@@ -113,7 +113,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	for i := range n {
-		cdetailed.Problems[i] = response.ProblemListItem{
+		cdetailed.Problems[i] = response.ContestProblemListItem{
 			ID:        problems[i].ID,
 			Charcode:  problems[i].Charcode,
 			ContestID: contest.ID,
