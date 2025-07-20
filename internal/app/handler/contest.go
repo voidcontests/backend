@@ -4,21 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
+	"github.com/voidcontests/backend/internal/app/service"
 	"github.com/voidcontests/backend/internal/repository/models"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {
-	op := "handler.CreateContest"
 	ctx := c.Request().Context()
-
 	claims, _ := ExtractClaims(c)
 
 	var body request.CreateContestRequest
@@ -26,41 +24,20 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
+	id, err := h.contestService.CreateContest(ctx, claims.UserID, body)
 	if err != nil {
-		return fmt.Errorf("%s: can't get role: %v", op, err)
-	}
-
-	if userrole.Name == models.RoleBanned {
-		return Error(http.StatusForbidden, "you are banned from creating contests")
-	}
-
-	if userrole.Name == models.RoleLimited {
-		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.UserID)
-		if err != nil {
-			return fmt.Errorf("%s: can't get created contests count: %v", op, err)
+		switch err {
+		case service.ErrUserBanned:
+			return Error(http.StatusForbidden, "you are banned from creating contests")
+		case service.ErrContestsLimitExceeded:
+			return Error(http.StatusForbidden, "you reached your created contests limit")
+		default:
+			return err
 		}
-
-		if cscount >= int(userrole.CreatedContestsLimit) {
-			return Error(http.StatusForbidden, "contests limit exceeded")
-		}
-	}
-
-	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
-	if err != nil {
-		return fmt.Errorf("%s: can't verify that title isn't occupied: %v", op, err)
-	}
-	if occupied {
-		return Error(http.StatusConflict, "title alredy taken")
-	}
-
-	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
-	if err != nil {
-		return fmt.Errorf("%s: can't create contest: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
-		ID: contestID,
+		ID: id,
 	})
 }
 
@@ -227,7 +204,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 		offset = 0
 	}
 
-	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
+	contests, total, err := h.contestService.GetContests(ctx, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get contests: %v", op, err)
 	}

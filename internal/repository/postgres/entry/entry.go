@@ -15,10 +15,10 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, contestID int32, userID int32) (int, error) {
+func (p *Postgres) Create(ctx context.Context, contestID int32, userID int32) (int32, error) {
 	query := `INSERT INTO entries (contest_id, user_id) VALUES ($1, $2) RETURNING id`
 
-	var id int
+	var id int32
 	err := p.pool.QueryRow(ctx, query, contestID, userID).Scan(&id)
 	if err != nil {
 		return 0, err

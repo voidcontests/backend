@@ -15,10 +15,10 @@ const (
 )
 
 type User struct {
-	ID           int32     `db:"id"`
-	Username     string    `db:"username"`
-	PasswordHash string    `db:"password_hash"`
-	RoleID       int32     `db:"role_id"`
+	ID           int32  `db:"id"`
+	Username     string `db:"username"`
+	PasswordHash string `db:"password_hash"`
+	Role         Role
 	CreatedAt    time.Time `db:"created_at"`
 }
 

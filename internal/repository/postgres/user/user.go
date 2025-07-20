@@ -18,34 +18,41 @@ func New(pool *pgxpool.Pool) *Postgres {
 func (p *Postgres) GetByCredentials(ctx context.Context, username string, passwordHash string) (models.User, error) {
 	var user models.User
 
-	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE username = $1 AND password_hash = $2`
-	err := p.pool.QueryRow(ctx, query, username, passwordHash).Scan(
-		&user.ID,
-		&user.Username,
-		&user.PasswordHash,
-		&user.RoleID,
-		&user.CreatedAt,
-	)
-	return user, err
-}
-
-func (p *Postgres) Create(ctx context.Context, username string, passwordHash string) (models.User, error) {
-	var user models.User
-
-	query := `
-		INSERT INTO users (username, password_hash, role_id)
-		VALUES ($1, $2, (SELECT id FROM roles WHERE is_default = true LIMIT 1))
-		RETURNING id, username, password_hash, role_id, created_at
+	const query = `
+	SELECT
+		u.id, u.username, u.password_hash, u.created_at,
+		r.id, r.name, r.created_problems_limit, r.created_contests_limit, r.is_default, r.created_at
+	FROM users u
+	JOIN roles r ON u.role_id = r.id
+	WHERE u.username = $1 AND u.password_hash = $2
 	`
 
 	err := p.pool.QueryRow(ctx, query, username, passwordHash).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
-		&user.RoleID,
 		&user.CreatedAt,
+		&user.Role.ID,
+		&user.Role.Name,
+		&user.Role.CreatedProblemsLimit,
+		&user.Role.CreatedContestsLimit,
+		&user.Role.IsDefault,
+		&user.Role.CreatedAt,
 	)
+
 	return user, err
+}
+
+func (p *Postgres) Create(ctx context.Context, username string, passwordHash string) (int32, error) {
+	query := `
+		INSERT INTO users (username, password_hash, role_id)
+		VALUES ($1, $2, (SELECT id FROM roles WHERE is_default = true LIMIT 1))
+		RETURNING id
+	`
+
+	var id int32
+	err := p.pool.QueryRow(ctx, query, username, passwordHash).Scan(&id)
+	return id, err
 }
 
 func (p *Postgres) Exists(ctx context.Context, username string) (bool, error) {
@@ -61,15 +68,27 @@ func (p *Postgres) Exists(ctx context.Context, username string) (bool, error) {
 }
 
 func (p *Postgres) GetByID(ctx context.Context, id int32) (models.User, error) {
-	var user models.User
+	query := `
+	SELECT
+		u.id, u.username, u.password_hash, u.created_at,
+		r.id, r.name, r.created_problems_limit, r.created_contests_limit, r.is_default, r.created_at
+	FROM users u
+	JOIN roles r ON u.role_id = r.id
+	WHERE u.id = $1
+	`
 
-	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE id = $1`
+	var user models.User
 	err := p.pool.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
-		&user.RoleID,
 		&user.CreatedAt,
+		&user.Role.ID,
+		&user.Role.Name,
+		&user.Role.CreatedProblemsLimit,
+		&user.Role.CreatedContestsLimit,
+		&user.Role.IsDefault,
+		&user.Role.CreatedAt,
 	)
 	return user, err
 }
