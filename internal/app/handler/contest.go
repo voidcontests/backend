@@ -83,9 +83,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return fmt.Errorf("%s: can't get contest: %v", op, err)
 	}
 
-	// TODO: allow check previuos contests
 	if contest.EndTime.Before(time.Now()) {
-		return Error(http.StatusNotFound, "contest not found")
+		if (authenticated && claims.UserID != contest.CreatorID) || !authenticated {
+			return Error(http.StatusNotFound, "contest not found")
+		}
 	}
 
 	problems, err := h.repo.Contest.GetProblemset(ctx, contest.ID)
