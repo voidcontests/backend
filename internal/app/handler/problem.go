@@ -91,7 +91,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 
 	ps, total, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get created contests: %v", op, err)
+		return fmt.Errorf("%s: can't get created problems: %v", op, err)
 	}
 
 	n := len(ps)

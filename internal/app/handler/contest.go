@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -44,14 +43,6 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		if cscount >= int(userrole.CreatedContestsLimit) {
 			return Error(http.StatusForbidden, "contests limit exceeded")
 		}
-	}
-
-	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
-	if err != nil {
-		return fmt.Errorf("%s: can't verify that title isn't occupied: %v", op, err)
-	}
-	if occupied {
-		return Error(http.StatusConflict, "title alredy taken")
 	}
 
 	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
@@ -223,13 +214,13 @@ func (h *Handler) GetContests(c echo.Context) error {
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
 	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contests: %v", op, err)
+		return fmt.Errorf("%s: can't get contests: %w", op, err)
 	}
 
 	items := make([]response.ContestListItem, 0)

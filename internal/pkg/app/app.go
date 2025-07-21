@@ -46,7 +46,7 @@ func (a *App) Run() {
 
 	slog.Info("api: starting...", slog.String("env", a.config.Env))
 
-	db, err := postgres.New(&a.config.Postgres)
+	db, err := postgres.New(ctx, &a.config.Postgres)
 	if err != nil {
 		slog.Error("postgresql: could not connect establish connection", sl.Err(err))
 		return
