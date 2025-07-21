@@ -149,10 +149,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 }
 
 func (h *Handler) GetCreatedContests(c echo.Context) error {
-	// TODO: do not return all contests:
-	// - return only active contests
-	// - return by chunks (pages)
-
 	op := "handler.GetCreatedContests"
 	ctx := c.Request().Context()
 
