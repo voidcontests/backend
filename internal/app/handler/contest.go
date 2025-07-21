@@ -269,6 +269,14 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 		offset = 0
 	}
 
+	_, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		return fmt.Errorf("%s: can't get contest: %v", op, err)
+	}
+
 	leaderboard, total, err := h.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)
 	if err != nil {
 		return fmt.Errorf("%s: can't get leaderboard: %v", op, err)
