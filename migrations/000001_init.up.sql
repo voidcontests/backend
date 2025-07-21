@@ -48,7 +48,7 @@ CREATE TABLE problems (
     statement TEXT DEFAULT '' NOT NULL,
     difficulty VARCHAR(10) NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
     answer TEXT NOT NULL,
-    time_limit_ms INTEGER DEFAULT 5000 NOT NULL CHECK (time_limit_ms > 0),
+    time_limit_ms INTEGER DEFAULT 5000 NOT NULL CHECK (time_limit_ms >= 0),
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
