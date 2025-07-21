@@ -34,7 +34,7 @@ CREATE TABLE contests (
     description VARCHAR(300) DEFAULT '' NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
-    duration_mins INTEGER NOT NULL CHECK (duration_mins > 0),
+    duration_mins INTEGER NOT NULL CHECK (duration_mins >= 0),
     max_entries INTEGER DEFAULT 0 NOT NULL CHECK (max_entries >= 0),
     allow_late_join BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
