@@ -24,9 +24,9 @@ help() {
 
 build_executable() {
     echo "Building executable..."
-	go build -o ${out} cmd/server/main.go
+    go build -o ${out} cmd/server/main.go
 
-	echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
+    echo -e "Server successfully built into ${bold}\`${out}\`${normal}"
 }
 
 if [ "$1" == "image" ]; then
@@ -44,43 +44,46 @@ if [ "$1" == "image" ]; then
             docker push jus1d/void-server:"$tag"
         done
 
-    	echo "Built docker image was successfully pushed to dockerhub"
+        echo "Built docker image was successfully pushed to dockerhub"
     fi
 elif [ "$1" == "deploy" ]; then
     if [ -n "$2" ]; then
-		git checkout "$2"
-	fi
+        git checkout "$2"
+    fi
 
-	echo -e "Deploying ${bold}voidcontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
+    echo -e "Deploying ${bold}voidcontests/server${normal} from ${bold}$(git rev-parse --abbrev-ref HEAD)${normal} branch"
 
-	echo "Pulling latest image..."
-	docker pull jus1d/void-server:latest
+    echo "Pulling latest image..."
+    docker pull jus1d/void-server:latest
 
-	echo "Stopping docker compose..."
-	docker compose down
+    echo "Stopping docker compose..."
+    docker compose down
 
-	echo "Starting docker compose..."
-	docker compose up -d
+    echo "Starting docker compose..."
+    docker compose up -d
 
-	echo "Server running"
+    echo "Server running"
 elif [ "$1" == "run" ]; then
-    build_executable
-
     if [ -n "$2" ]; then
         env="$2"
     else
         env="local"
-	fi
+    fi
 
-	if [ $env == "local" ]; then
-	   echo "Start docker containers with environment"
-	   docker compose -f ./docker-compose.local.yaml up -d
-	fi
+    if [ $env == "local" ]; then
+        build_executable
+        CONFIG_PATH="./config/${env}.yaml" ./build/server
 
-	CONFIG_PATH="./config/${env}.yaml" ./build/server
+        echo "Start docker containers with environment"
+        docker compose -f ./docker-compose.local.yaml up -d
+    else
+        docker build -t jus1d/void-server:latest .
+        docker compose up
+    fi
 
-	echo "Shutting down environment containers"
-	docker compose down
+
+    echo "Shutting down environment containers"
+    docker compose down
 elif [ "$1" == "help" ]; then
     help
 else

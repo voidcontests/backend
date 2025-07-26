@@ -9,3 +9,13 @@ services:
       - POSTGRES_PASSWORD
     ports:
       - "5432:5432"
+
+  prometheus:
+    container_name: void-prometheus
+    image: prom/prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/data:/prometheus
+    ports:
+      - "9000:9090"

@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomw "github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/voidcontests/backend/internal/app/handler"
+	"github.com/voidcontests/backend/internal/app/middleware"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
 	"github.com/voidcontests/backend/internal/repository"
@@ -51,9 +53,10 @@ func (r *Router) InitRoutes() *echo.Echo {
 		})
 	}
 
+	router.Use(middleware.Metrics())
 	router.Use(requestid.New)
 	router.Use(requestlog.Completed)
-	router.Pre(middleware.RemoveTrailingSlash())
+	router.Pre(echomw.RemoveTrailingSlash())
 
 	switch r.config.Env {
 	case config.EnvLocal, config.EnvDevelopment:
@@ -76,6 +79,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
+		api.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
 		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		api.POST("/account", r.handler.CreateAccount)

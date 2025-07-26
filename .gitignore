@@ -1,8 +1,9 @@
 # Ignore config files
 .env
 
-# Ignore database files
+# Ignore database, metrics files
 .db
+prometheus/data
 
 # Ignore output
 build
