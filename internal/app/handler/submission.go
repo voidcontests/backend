@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -13,8 +12,8 @@ import (
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/postgres/submission"
+	"github.com/voidcontests/backend/internal/storage/models"
+	"github.com/voidcontests/backend/internal/storage/repository/postgres/submission"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/validate"
 )
@@ -108,7 +107,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			return err
 		}
 
-		rtcs := make([]request.TC, len(tcs))
+		rtcs := make([]models.TestCaseDTO, len(tcs))
 		for i := range rtcs {
 			rtcs[i].Input = tcs[i].Input
 			rtcs[i].Output = tcs[i].Output
@@ -120,8 +119,10 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			return err
 		}
 
-		bsubmission, _ := json.Marshal(s)
-		h.rdb.Publish(ctx, "submissions", bsubmission)
+		if err := h.broker.PublishSubmission(ctx, s); err != nil {
+			log.Error("can't publish submission", sl.Err(err))
+			// NOTE: should we return error to user?
+		}
 
 		return c.JSON(http.StatusCreated, response.Submission{
 			ID:          s.ID,

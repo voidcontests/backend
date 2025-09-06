@@ -1,6 +1,10 @@
 package request
 
-import "time"
+import (
+	"time"
+
+	"github.com/voidcontests/backend/internal/storage/models"
+)
 
 type CreateAccount struct {
 	Username string `json:"username" required:"true"`
@@ -25,19 +29,13 @@ type CreateContestRequest struct {
 }
 
 type CreateProblemRequest struct {
-	Title       string `json:"title" required:"true"`
-	Kind        string `json:"kind" required:"true"`
-	Statement   string `json:"statement" required:"true"`
-	Difficulty  string `json:"difficulty" required:"true"`
-	TimeLimitMS int    `json:"time_limit_ms"`
-	TestCases   []TC   `json:"test_cases"`
-	Answer      string `json:"answer"`
-}
-
-type TC struct {
-	Input     string `json:"input"`
-	Output    string `json:"output"`
-	IsExample bool   `json:"is_example"`
+	Title       string               `json:"title" required:"true"`
+	Kind        string               `json:"kind" required:"true"`
+	Statement   string               `json:"statement" required:"true"`
+	Difficulty  string               `json:"difficulty" required:"true"`
+	TimeLimitMS int                  `json:"time_limit_ms"`
+	TestCases   []models.TestCaseDTO `json:"test_cases"`
+	Answer      string               `json:"answer"`
 }
 
 type CreateSubmissionRequest struct {

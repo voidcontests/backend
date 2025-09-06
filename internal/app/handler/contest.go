@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/backend/internal/app/handler/dto/request"
 	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/backend/internal/storage/models"
 	"github.com/voidcontests/backend/pkg/validate"
 )
 

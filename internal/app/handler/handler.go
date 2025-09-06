@@ -5,23 +5,23 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/redis/go-redis/v9"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
-	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/backend/internal/storage/broker"
+	"github.com/voidcontests/backend/internal/storage/repository"
 )
 
 type Handler struct {
 	config *config.Config
 	repo   *repository.Repository
-	rdb    *redis.Client
+	broker broker.Broker
 }
 
-func New(c *config.Config, r *repository.Repository, rdb *redis.Client) *Handler {
+func New(c *config.Config, r *repository.Repository, b broker.Broker) *Handler {
 	return &Handler{
 		config: c,
 		repo:   r,
-		rdb:    rdb,
+		broker: b,
 	}
 }
 

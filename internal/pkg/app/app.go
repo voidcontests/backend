@@ -15,8 +15,9 @@ import (
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository"
-	"github.com/voidcontests/backend/internal/repository/postgres"
+	broker "github.com/voidcontests/backend/internal/storage/broker/redis"
+	"github.com/voidcontests/backend/internal/storage/repository"
+	"github.com/voidcontests/backend/internal/storage/repository/postgres"
 )
 
 type App struct {
@@ -62,7 +63,8 @@ func (a *App) Run() {
 		DB:       a.config.Redis.Db,
 	})
 	repo := repository.New(db)
-	r := router.New(a.config, repo, rdb)
+	brok := broker.New(rdb)
+	r := router.New(a.config, repo, brok)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,

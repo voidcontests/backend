@@ -68,6 +68,12 @@ type TestCase struct {
 	IsExample bool   `db:"is_example"`
 }
 
+type TestCaseDTO struct {
+	Input     string `json:"input"`
+	Output    string `json:"output"`
+	IsExample bool   `json:"is_example"`
+}
+
 type Entry struct {
 	ID        int32     `db:"id"`
 	ContestID int32     `db:"contest_id"`

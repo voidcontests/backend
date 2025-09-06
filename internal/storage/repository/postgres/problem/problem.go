@@ -7,8 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/backend/internal/storage/models"
 )
 
 type Postgres struct {
@@ -19,7 +18,7 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []request.TC) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []models.TestCaseDTO) (int32, error) {
 	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("tx begin failed: %w", err)

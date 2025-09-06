@@ -7,11 +7,11 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/redis/go-redis/v9"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/backend/internal/storage/broker"
+	"github.com/voidcontests/backend/internal/storage/repository"
 	"github.com/voidcontests/backend/pkg/ratelimit"
 	"github.com/voidcontests/backend/pkg/requestid"
 	"github.com/voidcontests/backend/pkg/requestlog"
@@ -22,8 +22,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, rdb *redis.Client) *Router {
-	h := handler.New(c, r, rdb)
+func New(c *config.Config, r *repository.Repository, b broker.Broker) *Router {
+	h := handler.New(c, r, b)
 	return &Router{config: c, handler: h}
 }
 
