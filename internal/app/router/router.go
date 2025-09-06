@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/redis/go-redis/v9"
 	"github.com/voidcontests/backend/internal/app/handler"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/sl"
@@ -21,8 +22,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository) *Router {
-	h := handler.New(c, r)
+func New(c *config.Config, r *repository.Repository, rdb *redis.Client) *Router {
+	h := handler.New(c, r, rdb)
 	return &Router{config: c, handler: h}
 }
 

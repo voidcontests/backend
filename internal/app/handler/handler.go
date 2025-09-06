@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/jwt"
 	"github.com/voidcontests/backend/internal/repository"
@@ -13,12 +14,14 @@ import (
 type Handler struct {
 	config *config.Config
 	repo   *repository.Repository
+	rdb    *redis.Client
 }
 
-func New(c *config.Config, r *repository.Repository) *Handler {
+func New(c *config.Config, r *repository.Repository, rdb *redis.Client) *Handler {
 	return &Handler{
 		config: c,
 		repo:   r,
+		rdb:    rdb,
 	}
 }
 

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -118,6 +119,9 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			log.Error("can't create submission", sl.Err(err))
 			return err
 		}
+
+		bsubmission, _ := json.Marshal(s)
+		h.rdb.Publish(ctx, "submissions", bsubmission)
 
 		return c.JSON(http.StatusCreated, response.Submission{
 			ID:          s.ID,

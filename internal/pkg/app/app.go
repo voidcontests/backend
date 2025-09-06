@@ -3,12 +3,14 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/voidcontests/backend/internal/app/router"
 	"github.com/voidcontests/backend/internal/config"
 	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
@@ -54,8 +56,13 @@ func (a *App) Run() {
 
 	slog.Info("postgresql: ok")
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", a.config.Redis.Address, a.config.Redis.Port),
+		Password: a.config.Redis.Password,
+		DB:       a.config.Redis.Db,
+	})
 	repo := repository.New(db)
-	r := router.New(a.config, repo)
+	r := router.New(a.config, repo, rdb)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,
