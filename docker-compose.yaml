@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   server:
     container_name: void-server
