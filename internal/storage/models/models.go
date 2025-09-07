@@ -93,7 +93,6 @@ type Submission struct {
 	PassedTestsCount int32     `db:"passed_tests_count"`
 	Stderr           string    `db:"stderr"`
 	CreatedAt        time.Time `db:"created_at"`
-	// NOTE: locked_at is invisible fields in models, because it is never used outside of database.
 }
 
 type LeaderboardEntry struct {

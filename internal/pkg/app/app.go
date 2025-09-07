@@ -57,13 +57,22 @@ func (a *App) Run() {
 
 	slog.Info("postgresql: ok")
 
-	rdb := redis.NewClient(&redis.Options{
+	rc := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", a.config.Redis.Address, a.config.Redis.Port),
 		Password: a.config.Redis.Password,
 		DB:       a.config.Redis.Db,
 	})
+	defer rc.Close()
+
+	if err := rc.Ping(ctx).Err(); err != nil {
+		slog.Error("redis: could not establish connection", sl.Err(err))
+		return
+	}
+
+	slog.Info("redis: ok")
+
 	repo := repository.New(db)
-	brok := broker.New(rdb)
+	brok := broker.New(rc)
 	r := router.New(a.config, repo, brok)
 
 	server := &http.Server{

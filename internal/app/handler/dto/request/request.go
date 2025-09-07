@@ -16,7 +16,6 @@ type CreateSession struct {
 	Password string `json:"password" required:"true"`
 }
 
-// TODO: think about draft contests
 type CreateContestRequest struct {
 	Title         string    `json:"title" required:"true"`
 	Description   string    `json:"description"`
