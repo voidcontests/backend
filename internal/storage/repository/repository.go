@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/storage/models"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/contest"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/entry"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/problem"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/submission"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/user"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/contest"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/entry"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/problem"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/user"
 )
 
 type Repository struct {

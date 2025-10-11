@@ -9,13 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/storage/models"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres/submission"
-	"github.com/voidcontests/backend/pkg/requestid"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
+	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateSubmission(c echo.Context) error {

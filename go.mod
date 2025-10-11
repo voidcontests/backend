@@ -1,4 +1,4 @@
-module github.com/voidcontests/backend
+module github.com/voidcontests/api
 
 go 1.25.1
 

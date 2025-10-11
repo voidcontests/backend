@@ -7,14 +7,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/voidcontests/backend/internal/app/handler"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/storage/broker"
-	"github.com/voidcontests/backend/internal/storage/repository"
-	"github.com/voidcontests/backend/pkg/ratelimit"
-	"github.com/voidcontests/backend/pkg/requestid"
-	"github.com/voidcontests/backend/pkg/requestlog"
+	"github.com/voidcontests/api/internal/app/handler"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/broker"
+	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ratelimit"
+	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/pkg/requestlog"
 )
 
 type Router struct {

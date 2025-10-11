@@ -11,13 +11,13 @@ import (
 	"syscall"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/voidcontests/backend/internal/app/router"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	broker "github.com/voidcontests/backend/internal/storage/broker/redis"
-	"github.com/voidcontests/backend/internal/storage/repository"
-	"github.com/voidcontests/backend/internal/storage/repository/postgres"
+	"github.com/voidcontests/api/internal/app/router"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/logger/prettyslog"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	broker "github.com/voidcontests/api/internal/storage/broker/redis"
+	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type App struct {

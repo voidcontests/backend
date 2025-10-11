@@ -5,10 +5,10 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/jwt"
-	"github.com/voidcontests/backend/internal/storage/broker"
-	"github.com/voidcontests/backend/internal/storage/repository"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/jwt"
+	"github.com/voidcontests/api/internal/storage/broker"
+	"github.com/voidcontests/api/internal/storage/repository"
 )
 
 type Handler struct {

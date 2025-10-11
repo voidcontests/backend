@@ -3,7 +3,7 @@ package broker
 import (
 	"context"
 
-	"github.com/voidcontests/backend/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 type Broker interface {

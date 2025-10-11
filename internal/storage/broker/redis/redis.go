@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/voidcontests/backend/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 type Broker struct {

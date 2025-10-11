@@ -10,13 +10,13 @@ import (
 	jwtgo "github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/hasher"
-	"github.com/voidcontests/backend/internal/jwt"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/pkg/requestid"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/hasher"
+	"github.com/voidcontests/api/internal/jwt"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateAccount(c echo.Context) error {

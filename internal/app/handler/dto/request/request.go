@@ -3,7 +3,7 @@ package request
 import (
 	"time"
 
-	"github.com/voidcontests/backend/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 type CreateAccount struct {

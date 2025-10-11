@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/config"
+	"github.com/voidcontests/api/internal/config"
 )
 
 func New(ctx context.Context, c *config.Postgres) (*pgxpool.Pool, error) {

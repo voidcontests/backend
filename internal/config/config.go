@@ -7,7 +7,7 @@ import (
 
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
 )
 
 const (

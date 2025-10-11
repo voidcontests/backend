@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o ./build/server ./cmd/server
+RUN go build -o build/api ./cmd/api
 
 # Lightweight docker container with binaries only
 FROM alpine:latest
@@ -15,4 +15,4 @@ WORKDIR /app
 
 COPY --from=builder /app/build ./build
 
-CMD ["./build/server"]
+CMD ["./build/api"]
