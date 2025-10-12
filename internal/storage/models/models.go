@@ -68,6 +68,12 @@ type TestCase struct {
 	IsExample bool   `db:"is_example"`
 }
 
+type TestCaseDTO struct {
+	Input     string `json:"input"`
+	Output    string `json:"output"`
+	IsExample bool   `json:"is_example"`
+}
+
 type Entry struct {
 	ID        int32     `db:"id"`
 	ContestID int32     `db:"contest_id"`
@@ -87,7 +93,6 @@ type Submission struct {
 	PassedTestsCount int32     `db:"passed_tests_count"`
 	Stderr           string    `db:"stderr"`
 	CreatedAt        time.Time `db:"created_at"`
-	// NOTE: locked_at is invisible fields in models, because it is never used outside of database.
 }
 
 type LeaderboardEntry struct {

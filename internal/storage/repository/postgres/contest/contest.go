@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 const defaultLimit = 20

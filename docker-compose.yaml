@@ -1,23 +1,18 @@
 services:
-    postgres:
-        container_name: void-postgres
-        image: postgres:latest
-        restart: unless-stopped
-        volumes:
-            - ./.db/postgres/data:/var/lib/postgresql/data
-        environment:
-            - POSTGRES_PASSWORD
-        ports:
-            - "5432:5432"
+  api:
+    container_name: void-api
+    image: ghcr.io/voidcontests/api:latest
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+    environment:
+      CONFIG_PATH: ./config/dev.yaml
+    ports:
+      - "5919:5919"
+    networks:
+      - voidcontests
 
-    server:
-        container_name: void-server
-        image: jus1d/void-server:latest
-        depends_on:
-            - postgres
-        restart: unless-stopped
-        network_mode: host
-        volumes:
-            - ./config:/app/config
-        environment:
-            - CONFIG_PATH=./config/dev.yaml
+networks:
+  voidcontests:
+    name: voidcontests
+    external: true

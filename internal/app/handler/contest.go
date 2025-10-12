@@ -8,10 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {

@@ -3,18 +3,21 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/voidcontests/backend/internal/app/router"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/lib/logger/prettyslog"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository"
-	"github.com/voidcontests/backend/internal/repository/postgres"
+	"github.com/redis/go-redis/v9"
+	"github.com/voidcontests/api/internal/app/router"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/logger/prettyslog"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	broker "github.com/voidcontests/api/internal/storage/broker/redis"
+	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type App struct {
@@ -54,8 +57,23 @@ func (a *App) Run() {
 
 	slog.Info("postgresql: ok")
 
+	rc := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", a.config.Redis.Address, a.config.Redis.Port),
+		Password: a.config.Redis.Password,
+		DB:       a.config.Redis.Db,
+	})
+	defer rc.Close()
+
+	if err := rc.Ping(ctx).Err(); err != nil {
+		slog.Error("redis: could not establish connection", sl.Err(err))
+		return
+	}
+
+	slog.Info("redis: ok")
+
 	repo := repository.New(db)
-	r := router.New(a.config, repo)
+	brok := broker.New(rc)
+	r := router.New(a.config, repo, brok)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,

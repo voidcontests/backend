@@ -86,7 +86,6 @@ CREATE TABLE submissions (
     language VARCHAR(20) NOT NULL,
     passed_tests_count INTEGER DEFAULT 0 NOT NULL CHECK (passed_tests_count >= 0),
     stderr TEXT NOT NULL,
-    locked_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 

@@ -9,13 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/internal/repository/postgres/submission"
-	"github.com/voidcontests/backend/pkg/requestid"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
+	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateSubmission(c echo.Context) error {
@@ -107,7 +107,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			return err
 		}
 
-		rtcs := make([]request.TC, len(tcs))
+		rtcs := make([]models.TestCaseDTO, len(tcs))
 		for i := range rtcs {
 			rtcs[i].Input = tcs[i].Input
 			rtcs[i].Output = tcs[i].Output
@@ -117,6 +117,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
+		}
+
+		if err := h.broker.PublishSubmission(ctx, s); err != nil {
+			log.Error("can't publish submission", sl.Err(err))
+			// NOTE: should we return error to user?
 		}
 
 		return c.JSON(http.StatusCreated, response.Submission{

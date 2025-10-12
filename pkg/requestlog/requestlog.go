@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler"
-	"github.com/voidcontests/backend/pkg/requestid"
+	"github.com/voidcontests/api/internal/app/handler"
+	"github.com/voidcontests/api/pkg/requestid"
 )
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {

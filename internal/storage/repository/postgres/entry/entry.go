@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 type Postgres struct {
