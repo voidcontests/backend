@@ -1,14 +1,20 @@
 services:
   api:
-    container_name: void-api
     image: ghcr.io/voidcontests/api:latest
+    container_name: void-api
     restart: unless-stopped
-    volumes:
-      - ./config:/app/config
     environment:
       CONFIG_PATH: ./config/dev.yaml
     ports:
       - "5919:5919"
+    volumes:
+      - ./config:/app/config
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:5919/api/healthcheck || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
     networks:
       - voidcontests
 
