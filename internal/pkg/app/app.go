@@ -18,6 +18,7 @@ import (
 	broker "github.com/voidcontests/api/internal/storage/broker/redis"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
+	"github.com/voidcontests/api/internal/version"
 )
 
 type App struct {
@@ -47,7 +48,7 @@ func (a *App) Run() {
 
 	slog.SetDefault(logger)
 
-	slog.Info("api: starting...", slog.String("env", a.config.Env))
+	slog.Info("api: starting...", slog.String("env", a.config.Env), version.CommitAttr, version.BranchAttr)
 
 	db, err := postgres.New(ctx, &a.config.Postgres)
 	if err != nil {
