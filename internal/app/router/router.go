@@ -102,7 +102,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problems/:charcode/submissions",
-			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
+			r.handler.CreateSubmission, ratelimit.WithTimeout(2*time.Second), r.handler.MustIdentify())
 		api.GET("/submissions/:sid", r.handler.GetSubmissionByID, r.handler.MustIdentify())
 	}
 
