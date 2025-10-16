@@ -24,10 +24,7 @@ jobs:
       - name: Build and push image
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
-          docker buildx build --platform linux/amd64 -t ghcr.io/voidcontests/api:amd64 --push .
-          docker buildx build --platform linux/arm64 -t ghcr.io/voidcontests/api:arm64 --push .
-          docker buildx imagetools create \
-            -t ghcr.io/voidcontests/api:latest \
-            -t ghcr.io/voidcontests/api:$SHORT_SHA \
-            ghcr.io/voidcontests/api:amd64 \
-            ghcr.io/voidcontests/api:arm64
+          docker build -t ghcr.io/voidcontests/api:$SHORT_SHA \
+                       -t ghcr.io/voidcontests/api:latest .
+          docker push ghcr.io/voidcontests/api:$SHORT_SHA
+          docker push ghcr.io/voidcontests/api:latest
