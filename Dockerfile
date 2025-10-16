@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     -o build/api ./cmd/api
 
 # lightweight docker container with binaries only
-FROM --platform=$TARGETPLATFORM alpine:latest
+FROM alpine:latest
 
 WORKDIR /app
 
