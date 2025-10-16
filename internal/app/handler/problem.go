@@ -8,10 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateProblem(c echo.Context) error {
@@ -91,7 +91,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 
 	ps, total, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get created contests: %v", op, err)
+		return fmt.Errorf("%s: can't get created problems: %v", op, err)
 	}
 
 	n := len(ps)
@@ -173,7 +173,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return err
 	}
 
-	pdetailed := response.ProblemDetailed{
+	pdetailed := response.ContestProblemDetailed{
 		ID:          p.ID,
 		Charcode:    p.Charcode,
 		ContestID:   int32(contestID),
@@ -188,6 +188,61 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
+		},
+	}
+
+	return c.JSON(http.StatusOK, pdetailed)
+}
+
+func (h *Handler) GetProblemByID(c echo.Context) error {
+	op := "handler.GetProblemByID"
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	problemID, ok := ExtractParamInt(c, "pid")
+	if !ok {
+		return Error(http.StatusBadRequest, "problem ID should be an integer")
+	}
+
+	problem, err := h.repo.Problem.GetByID(ctx, int32(problemID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Error(http.StatusNotFound, "problem not found")
+	}
+	if err != nil {
+		return fmt.Errorf("%s: can't get problem: %v", op, err)
+	}
+
+	if problem.WriterID != claims.UserID {
+		return Error(http.StatusNotFound, "problem not found")
+	}
+
+	etc, err := h.repo.Problem.GetExampleCases(ctx, problem.ID)
+	if err != nil {
+		return fmt.Errorf("%s: can't get tc examples: %v", op, err)
+	}
+
+	n := len(etc)
+	examples := make([]response.TC, n, n)
+	for i := 0; i < n; i++ {
+		examples[i] = response.TC{
+			Input:  etc[i].Input,
+			Output: etc[i].Output,
+		}
+	}
+
+	pdetailed := response.ProblemDetailed{
+		ID:          problem.ID,
+		Kind:        problem.Kind,
+		Title:       problem.Title,
+		Statement:   problem.Statement,
+		Examples:    examples,
+		Difficulty:  problem.Difficulty,
+		CreatedAt:   problem.CreatedAt,
+		TimeLimitMS: problem.TimeLimitMS,
+		Writer: response.User{
+			ID:       problem.WriterID,
+			Username: problem.WriterUsername,
 		},
 	}
 

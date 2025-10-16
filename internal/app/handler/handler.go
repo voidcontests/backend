@@ -5,20 +5,23 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/jwt"
-	"github.com/voidcontests/backend/internal/repository"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/jwt"
+	"github.com/voidcontests/api/internal/storage/broker"
+	"github.com/voidcontests/api/internal/storage/repository"
 )
 
 type Handler struct {
 	config *config.Config
 	repo   *repository.Repository
+	broker broker.Broker
 }
 
-func New(c *config.Config, r *repository.Repository) *Handler {
+func New(c *config.Config, r *repository.Repository, b broker.Broker) *Handler {
 	return &Handler{
 		config: c,
 		repo:   r,
+		broker: b,
 	}
 }
 

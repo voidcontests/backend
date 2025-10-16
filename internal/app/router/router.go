@@ -7,13 +7,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/voidcontests/backend/internal/app/handler"
-	"github.com/voidcontests/backend/internal/config"
-	"github.com/voidcontests/backend/internal/lib/logger/sl"
-	"github.com/voidcontests/backend/internal/repository"
-	"github.com/voidcontests/backend/pkg/ratelimit"
-	"github.com/voidcontests/backend/pkg/requestid"
-	"github.com/voidcontests/backend/pkg/requestlog"
+	"github.com/voidcontests/api/internal/app/handler"
+	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/broker"
+	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ratelimit"
+	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/pkg/requestlog"
 )
 
 type Router struct {
@@ -21,8 +22,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository) *Router {
-	h := handler.New(c, r)
+func New(c *config.Config, r *repository.Repository, b broker.Broker) *Router {
+	h := handler.New(c, r, b)
 	return &Router{config: c, handler: h}
 }
 
@@ -81,10 +82,15 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.POST("/account", r.handler.CreateAccount)
 		api.POST("/session", r.handler.CreateSession)
 
+		// TODO: make this endpoints as filter to general endpoint, like:
+		// GET /contests?creator_id=69
+		// GET /problems?writer_id=420
 		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
 		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
+
+		api.GET("/problems/:pid", r.handler.GetProblemByID, r.handler.MustIdentify())
 
 		api.GET("/contests", r.handler.GetContests)
 		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
@@ -96,7 +102,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())
 		api.POST("/contests/:cid/problems/:charcode/submissions",
-			r.handler.CreateSubmission, ratelimit.WithTimeout(5*time.Second), r.handler.MustIdentify())
+			r.handler.CreateSubmission, ratelimit.WithTimeout(2*time.Second), r.handler.MustIdentify())
 		api.GET("/submissions/:sid", r.handler.GetSubmissionByID, r.handler.MustIdentify())
 	}
 

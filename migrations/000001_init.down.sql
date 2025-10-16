@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS failed_tests;
 DROP TABLE IF EXISTS submissions;
 DROP TABLE IF EXISTS entries;
 DROP TABLE IF EXISTS contest_problems;

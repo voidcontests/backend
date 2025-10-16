@@ -4,15 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/app/handler/dto/response"
-	"github.com/voidcontests/backend/internal/repository/models"
-	"github.com/voidcontests/backend/pkg/validate"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {
@@ -46,19 +45,6 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		}
 	}
 
-	occupied, err := h.repo.Contest.IsTitleOccupied(ctx, strings.ToLower(body.Title))
-	if err != nil {
-		return fmt.Errorf("%s: can't verify that title isn't occupied: %v", op, err)
-	}
-	if occupied {
-		return Error(http.StatusConflict, "title alredy taken")
-	}
-
-	// TODO: move this limitation somwhere as MAX_PROBLEMS
-	if len(body.ProblemsIDs) > 6 {
-		return Error(http.StatusBadRequest, "maximum about of problems in the contest is 6")
-	}
-
 	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
 	if err != nil {
 		return fmt.Errorf("%s: can't create contest: %v", op, err)
@@ -88,9 +74,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return fmt.Errorf("%s: can't get contest: %v", op, err)
 	}
 
-	// TODO: allow check previuos contests
 	if contest.EndTime.Before(time.Now()) {
-		return Error(http.StatusNotFound, "contest not found")
+		if (authenticated && claims.UserID != contest.CreatorID) || !authenticated {
+			return Error(http.StatusNotFound, "contest not found")
+		}
 	}
 
 	problems, err := h.repo.Contest.GetProblemset(ctx, contest.ID)
@@ -103,7 +90,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		ID:          contest.ID,
 		Title:       contest.Title,
 		Description: contest.Description,
-		Problems:    make([]response.ProblemListItem, n, n),
+		Problems:    make([]response.ContestProblemListItem, n, n),
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
@@ -118,15 +105,17 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	for i := range n {
-		cdetailed.Problems[i] = response.ProblemListItem{
-			ID:         problems[i].ID,
-			Charcode:   problems[i].Charcode,
-			Title:      problems[i].Title,
-			Difficulty: problems[i].Difficulty,
+		cdetailed.Problems[i] = response.ContestProblemListItem{
+			ID:        problems[i].ID,
+			Charcode:  problems[i].Charcode,
+			ContestID: contest.ID,
 			Writer: response.User{
 				ID:       problems[i].WriterID,
 				Username: problems[i].WriterUsername,
 			},
+			Title:      problems[i].Title,
+			Difficulty: problems[i].Difficulty,
+			CreatedAt:  problems[i].CreatedAt,
 		}
 	}
 
@@ -160,10 +149,6 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 }
 
 func (h *Handler) GetCreatedContests(c echo.Context) error {
-	// TODO: do not return all contests:
-	// - return only active contests
-	// - return by chunks (pages)
-
 	op := "handler.GetCreatedContests"
 	ctx := c.Request().Context()
 
@@ -225,13 +210,13 @@ func (h *Handler) GetContests(c echo.Context) error {
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
 	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contests: %v", op, err)
+		return fmt.Errorf("%s: can't get contests: %w", op, err)
 	}
 
 	items := make([]response.ContestListItem, 0)
@@ -282,6 +267,14 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 	offset, ok := ExtractQueryParamInt(c, "offset")
 	if !ok {
 		offset = 0
+	}
+
+	_, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		return fmt.Errorf("%s: can't get contest: %v", op, err)
 	}
 
 	leaderboard, total, err := h.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 const defaultLimit = 20
@@ -41,35 +41,36 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 	}
 	defer tx.Rollback(ctx)
 
-	batch := &pgx.Batch{}
-
-	batch.Queue(
-		`INSERT INTO contests
+	var contestID int32
+	err = tx.QueryRow(ctx, `
+		INSERT INTO contests
 		(creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id`,
-		creatorID, title, desc, startTime, endTime, durationMins, maxEntries, allowLateJoin,
-	)
+		RETURNING id
+	`, creatorID, title, desc, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
+	if err != nil {
+		return 0, fmt.Errorf("insert contest failed: %w", err)
+	}
 
-	for i, id := range problemIDs {
-		batch.Queue(
-			`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
-			nil, id, string(charcodes[i]),
-		)
+	batch := &pgx.Batch{}
+	for i, pid := range problemIDs {
+		batch.Queue(`
+			INSERT INTO contest_problems (contest_id, problem_id, charcode)
+			VALUES ($1, $2, $3)
+		`, contestID, pid, string(charcodes[i]))
 	}
 
 	br := tx.SendBatch(ctx, batch)
-	defer br.Close()
-
-	var contestID int32
-	if err := br.QueryRow().Scan(&contestID); err != nil {
-		return 0, fmt.Errorf("failed to insert contest: %w", err)
-	}
 
 	for i := 0; i < len(problemIDs); i++ {
 		if _, err := br.Exec(); err != nil {
-			return 0, fmt.Errorf("problem insert %d failed: %w", i, err)
+			br.Close()
+			return 0, fmt.Errorf("insert contest_problem %d failed: %w", i, err)
 		}
+	}
+
+	if err := br.Close(); err != nil {
+		return 0, fmt.Errorf("batch close failed: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -79,7 +80,7 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 	return contestID, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int32) (models.Contest, error) {
 	var contest models.Contest
 	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 		FROM contests
@@ -88,10 +89,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (*models.Contes
 		WHERE contests.id = $1
 		GROUP BY contests.id, users.username`
 	err := p.pool.QueryRow(ctx, query, contestID).Scan(&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime, &contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
-	if err != nil {
-		return nil, err
-	}
-	return &contest, nil
+	return contest, err
 }
 
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
@@ -124,7 +122,6 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 	}
 
 	batch := &pgx.Batch{}
-
 	batch.Queue(`
 		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 		FROM contests
@@ -139,14 +136,14 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE contests.end_time >= now()`)
 
 	br := p.pool.SendBatch(ctx, batch)
-	defer br.Close()
 
 	rows, err := br.Query()
 	if err != nil {
+		br.Close()
 		return nil, 0, fmt.Errorf("contests query failed: %w", err)
 	}
-	defer rows.Close()
 
+	contests = make([]models.Contest, 0)
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
@@ -155,16 +152,21 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
 			&c.CreatorUsername, &c.Participants,
 		); err != nil {
+			rows.Close()
+			br.Close()
 			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		contests = append(contests, c)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("row iteration error: %w", err)
-	}
+	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
+		br.Close()
 		return nil, 0, fmt.Errorf("count query failed: %w", err)
+	}
+
+	if err := br.Close(); err != nil {
+		return nil, 0, fmt.Errorf("batch close failed: %w", err)
 	}
 
 	return contests, total, nil
@@ -172,7 +174,6 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 
 func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit, offset int) (contests []models.Contest, total int, err error) {
 	batch := &pgx.Batch{}
-
 	batch.Queue(`
 		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 		FROM contests
@@ -187,30 +188,24 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE creator_id = $1`, creatorID)
 
 	br := p.pool.SendBatch(ctx, batch)
-	defer br.Close()
 
 	rows, err := br.Query()
 	if err != nil {
+		br.Close()
 		return nil, 0, err
 	}
 
+	contests = make([]models.Contest, 0)
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID,
-			&c.CreatorID,
-			&c.Title,
-			&c.Description,
-			&c.StartTime,
-			&c.EndTime,
-			&c.DurationMins,
-			&c.MaxEntries,
-			&c.AllowLateJoin,
-			&c.CreatedAt,
-			&c.CreatorUsername,
-			&c.Participants,
+			&c.ID, &c.CreatorID, &c.Title, &c.Description,
+			&c.StartTime, &c.EndTime, &c.DurationMins,
+			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
+			&c.CreatorUsername, &c.Participants,
 		); err != nil {
 			rows.Close()
+			br.Close()
 			return nil, 0, err
 		}
 		contests = append(contests, c)
@@ -218,6 +213,11 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
+		br.Close()
+		return nil, 0, err
+	}
+
+	if err := br.Close(); err != nil {
 		return nil, 0, err
 	}
 
@@ -238,7 +238,6 @@ func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, err
 
 func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error) {
 	batch := &pgx.Batch{}
-
 	batch.Queue(`
 		SELECT u.id AS user_id, u.username, COALESCE(SUM(
 			CASE
@@ -271,24 +270,32 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 	`, contestID)
 
 	br := p.pool.SendBatch(ctx, batch)
-	defer br.Close()
 
 	rows, err := br.Query()
 	if err != nil {
+		br.Close()
 		return nil, 0, fmt.Errorf("leaderboard query failed: %w", err)
 	}
-	defer rows.Close()
 
+	leaderboard = make([]models.LeaderboardEntry, 0)
 	for rows.Next() {
 		var entry models.LeaderboardEntry
 		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points); err != nil {
+			rows.Close()
+			br.Close()
 			return nil, 0, err
 		}
 		leaderboard = append(leaderboard, entry)
 	}
+	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
+		br.Close()
 		return nil, 0, fmt.Errorf("total count query failed: %w", err)
+	}
+
+	if err := br.Close(); err != nil {
+		return nil, 0, err
 	}
 
 	return leaderboard, total, nil

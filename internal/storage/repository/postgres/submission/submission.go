@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 const (
@@ -106,7 +106,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int32) (map[i
 		SELECT
 			s.problem_id,
 			CASE
-				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'ok'
+				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
 				WHEN COUNT(*) > 0 THEN 'tried'
 				ELSE NULL
 			END AS status
@@ -134,7 +134,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int32) (map[i
 		if status.Valid {
 			statuses[problemID] = status.String
 		} else {
-			statuses[problemID] = "" // or "not_submitted"
+			statuses[problemID] = ""
 		}
 	}
 
@@ -180,7 +180,6 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int32, charcode st
 	}
 
 	batch := &pgx.Batch{}
-
 	batch.Queue(`
 		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict,
 		       s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
@@ -207,8 +206,8 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int32, charcode st
 	if err != nil {
 		return nil, 0, fmt.Errorf("query rows failed: %w", err)
 	}
-	defer rows.Close()
 
+	items = make([]models.Submission, 0)
 	for rows.Next() {
 		var s models.Submission
 		if err := rows.Scan(
@@ -224,13 +223,16 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int32, charcode st
 			&s.Stderr,
 			&s.CreatedAt,
 		); err != nil {
+			rows.Close()
 			return nil, 0, fmt.Errorf("row scan failed: %w", err)
 		}
 		items = append(items, s)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, 0, fmt.Errorf("row iteration error: %w", err)
 	}
+	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count query failed: %w", err)

@@ -7,8 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/voidcontests/backend/internal/app/handler/dto/request"
-	"github.com/voidcontests/backend/internal/repository/models"
+	"github.com/voidcontests/api/internal/storage/models"
 )
 
 type Postgres struct {
@@ -19,44 +18,48 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []request.TC) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []models.TestCaseDTO) (int32, error) {
 	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("tx begin failed: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	var problemID int32
-	query := `INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-
-	err = tx.QueryRow(ctx, query, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
+	err = tx.QueryRow(ctx, `
+        INSERT INTO problems (kind, writer_id, title, statement, difficulty, answer, time_limit_ms)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+    `, kind, writerID, title, statement, difficulty, answer, timeLimitMS).Scan(&problemID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("insert problem failed: %w", err)
 	}
 
 	if len(tcs) > 0 {
 		batch := &pgx.Batch{}
 		for _, tc := range tcs {
-			batch.Queue(
-				`INSERT INTO test_cases (problem_id, input, output, is_example)
-				 VALUES ($1, $2, $3, $4)`,
-				problemID, tc.Input, tc.Output, tc.IsExample,
-			)
+			batch.Queue(`
+                INSERT INTO test_cases (problem_id, input, output, is_example)
+                VALUES ($1, $2, $3, $4)
+            `, problemID, tc.Input, tc.Output, tc.IsExample)
 		}
 
 		br := tx.SendBatch(ctx, batch)
-		defer br.Close()
 
-		for i := 0; i < len(tcs); i++ {
+		for i := 0; i < batch.Len(); i++ {
 			if _, err := br.Exec(); err != nil {
-				return 0, fmt.Errorf("failed to insert test case %d: %w", i, err)
+				br.Close()
+				return 0, fmt.Errorf("insert test case %d failed: %w", i, err)
 			}
+		}
+
+		if err := br.Close(); err != nil {
+			return 0, fmt.Errorf("batch close failed: %w", err)
 		}
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return 0, err
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit failed: %w", err)
 	}
 
 	return problemID, nil
@@ -71,7 +74,7 @@ func (p *Postgres) Create(ctx context.Context, kind string, writerID int32, titl
 	return id, err
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*models.Problem, error) {
+func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error) {
 	query := `SELECT p.*, cp.charcode, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
@@ -86,11 +89,29 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (*
 		&problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt,
 		&problem.Charcode, &problem.WriterUsername,
 	)
-	if err != nil {
-		return nil, err
-	}
 
-	return &problem, nil
+	return problem, err
+}
+
+func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem, error) {
+	query := `SELECT
+			p.id, p.kind, p.writer_id, p.title, p.statement,
+			p.difficulty, p.answer, p.time_limit_ms, p.created_at,
+			u.username AS writer_username
+		FROM problems p
+		JOIN users u ON u.id = p.writer_id
+		WHERE p.id = $1`
+
+	row := p.pool.QueryRow(ctx, query, problemID)
+
+	var problem models.Problem
+	err := row.Scan(
+		&problem.ID, &problem.Kind, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt,
+		&problem.WriterUsername,
+	)
+
+	return problem, err
 }
 
 func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
@@ -101,7 +122,7 @@ func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.
 	}
 	defer rows.Close()
 
-	var tcs []models.TestCase
+	tcs := make([]models.TestCase, 0)
 	for rows.Next() {
 		var tc models.TestCase
 		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
@@ -122,7 +143,7 @@ func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]mode
 	}
 	defer rows.Close()
 
-	var tcs []models.TestCase
+	tcs := make([]models.TestCase, 0)
 	for rows.Next() {
 		var tc models.TestCase
 		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
@@ -143,7 +164,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	}
 	defer rows.Close()
 
-	var problems []models.Problem
+	problems := make([]models.Problem, 0)
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
@@ -175,27 +196,35 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 	`, writerID)
 
 	br := p.pool.SendBatch(ctx, batch)
-	defer br.Close()
 
 	rows, err := br.Query()
 	if err != nil {
-		return nil, 0, err
+		br.Close()
+		return nil, 0, fmt.Errorf("query failed: %w", err)
 	}
-	defer rows.Close()
 
+	problems = make([]models.Problem, 0)
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
 			&p.ID, &p.Kind, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
 			&p.Answer, &p.TimeLimitMS, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
-			return nil, 0, err
+			rows.Close()
+			br.Close()
+			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		problems = append(problems, p)
 	}
+	rows.Close()
 
 	if err := br.QueryRow().Scan(&total); err != nil {
-		return nil, 0, err
+		br.Close()
+		return nil, 0, fmt.Errorf("count scan failed: %w", err)
+	}
+
+	if err := br.Close(); err != nil {
+		return nil, 0, fmt.Errorf("batch close failed: %w", err)
 	}
 
 	return problems, total, nil
