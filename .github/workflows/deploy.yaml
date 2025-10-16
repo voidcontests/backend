@@ -25,9 +25,8 @@ jobs:
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
           docker buildx build --platform linux/amd64 -t ghcr.io/voidcontests/api:amd64 --push .
-          docker buildx build --platform linux/amd64 -t ghcr.io/voidcontests/api:arm64 --push .
-
-          docker bulidx imagetools create \
+          docker buildx build --platform linux/arm64 -t ghcr.io/voidcontests/api:arm64 --push .
+          docker buildx imagetools create \
             -t ghcr.io/voidcontests/api:latest \
             -t ghcr.io/voidcontests/api:$SHORT_SHA \
             ghcr.io/voidcontests/api:amd64 \
