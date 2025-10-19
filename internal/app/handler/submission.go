@@ -121,7 +121,9 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 
 		if err := h.broker.PublishSubmission(ctx, s); err != nil {
 			log.Error("can't publish submission", sl.Err(err))
-			// NOTE: should we return error to user?
+			// TODO: if error happened, we probably need to:
+			// set either `cancelled` status, or delay submisison execution
+			return err
 		}
 
 		return c.JSON(http.StatusCreated, response.Submission{
