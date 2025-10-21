@@ -71,8 +71,10 @@ type Entry interface {
 }
 
 type Submission interface {
-	Create(ctx context.Context, entryID, problemID int32, verdict, answer, code, language string, passedTestsCount int32, stderr string) (models.Submission, error)
+	CreateWithSolution(ctx context.Context, entryID int32, problemID int32, code string, language string) (models.Submission, error)
+	CreateWithTextAnswer(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (models.Submission, error)
 	CountTestsForProblem(ctx context.Context, problemID int32) (int32, error)
+	UpdateVerdictStatus(ctx context.Context, id int32, verdict string, status string) error
 	GetFailedTest(ctx context.Context, submissionID int32) (models.FailedTest, error)
 	GetProblemStatus(ctx context.Context, entryID int32, problemID int32) (string, error)
 	GetProblemStatuses(ctx context.Context, entryID int32) (map[int32]string, error)

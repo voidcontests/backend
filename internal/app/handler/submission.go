@@ -13,7 +13,8 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/models"
-	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
+	"github.com/voidcontests/api/internal/storage/models/status"
+	"github.com/voidcontests/api/internal/storage/models/verdict"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
@@ -79,14 +80,14 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	if body.ProblemKind == models.TextAnswerProblem {
-		var verdict string
+		var v string
 		if problem.Answer != body.Answer {
-			verdict = submission.VerdictWrongAnswer
+			v = verdict.WA
 		} else {
-			verdict = submission.VerdictOK
+			v = verdict.OK
 		}
 
-		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0, "")
+		s, err := h.repo.Submission.CreateWithTextAnswer(ctx, entry.ID, problem.ID, v, body.Answer)
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
@@ -96,24 +97,13 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			ID:          s.ID,
 			ProblemID:   s.ProblemID,
 			ProblemKind: s.ProblemKind,
-			Verdict:     string(s.Verdict),
-			Answer:      body.Answer,
+			Status:      s.Status,
+			Verdict:     s.Verdict,
+			Answer:      s.Answer,
 			CreatedAt:   s.CreatedAt,
 		})
 	} else if body.ProblemKind == models.CodingProblem {
-		tcs, err := h.repo.Problem.GetTestCases(ctx, problem.ID)
-		if err != nil {
-			log.Error("can't get test cases for problem", sl.Err(err))
-			return err
-		}
-
-		rtcs := make([]models.TestCaseDTO, len(tcs))
-		for i := range rtcs {
-			rtcs[i].Input = tcs[i].Input
-			rtcs[i].Output = tcs[i].Output
-		}
-
-		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictPending, "", body.Code, body.Language, 0, "")
+		s, err := h.repo.Submission.CreateWithSolution(ctx, entry.ID, problem.ID, body.Code, body.Language)
 		if err != nil {
 			log.Error("can't create submission", sl.Err(err))
 			return err
@@ -121,8 +111,11 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 
 		if err := h.broker.PublishSubmission(ctx, s); err != nil {
 			log.Error("can't publish submission", sl.Err(err))
-			// TODO: if error happened, we probably need to:
-			// set either `cancelled` status, or delay submisison execution
+			// TODO: if we can't push submission into execution queue, try to save it to local memory, and try to push later (?)
+			//   - but is it really needed, after some time?
+			if err = h.repo.Submission.UpdateVerdictStatus(ctx, s.ID, verdict.IE, status.Completed); err != nil {
+				slog.Error("failed to update submission's verdict", sl.Err(err))
+			}
 			return err
 		}
 
@@ -130,7 +123,8 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 			ID:          s.ID,
 			ProblemID:   s.ProblemID,
 			ProblemKind: s.ProblemKind,
-			Verdict:     submission.VerdictPending,
+			Status:      s.Status,
+			Verdict:     s.Verdict,
 			CreatedAt:   s.CreatedAt,
 		})
 	}
@@ -163,6 +157,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 			ID:          s.ID,
 			ProblemID:   s.ProblemID,
 			ProblemKind: s.ProblemKind,
+			Status:      s.Status,
 			Verdict:     s.Verdict,
 			Answer:      s.Answer,
 			CreatedAt:   s.CreatedAt,
@@ -175,12 +170,14 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	switch s.Verdict {
-	case submission.VerdictRunning, submission.VerdictPending:
+	// no need to provide testing report yet (no testing report)
+	switch s.Status {
+	case status.Pending, status.Running:
 		return c.JSON(http.StatusOK, response.Submission{
 			ID:          s.ID,
 			ProblemID:   s.ProblemID,
 			ProblemKind: s.ProblemKind,
+			Status:      s.Status,
 			Verdict:     s.Verdict,
 			Code:        s.Code,
 			Language:    s.Language,
@@ -195,6 +192,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 			ID:          s.ID,
 			ProblemID:   s.ProblemID,
 			ProblemKind: s.ProblemKind,
+			Status:      s.Status,
 			Verdict:     s.Verdict,
 			Code:        s.Code,
 			Language:    s.Language,
@@ -215,6 +213,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		ID:          s.ID,
 		ProblemID:   s.ProblemID,
 		ProblemKind: s.ProblemKind,
+		Status:      s.Status,
 		Verdict:     s.Verdict,
 		Code:        s.Code,
 		Language:    s.Language,
@@ -281,6 +280,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 			ID:          submission.ID,
 			ProblemID:   submission.ProblemID,
 			ProblemKind: submission.ProblemKind,
+			Status:      submission.Status,
 			Verdict:     submission.Verdict,
 			CreatedAt:   submission.CreatedAt,
 		}

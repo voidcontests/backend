@@ -8,17 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models/status"
+	"github.com/voidcontests/api/internal/storage/models/verdict"
 )
 
 const (
-	VerdictPending           = "pending"
-	VerdictRunning           = "running"
-	VerdictOK                = "ok"
-	VerdictWrongAnswer       = "wrong_answer"
-	VerdictRuntimeError      = "runtime_error"
-	VerdictCompilationError  = "compilation_error"
-	VerdictTimeLimitExceeded = "time_limit_exceeded"
-
 	defaultLimit = 100
 )
 
@@ -30,21 +24,28 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, entryID, problemID int32, verdict, answer, code, language string, passedTestsCount int32, stderr string) (models.Submission, error) {
-	query := `
-		INSERT INTO submissions (entry_id, problem_id, verdict, answer, code, language, passed_tests_count, stderr)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id, entry_id, problem_id,
-		          (SELECT kind FROM problems WHERE id = $2) AS problem_kind,
-		          verdict, answer, code, language, passed_tests_count, stderr, created_at
-	`
+func (p *Postgres) CreateWithTextAnswer(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (models.Submission, error) {
+	return p.create(ctx, entryID, problemID, status.Completed, verdict, answer, "", "", 0, "")
+}
+
+func (p *Postgres) CreateWithSolution(ctx context.Context, entryID int32, problemID int32, code string, language string) (models.Submission, error) {
+	return p.create(ctx, entryID, problemID, status.Pending, verdict.NJ, "", code, language, 0, "")
+}
+
+func (p *Postgres) create(ctx context.Context, entryID int32, problemID int32, status string, verdict string, answer string, code string, language string, passedTestsCount int32, stderr string) (models.Submission, error) {
+	query := `INSERT INTO submissions
+		(entry_id, problem_id, status, verdict, answer, code, language, passed_tests_count, stderr)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, entry_id, problem_id, (SELECT kind FROM problems WHERE id = $2) AS problem_kind,
+		status, verdict, answer, code, language, passed_tests_count, stderr, created_at`
 
 	var submission models.Submission
-	err := p.pool.QueryRow(ctx, query, entryID, problemID, verdict, answer, code, language, passedTestsCount, stderr).Scan(
+	err := p.pool.QueryRow(ctx, query, entryID, problemID, status, verdict, answer, code, language, passedTestsCount, stderr).Scan(
 		&submission.ID,
 		&submission.EntryID,
 		&submission.ProblemID,
 		&submission.ProblemKind,
+		&submission.Status,
 		&submission.Verdict,
 		&submission.Answer,
 		&submission.Code,
@@ -55,6 +56,12 @@ func (p *Postgres) Create(ctx context.Context, entryID, problemID int32, verdict
 	)
 
 	return submission, err
+}
+
+func (p *Postgres) UpdateVerdictStatus(ctx context.Context, id int32, verdict string, status string) error {
+	query := `UPDATE submissions SET verdict = $1, status = $2 WHERE id = $3`
+	_, err := p.pool.Exec(ctx, query, verdict, status, id)
+	return err
 }
 
 func (p *Postgres) CountTestsForProblem(ctx context.Context, problemID int32) (int32, error) {
@@ -147,7 +154,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int32) (map[i
 
 func (p *Postgres) GetByID(ctx context.Context, userID, submissionID int32) (models.Submission, error) {
 	query := `
-		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.verdict,
+		SELECT s.id, s.entry_id, s.problem_id, p.kind AS problem_kind, s.status, s.verdict,
 		       s.answer, s.code, s.language, s.passed_tests_count, s.stderr, s.created_at
 		FROM submissions s
 		JOIN problems p ON p.id = s.problem_id
@@ -162,6 +169,7 @@ func (p *Postgres) GetByID(ctx context.Context, userID, submissionID int32) (mod
 		&s.EntryID,
 		&s.ProblemID,
 		&s.ProblemKind,
+		&s.Status,
 		&s.Verdict,
 		&s.Answer,
 		&s.Code,
