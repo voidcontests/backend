@@ -13,7 +13,6 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/models/status"
-	"github.com/voidcontests/api/internal/storage/models/verdict"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
@@ -123,8 +122,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	// TODO: Introduce status `failed` it is actually usefull
-	if s.Status != status.Completed || s.Verdict == verdict.IE {
+	if s.Status != status.Success {
 		return c.JSON(http.StatusOK, response.Submission{
 			ID:        s.ID,
 			ProblemID: s.ProblemID,
@@ -137,9 +135,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 
 	}
 
-	// TODO: create TR in a transaction with setting completed status
 	tr, err := h.repo.Submission.GetTestingReport(ctx, s.ID)
-	// NOTE: decide either create in API initial testing report or not
 	if err != nil {
 		log.Error("can't get testing report", sl.Err(err))
 		return err
