@@ -73,10 +73,8 @@ type ContestListItem struct {
 type Submission struct {
 	ID            int32          `json:"id"`
 	ProblemID     int32          `json:"problem_id"`
-	ProblemKind   string         `json:"problem_kind"`
 	Status        string         `json:"status"`
 	Verdict       string         `json:"verdict"`
-	Answer        string         `json:"answer,omitempty"`
 	Code          string         `json:"code,omitempty"`
 	Language      string         `json:"language,omitempty"`
 	TestingReport *TestingReport `json:"testing_report,omitempty"`
@@ -84,13 +82,15 @@ type Submission struct {
 }
 
 type TestingReport struct {
-	Passed     int         `json:"passed"`
-	Total      int         `json:"total"`
-	Stderr     string      `json:"stderr,omitempty"`
-	FailedTest *FailedTest `json:"failed_test,omitempty"`
+	ID               int32     `json:"id"`
+	PassedTestsCount int32     `json:"passed_tests_count"`
+	TotalTestsCount  int32     `json:"total_tests_count"`
+	FailedTest       *Test     `json:"failed_test,omitempty"`
+	Stderr           string    `json:"stderr"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
-type FailedTest struct {
+type Test struct {
 	Input          string `json:"input"`
 	ExpectedOutput string `json:"expected_output"`
 	ActualOutput   string `json:"actual_output"`

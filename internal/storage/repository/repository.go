@@ -58,8 +58,8 @@ type Problem interface {
 	Create(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int32) (int32, error)
 	Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error)
 	GetByID(ctx context.Context, problemID int32) (models.Problem, error)
-	GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error)
 	GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error)
+	GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error)
 	GetAll(ctx context.Context) ([]models.Problem, error)
 	GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
@@ -71,13 +71,10 @@ type Entry interface {
 }
 
 type Submission interface {
-	CreateWithSolution(ctx context.Context, entryID int32, problemID int32, code string, language string) (models.Submission, error)
-	CreateWithTextAnswer(ctx context.Context, entryID int32, problemID int32, verdict string, answer string) (models.Submission, error)
-	CountTestsForProblem(ctx context.Context, problemID int32) (int32, error)
-	UpdateVerdictStatus(ctx context.Context, id int32, verdict string, status string) error
-	GetFailedTest(ctx context.Context, submissionID int32) (models.FailedTest, error)
+	Create(ctx context.Context, entryID int32, problemID int32, code string, language string) (models.Submission, error)
 	GetProblemStatus(ctx context.Context, entryID int32, problemID int32) (string, error)
 	GetProblemStatuses(ctx context.Context, entryID int32) (map[int32]string, error)
-	GetByID(ctx context.Context, userID, submissionID int32) (models.Submission, error)
+	GetByID(ctx context.Context, submissionID int32) (models.Submission, error)
 	ListByProblem(ctx context.Context, entryID int32, charcode string, limit int, offset int) (items []models.Submission, total int, err error)
+	GetTestingReport(ctx context.Context, submissionID int32) (models.TestingReport, error)
 }

@@ -63,6 +63,7 @@ type Problem struct {
 type TestCase struct {
 	ID        int32  `db:"id"`
 	ProblemID int32  `db:"problem_id"`
+	Ordinal   int32  `db:"ordinal"`
 	Input     string `db:"input"`
 	Output    string `db:"output"`
 	IsExample bool   `db:"is_example"`
@@ -82,18 +83,25 @@ type Entry struct {
 }
 
 type Submission struct {
-	ID               int32     `db:"id"`
-	EntryID          int32     `db:"entry_id"`
-	ProblemID        int32     `db:"problem_id"`
-	ProblemKind      string    `db:"problem_kind"`
-	Status           string    `db:"status"`
-	Verdict          string    `db:"verdict"`
-	Answer           string    `db:"answer"`
-	Code             string    `db:"code"`
-	Language         string    `db:"language"`
-	PassedTestsCount int32     `db:"passed_tests_count"`
-	Stderr           string    `db:"stderr"`
-	CreatedAt        time.Time `db:"created_at"`
+	ID        int32     `db:"id"`
+	EntryID   int32     `db:"entry_id"`
+	ProblemID int32     `db:"problem_id"`
+	Status    string    `db:"status"`
+	Verdict   string    `db:"verdict"`
+	Code      string    `db:"code"`
+	Language  string    `db:"language"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
+type TestingReport struct {
+	ID                    int32     `db:"id"`
+	SubmissionID          int32     `db:"submission_id"`
+	PassedTestsCount      int32     `db:"passed_tests_count"`
+	TotalTestsCount       int32     `db:"total_tests_count"`
+	FirstFailedTestID     *int32    `db:"first_failed_test_id"`
+	FirstFailedTestOutput *string   `db:"first_failed_test_output"`
+	Stderr                string    `db:"stderr"`
+	CreatedAt             time.Time `db:"created_at"`
 }
 
 type LeaderboardEntry struct {

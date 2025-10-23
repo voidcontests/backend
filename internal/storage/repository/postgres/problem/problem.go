@@ -37,11 +37,11 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, kind string, writerID int3
 
 	if len(tcs) > 0 {
 		batch := &pgx.Batch{}
-		for _, tc := range tcs {
+		for i, tc := range tcs {
 			batch.Queue(`
-                INSERT INTO test_cases (problem_id, input, output, is_example)
-                VALUES ($1, $2, $3, $4)
-            `, problemID, tc.Input, tc.Output, tc.IsExample)
+                INSERT INTO test_cases (problem_id, ordinal, input, output, is_example)
+                VALUES ($1, $2, $3, $4, $5)
+            `, problemID, i+1, tc.Input, tc.Output, tc.IsExample)
 		}
 
 		br := tx.SendBatch(ctx, batch)
@@ -114,28 +114,8 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem
 	return problem, err
 }
 
-func (p *Postgres) GetTestCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
-	query := `SELECT id, problem_id, input, output, is_example FROM test_cases WHERE problem_id = $1`
-	rows, err := p.pool.Query(ctx, query, problemID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	tcs := make([]models.TestCase, 0)
-	for rows.Next() {
-		var tc models.TestCase
-		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
-			return nil, err
-		}
-		tcs = append(tcs, tc)
-	}
-
-	return tcs, nil
-}
-
 func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
-	query := `SELECT * FROM test_cases WHERE problem_id = $1 AND is_example = true`
+	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE problem_id = $1 AND is_example = true`
 
 	rows, err := p.pool.Query(ctx, query, problemID)
 	if err != nil {
@@ -146,13 +126,33 @@ func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]mode
 	tcs := make([]models.TestCase, 0)
 	for rows.Next() {
 		var tc models.TestCase
-		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
+		if err := rows.Scan(&tc.ID, &tc.ProblemID, &tc.Ordinal, &tc.Input, &tc.Output, &tc.IsExample); err != nil {
 			return nil, err
 		}
 		tcs = append(tcs, tc)
 	}
 
 	return tcs, rows.Err()
+}
+
+func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error) {
+	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE id = $1`
+
+	var tc models.TestCase
+	err := p.pool.QueryRow(ctx, query, testCaseID).Scan(
+		&tc.ID,
+		&tc.ProblemID,
+		&tc.Ordinal,
+		&tc.Input,
+		&tc.Output,
+		&tc.IsExample,
+	)
+
+	if err != nil {
+		return models.TestCase{}, fmt.Errorf("failed to get test case by ID: %w", err)
+	}
+
+	return tc, nil
 }
 
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {

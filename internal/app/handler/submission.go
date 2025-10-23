@@ -12,7 +12,6 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
-	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/models/status"
 	"github.com/voidcontests/api/internal/storage/models/verdict"
 	"github.com/voidcontests/api/pkg/requestid"
@@ -79,71 +78,43 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	if body.ProblemKind == models.TextAnswerProblem {
-		var v string
-		if problem.Answer != body.Answer {
-			v = verdict.WA
-		} else {
-			v = verdict.OK
-		}
-
-		s, err := h.repo.Submission.CreateWithTextAnswer(ctx, entry.ID, problem.ID, v, body.Answer)
-		if err != nil {
-			log.Error("can't create submission", sl.Err(err))
-			return err
-		}
-
-		return c.JSON(http.StatusCreated, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Status:      s.Status,
-			Verdict:     s.Verdict,
-			Answer:      s.Answer,
-			CreatedAt:   s.CreatedAt,
-		})
-	} else if body.ProblemKind == models.CodingProblem {
-		s, err := h.repo.Submission.CreateWithSolution(ctx, entry.ID, problem.ID, body.Code, body.Language)
-		if err != nil {
-			log.Error("can't create submission", sl.Err(err))
-			return err
-		}
-
-		if err := h.broker.PublishSubmission(ctx, s); err != nil {
-			log.Error("can't publish submission", sl.Err(err))
-			// TODO: if we can't push submission into execution queue, try to save it to local memory, and try to push later (?)
-			//   - but is it really needed, after some time?
-			if err = h.repo.Submission.UpdateVerdictStatus(ctx, s.ID, verdict.IE, status.Completed); err != nil {
-				slog.Error("failed to update submission's verdict", sl.Err(err))
-			}
-			return err
-		}
-
-		return c.JSON(http.StatusCreated, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Status:      s.Status,
-			Verdict:     s.Verdict,
-			CreatedAt:   s.CreatedAt,
-		})
+	s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, body.Code, body.Language)
+	if err != nil {
+		log.Error("can't create submission", sl.Err(err))
+		return err
 	}
 
-	return Error(http.StatusBadRequest, "unknown problem kind")
+	// TODO: create initial testing report in database
+
+	if err := h.broker.PublishSubmission(ctx, s); err != nil {
+		log.Error("can't publish submission", sl.Err(err))
+		// TODO: if we can't push submission into execution queue, try to save it to local memory, and try to push later (?)
+		//   - but is it really needed, after some time?
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, response.Submission{
+		ID:        s.ID,
+		ProblemID: s.ProblemID,
+		Status:    s.Status,
+		Verdict:   s.Verdict,
+		CreatedAt: s.CreatedAt,
+	})
 }
 
 func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetSubmissionByID"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	claims, _ := ExtractClaims(c)
+	// TODO: check if submission is submitted by request initiator
+	_, _ = ExtractClaims(c)
 
 	submissionID, ok := ExtractParamInt(c, "sid")
 	if !ok {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
-	s, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
+	s, err := h.repo.Submission.GetByID(ctx, int32(submissionID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "submission not found")
 	}
@@ -152,80 +123,71 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	if s.ProblemKind == models.TextAnswerProblem {
+	// TODO: Introduce status `failed` it is actually usefull
+	if s.Status != status.Completed || s.Verdict == verdict.IE {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Status:      s.Status,
-			Verdict:     s.Verdict,
-			Answer:      s.Answer,
-			CreatedAt:   s.CreatedAt,
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Status:    s.Status,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
+			CreatedAt: s.CreatedAt,
 		})
+
 	}
 
-	ttc, err := h.repo.Submission.CountTestsForProblem(ctx, s.ProblemID)
+	// TODO: create TR in a transaction with setting completed status
+	tr, err := h.repo.Submission.GetTestingReport(ctx, s.ID)
+	// NOTE: decide either create in API initial testing report or not
 	if err != nil {
-		log.Error("can't get total tests count", sl.Err(err))
+		log.Error("can't get testing report", sl.Err(err))
 		return err
 	}
 
-	// no need to provide testing report yet (no testing report)
-	switch s.Status {
-	case status.Pending, status.Running:
+	if tr.FirstFailedTestID == nil {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Status:      s.Status,
-			Verdict:     s.Verdict,
-			Code:        s.Code,
-			Language:    s.Language,
-			CreatedAt:   s.CreatedAt,
-		})
-	}
-
-	failedTest, err := h.repo.Submission.GetFailedTest(ctx, s.ID)
-	// TODO: check if submission.Passed == submission.Total
-	if errors.Is(err, pgx.ErrNoRows) {
-		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Status:      s.Status,
-			Verdict:     s.Verdict,
-			Code:        s.Code,
-			Language:    s.Language,
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Status:    s.Status,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
 			TestingReport: &response.TestingReport{
-				Passed: int(s.PassedTestsCount),
-				Total:  int(ttc),
-				Stderr: s.Stderr,
+				ID:               tr.ID,
+				PassedTestsCount: tr.PassedTestsCount,
+				TotalTestsCount:  tr.TotalTestsCount,
+				Stderr:           tr.Stderr,
+				CreatedAt:        tr.CreatedAt,
 			},
 			CreatedAt: s.CreatedAt,
 		})
 	}
+
+	ftc, err := h.repo.Problem.GetTestCaseByID(ctx, *tr.FirstFailedTestID)
 	if err != nil {
-		log.Error("can't get submissions", sl.Err(err))
+		log.Error("can't get test case", sl.Err(err))
 		return err
 	}
 
 	return c.JSON(http.StatusOK, response.Submission{
-		ID:          s.ID,
-		ProblemID:   s.ProblemID,
-		ProblemKind: s.ProblemKind,
-		Status:      s.Status,
-		Verdict:     s.Verdict,
-		Code:        s.Code,
-		Language:    s.Language,
+		ID:        s.ID,
+		ProblemID: s.ProblemID,
+		Status:    s.Status,
+		Verdict:   s.Verdict,
+		Code:      s.Code,
+		Language:  s.Language,
 		TestingReport: &response.TestingReport{
-			Passed: int(s.PassedTestsCount),
-			Total:  int(ttc),
-			Stderr: s.Stderr,
-			FailedTest: &response.FailedTest{
-				Input:          failedTest.Input,
-				ExpectedOutput: failedTest.ExpectedOutput,
-				ActualOutput:   failedTest.ActualOutput,
+			ID:               tr.ID,
+			PassedTestsCount: tr.PassedTestsCount,
+			TotalTestsCount:  tr.TotalTestsCount,
+			FailedTest: &response.Test{
+				Input:          ftc.Input,
+				ExpectedOutput: ftc.Output,
+				ActualOutput:   *tr.FirstFailedTestOutput,
 			},
+			Stderr:    tr.Stderr,
+			CreatedAt: tr.CreatedAt,
 		},
 		CreatedAt: s.CreatedAt,
 	})
@@ -277,12 +239,11 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	items := make([]response.Submission, n, n)
 	for i, submission := range submissions {
 		items[i] = response.Submission{
-			ID:          submission.ID,
-			ProblemID:   submission.ProblemID,
-			ProblemKind: submission.ProblemKind,
-			Status:      submission.Status,
-			Verdict:     submission.Verdict,
-			CreatedAt:   submission.CreatedAt,
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Status:    submission.Status,
+			Verdict:   submission.Verdict,
+			CreatedAt: submission.CreatedAt,
 		}
 	}
 
