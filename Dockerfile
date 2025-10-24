@@ -9,8 +9,8 @@ RUN go mod download
 
 COPY . .
 RUN go build -a -ldflags "-w -s \
-    -X github.com/voidcontests/api/internal/version.GIT_COMMIT=$(git rev-parse --short HEAD) \
-    -X github.com/voidcontests/api/internal/version.GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)" \
+    -X github.com/voidcontests/api/internal/version.Commit=$(git rev-parse --short HEAD) \
+    -X github.com/voidcontests/api/internal/version.Branch=$(git rev-parse --abbrev-ref HEAD)" \
     -o build/api ./cmd/api
 
 # lightweight docker container with binaries only

@@ -12,7 +12,7 @@ import (
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if c.Request().Method == "OPTIONS" {
+		if c.Request().Method == "OPTIONS" || c.Path() == "/api/healthcheck" {
 			return next(c)
 		}
 
