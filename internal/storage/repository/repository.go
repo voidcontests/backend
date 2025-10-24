@@ -54,8 +54,8 @@ type Contest interface {
 }
 
 type Problem interface {
-	CreateWithTCs(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int, tcs []models.TestCaseDTO) (int32, error)
-	Create(ctx context.Context, kind string, writerID int32, title, statement, difficulty, answer string, timeLimitMS int32) (int32, error)
+	CreateWithTCs(ctx context.Context, writerID int32, title string, statement string, difficulty string, timeLimitMS int, tcs []models.TestCaseDTO) (int32, error)
+	Create(ctx context.Context, writerID int32, title, statement, difficulty, timeLimitMS int32) (int32, error)
 	Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error)
 	GetByID(ctx context.Context, problemID int32) (models.Problem, error)
 	GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error)

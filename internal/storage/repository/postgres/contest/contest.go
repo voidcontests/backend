@@ -108,7 +108,7 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models
 	var problems []models.Problem
 	for rows.Next() {
 		var problem models.Problem
-		if err := rows.Scan(&problem.Charcode, &problem.ID, &problem.Kind, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.Answer, &problem.TimeLimitMS, &problem.CreatedAt, &problem.WriterUsername); err != nil {
+		if err := rows.Scan(&problem.Charcode, &problem.ID, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.CreatedAt, &problem.WriterUsername); err != nil {
 			return nil, err
 		}
 		problems = append(problems, problem)

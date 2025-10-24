@@ -101,7 +101,6 @@ type ContestProblemDetailed struct {
 	Charcode    string    `json:"charcode"`
 	ContestID   int32     `json:"contest_id"`
 	Writer      User      `json:"writer"`
-	Kind        string    `json:"kind"`
 	Title       string    `json:"title"`
 	Statement   string    `json:"statement"`
 	Examples    []TC      `json:"examples,omitempty"`
@@ -114,7 +113,6 @@ type ContestProblemDetailed struct {
 type ContestProblemListItem struct {
 	ID         int32     `json:"id"`
 	Charcode   string    `json:"charcode"`
-	ContestID  int32     `json:"contest_id"`
 	Writer     User      `json:"writer"`
 	Title      string    `json:"title"`
 	Difficulty string    `json:"difficulty"`
@@ -125,7 +123,6 @@ type ContestProblemListItem struct {
 type ProblemDetailed struct {
 	ID          int32     `json:"id"`
 	Writer      User      `json:"writer"`
-	Kind        string    `json:"kind"`
 	Title       string    `json:"title"`
 	Statement   string    `json:"statement"`
 	Examples    []TC      `json:"examples,omitempty"`

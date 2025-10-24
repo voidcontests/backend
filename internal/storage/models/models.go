@@ -9,11 +9,6 @@ const (
 	RoleBanned    = "banned"
 )
 
-const (
-	TextAnswerProblem = "text_answer_problem"
-	CodingProblem     = "coding_problem"
-)
-
 type User struct {
 	ID           int32     `db:"id"`
 	Username     string    `db:"username"`
@@ -49,13 +44,11 @@ type Contest struct {
 type Problem struct {
 	ID             int32     `db:"id"`
 	Charcode       string    `db:"charcode"`
-	Kind           string    `db:"kind"`
 	WriterID       int32     `db:"writer_id"`
 	WriterUsername string    `db:"writer_username"`
 	Title          string    `db:"title"`
 	Statement      string    `db:"statement"`
 	Difficulty     string    `db:"difficulty"`
-	Answer         string    `db:"answer"`
 	TimeLimitMS    int32     `db:"time_limit_ms"`
 	CreatedAt      time.Time `db:"created_at"`
 }

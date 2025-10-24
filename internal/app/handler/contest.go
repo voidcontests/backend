@@ -106,9 +106,8 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	for i := range n {
 		cdetailed.Problems[i] = response.ContestProblemListItem{
-			ID:        problems[i].ID,
-			Charcode:  problems[i].Charcode,
-			ContestID: contest.ID,
+			ID:       problems[i].ID,
+			Charcode: problems[i].Charcode,
 			Writer: response.User{
 				ID:       problems[i].WriterID,
 				Username: problems[i].WriterUsername,

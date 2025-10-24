@@ -45,24 +45,18 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		}
 	}
 
-	var problemID int32
-	if body.Kind == models.TextAnswerProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, body.Answer, 0)
-	} else if body.Kind == models.CodingProblem {
-		examplesCount := 0
-		for i := range body.TestCases {
-			if body.TestCases[i].IsExample {
-				examplesCount++
-			}
-
-			if examplesCount > 3 && body.TestCases[i].IsExample {
-				body.TestCases[i].IsExample = false
-			}
+	// Forbid to create more examples than 3
+	examplesCount := 0
+	for i := range body.TestCases {
+		if body.TestCases[i].IsExample {
+			examplesCount++
 		}
-		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
-	} else {
-		return Error(http.StatusBadRequest, "unknown problem kind")
+
+		if examplesCount > 3 && body.TestCases[i].IsExample {
+			body.TestCases[i].IsExample = false
+		}
 	}
+	problemID, err := h.repo.Problem.CreateWithTCs(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.TestCases)
 
 	if err != nil {
 		return fmt.Errorf("%s: can't create problem: %v", op, err)
@@ -177,7 +171,6 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		ID:          p.ID,
 		Charcode:    p.Charcode,
 		ContestID:   int32(contestID),
-		Kind:        p.Kind,
 		Title:       p.Title,
 		Statement:   p.Statement,
 		Examples:    examples,
@@ -233,7 +226,6 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 
 	pdetailed := response.ProblemDetailed{
 		ID:          problem.ID,
-		Kind:        problem.Kind,
 		Title:       problem.Title,
 		Statement:   problem.Statement,
 		Examples:    examples,
