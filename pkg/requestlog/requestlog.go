@@ -12,12 +12,11 @@ import (
 
 func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if c.Request().Method == "OPTIONS" || c.Path() == "/api/healthcheck" {
+		if c.Request().Method == "OPTIONS" {
 			return next(c)
 		}
 
 		start := time.Now()
-
 		err := next(c)
 
 		status := c.Response().Status
@@ -27,6 +26,10 @@ func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 			} else {
 				status = 500
 			}
+		}
+
+		if c.Path() == "/api/healthcheck" && status == 200 {
+			return err
 		}
 
 		slog.Info("request completed",
