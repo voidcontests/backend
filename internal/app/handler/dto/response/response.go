@@ -43,19 +43,20 @@ type User struct {
 }
 
 type ContestDetailed struct {
-	ID            int32                    `json:"id"`
-	Creator       User                     `json:"creator"`
-	Title         string                   `json:"title"`
-	Description   string                   `json:"description"`
-	StartTime     time.Time                `json:"start_time"`
-	EndTime       time.Time                `json:"end_time"`
-	DurationMins  int32                    `json:"duration_mins"`
-	MaxEntries    int32                    `json:"max_entries,omitempty"`
-	Participants  int32                    `json:"participants"`
-	AllowLateJoin bool                     `json:"allow_late_join"`
-	IsParticipant bool                     `json:"is_participant,omitempty"`
-	Problems      []ContestProblemListItem `json:"problems"`
-	CreatedAt     time.Time                `json:"created_at"`
+	ID                 int32                    `json:"id"`
+	Creator            User                     `json:"creator"`
+	Title              string                   `json:"title"`
+	Description        string                   `json:"description"`
+	StartTime          time.Time                `json:"start_time"`
+	EndTime            time.Time                `json:"end_time"`
+	DurationMins       int32                    `json:"duration_mins"`
+	MaxEntries         int32                    `json:"max_entries,omitempty"`
+	Participants       int32                    `json:"participants"`
+	AllowLateJoin      bool                     `json:"allow_late_join"`
+	IsParticipant      bool                     `json:"is_participant,omitempty"`
+	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
+	Problems           []ContestProblemListItem `json:"problems"`
+	CreatedAt          time.Time                `json:"created_at"`
 }
 
 type ContestListItem struct {
@@ -97,17 +98,18 @@ type Test struct {
 }
 
 type ContestProblemDetailed struct {
-	ID          int32     `json:"id"`
-	Charcode    string    `json:"charcode"`
-	ContestID   int32     `json:"contest_id"`
-	Writer      User      `json:"writer"`
-	Title       string    `json:"title"`
-	Statement   string    `json:"statement"`
-	Examples    []TC      `json:"examples,omitempty"`
-	Difficulty  string    `json:"difficulty"`
-	Status      string    `json:"status,omitempty"`
-	TimeLimitMS int32     `json:"time_limit_ms"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                 int32      `json:"id"`
+	Charcode           string     `json:"charcode"`
+	ContestID          int32      `json:"contest_id"`
+	Writer             User       `json:"writer"`
+	Title              string     `json:"title"`
+	Statement          string     `json:"statement"`
+	Examples           []TC       `json:"examples,omitempty"`
+	Difficulty         string     `json:"difficulty"`
+	Status             string     `json:"status,omitempty"`
+	TimeLimitMS        int32      `json:"time_limit_ms"`
+	SubmissionDeadline *time.Time `json:"submission_deadline,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
 }
 
 type ContestProblemListItem struct {

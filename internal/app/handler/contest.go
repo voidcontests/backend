@@ -134,6 +134,9 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	cdetailed.IsParticipant = true
 
+	_, deadline := AllowSubmitAt(contest, entry)
+	cdetailed.SubmissionDeadline = &deadline
+
 	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
 	if err != nil {
 		return fmt.Errorf("%s: can't get submissions: %v", op, err)

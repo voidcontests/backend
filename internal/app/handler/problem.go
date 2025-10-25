@@ -167,17 +167,25 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return err
 	}
 
+	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if err != nil {
+		return err
+	}
+
+	_, deadline := AllowSubmitAt(contest, entry)
+
 	pdetailed := response.ContestProblemDetailed{
-		ID:          p.ID,
-		Charcode:    p.Charcode,
-		ContestID:   int32(contestID),
-		Title:       p.Title,
-		Statement:   p.Statement,
-		Examples:    examples,
-		Difficulty:  p.Difficulty,
-		Status:      status,
-		CreatedAt:   p.CreatedAt,
-		TimeLimitMS: p.TimeLimitMS,
+		ID:                 p.ID,
+		Charcode:           p.Charcode,
+		ContestID:          int32(contestID),
+		Title:              p.Title,
+		Statement:          p.Statement,
+		Examples:           examples,
+		Difficulty:         p.Difficulty,
+		Status:             status,
+		CreatedAt:          p.CreatedAt,
+		TimeLimitMS:        p.TimeLimitMS,
+		SubmissionDeadline: &deadline,
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,

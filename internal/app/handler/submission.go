@@ -12,6 +12,7 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/models/status"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
@@ -49,15 +50,6 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	if contest.StartTime.After(time.Now()) {
-		return Error(http.StatusForbidden, "contest is not started yet")
-	}
-
-	// TODO: maybe allow to submit solutions after end time if `contest.keep_as_training` is enabled
-	if contest.EndTime.Before(time.Now()) {
-		return Error(http.StatusForbidden, "contest alreay ended")
-	}
-
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Debug("trying to create submission without entry")
@@ -66,6 +58,12 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
+	}
+
+	now := time.Now()
+	earliest, deadline := AllowSubmitAt(contest, entry)
+	if earliest.After(now) || deadline.Before(now) {
+		return Error(http.StatusForbidden, "submission window is currently closed")
 	}
 
 	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
@@ -253,4 +251,16 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		},
 		Items: items,
 	})
+}
+
+func AllowSubmitAt(contest models.Contest, entry models.Entry) (earliest time.Time, deadline time.Time) {
+	if contest.DurationMins == 0 {
+		return contest.StartTime, contest.EndTime
+	}
+
+	deadline = entry.CreatedAt.Add(time.Duration(contest.DurationMins) * time.Minute)
+	if deadline.Before(contest.EndTime) {
+		return entry.CreatedAt, deadline
+	}
+	return entry.CreatedAt, contest.EndTime
 }
