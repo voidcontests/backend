@@ -258,9 +258,17 @@ func AllowSubmitAt(contest models.Contest, entry models.Entry) (earliest time.Ti
 		return contest.StartTime, contest.EndTime
 	}
 
-	deadline = entry.CreatedAt.Add(time.Duration(contest.DurationMins) * time.Minute)
-	if deadline.Before(contest.EndTime) {
-		return entry.CreatedAt, deadline
+	earliest = entry.CreatedAt
+	if contest.StartTime.After(earliest) {
+		earliest = contest.StartTime
 	}
-	return entry.CreatedAt, contest.EndTime
+
+	personalDeadline := earliest.Add(time.Duration(contest.DurationMins) * time.Minute)
+	if personalDeadline.Before(contest.EndTime) {
+		deadline = personalDeadline
+	} else {
+		deadline = contest.EndTime
+	}
+
+	return earliest, deadline
 }
