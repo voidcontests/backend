@@ -135,7 +135,9 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	cdetailed.IsParticipant = true
 
 	_, deadline := AllowSubmitAt(contest, entry)
-	cdetailed.SubmissionDeadline = &deadline
+	if contest.StartTime.Before(time.Now()) {
+		cdetailed.SubmissionDeadline = &deadline
+	}
 
 	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
 	if err != nil {

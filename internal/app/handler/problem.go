@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
@@ -172,24 +173,26 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return err
 	}
 
-	_, deadline := AllowSubmitAt(contest, entry)
-
 	pdetailed := response.ContestProblemDetailed{
-		ID:                 p.ID,
-		Charcode:           p.Charcode,
-		ContestID:          int32(contestID),
-		Title:              p.Title,
-		Statement:          p.Statement,
-		Examples:           examples,
-		Difficulty:         p.Difficulty,
-		Status:             status,
-		CreatedAt:          p.CreatedAt,
-		TimeLimitMS:        p.TimeLimitMS,
-		SubmissionDeadline: &deadline,
+		ID:          p.ID,
+		Charcode:    p.Charcode,
+		ContestID:   int32(contestID),
+		Title:       p.Title,
+		Statement:   p.Statement,
+		Examples:    examples,
+		Difficulty:  p.Difficulty,
+		Status:      status,
+		CreatedAt:   p.CreatedAt,
+		TimeLimitMS: p.TimeLimitMS,
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
 		},
+	}
+
+	_, deadline := AllowSubmitAt(contest, entry)
+	if contest.StartTime.Before(time.Now()) {
+		pdetailed.SubmissionDeadline = &deadline
 	}
 
 	return c.JSON(http.StatusOK, pdetailed)
