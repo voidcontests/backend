@@ -50,6 +50,7 @@ type Problem struct {
 	Statement      string    `db:"statement"`
 	Difficulty     string    `db:"difficulty"`
 	TimeLimitMS    int32     `db:"time_limit_ms"`
+	MemoryLimitMB  int32     `db:"memory_limit_mb"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 

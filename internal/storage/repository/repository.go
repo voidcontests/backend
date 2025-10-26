@@ -54,15 +54,13 @@ type Contest interface {
 }
 
 type Problem interface {
-	CreateWithTCs(ctx context.Context, writerID int32, title string, statement string, difficulty string, timeLimitMS int, tcs []models.TestCaseDTO) (int32, error)
-	Create(ctx context.Context, writerID int32, title, statement, difficulty, timeLimitMS int32) (int32, error)
+	CreateWithTCs(ctx context.Context, writerID int32, title string, statement string, difficulty string, timeLimitMS, memoryLimitMB int, tcs []models.TestCaseDTO) (int32, error)
 	Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error)
 	GetByID(ctx context.Context, problemID int32) (models.Problem, error)
 	GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error)
 	GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error)
 	GetAll(ctx context.Context) ([]models.Problem, error)
 	GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error)
-	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 }
 
 type Entry interface {
