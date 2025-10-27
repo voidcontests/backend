@@ -102,10 +102,12 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	problems := make([]response.ProblemListItem, n, n)
 	for i, p := range ps {
 		problems[i] = response.ProblemListItem{
-			ID:         p.ID,
-			Title:      p.Title,
-			Difficulty: p.Difficulty,
-			CreatedAt:  p.CreatedAt,
+			ID:            p.ID,
+			Title:         p.Title,
+			Difficulty:    p.Difficulty,
+			CreatedAt:     p.CreatedAt,
+			TimeLimitMS:   p.TimeLimitMS,
+			MemoryLimitMB: p.MemoryLimitMB,
 			Writer: response.User{
 				ID:       p.WriterID,
 				Username: p.WriterUsername,

@@ -114,13 +114,15 @@ type ContestProblemDetailed struct {
 }
 
 type ContestProblemListItem struct {
-	ID         int32     `json:"id"`
-	Charcode   string    `json:"charcode"`
-	Writer     User      `json:"writer"`
-	Title      string    `json:"title"`
-	Difficulty string    `json:"difficulty"`
-	Status     string    `json:"status,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            int32     `json:"id"`
+	Charcode      string    `json:"charcode"`
+	Writer        User      `json:"writer"`
+	Title         string    `json:"title"`
+	Difficulty    string    `json:"difficulty"`
+	Status        string    `json:"status,omitempty"`
+	TimeLimitMS   int32     `json:"time_limit_ms"`
+	MemoryLimitMB int32     `json:"memory_limit_mb"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type ProblemDetailed struct {
@@ -136,11 +138,13 @@ type ProblemDetailed struct {
 }
 
 type ProblemListItem struct {
-	ID         int32     `json:"id"`
-	Writer     User      `json:"writer"`
-	Title      string    `json:"title"`
-	Difficulty string    `json:"difficulty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            int32     `json:"id"`
+	Writer        User      `json:"writer"`
+	Title         string    `json:"title"`
+	Difficulty    string    `json:"difficulty"`
+	TimeLimitMS   int32     `json:"time_limit_ms"`
+	MemoryLimitMB int32     `json:"memory_limit_mb"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type TC struct {

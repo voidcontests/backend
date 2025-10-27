@@ -112,9 +112,11 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 				ID:       problems[i].WriterID,
 				Username: problems[i].WriterUsername,
 			},
-			Title:      problems[i].Title,
-			Difficulty: problems[i].Difficulty,
-			CreatedAt:  problems[i].CreatedAt,
+			Title:         problems[i].Title,
+			Difficulty:    problems[i].Difficulty,
+			TimeLimitMS:   problems[i].TimeLimitMS,
+			MemoryLimitMB: problems[i].MemoryLimitMB,
+			CreatedAt:     problems[i].CreatedAt,
 		}
 	}
 
