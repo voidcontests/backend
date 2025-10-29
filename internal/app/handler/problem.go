@@ -66,7 +66,13 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 			body.TestCases[i].IsExample = false
 		}
 	}
-	problemID, err := h.repo.Problem.CreateWithTCs(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, body.TestCases)
+
+	checker := body.Checker
+	if checker == "" {
+		checker = "tokens"
+	}
+
+	problemID, err := h.repo.Problem.CreateWithTCs(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, checker, body.TestCases)
 
 	if err != nil {
 		return fmt.Errorf("%s: can't create problem: %v", op, err)
@@ -108,6 +114,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 			CreatedAt:     p.CreatedAt,
 			TimeLimitMS:   p.TimeLimitMS,
 			MemoryLimitMB: p.MemoryLimitMB,
+			Checker:       p.Checker,
 			Writer: response.User{
 				ID:       p.WriterID,
 				Username: p.WriterUsername,
@@ -144,6 +151,14 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	}
 	charcode = strings.ToUpper(charcode)
 
+	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		return err
+	}
+
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry")
@@ -179,11 +194,6 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return err
 	}
 
-	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if err != nil {
-		return err
-	}
-
 	pdetailed := response.ContestProblemDetailed{
 		ID:            p.ID,
 		Charcode:      p.Charcode,
@@ -196,6 +206,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		CreatedAt:     p.CreatedAt,
 		TimeLimitMS:   p.TimeLimitMS,
 		MemoryLimitMB: p.MemoryLimitMB,
+		Checker:       p.Checker,
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
@@ -256,6 +267,7 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 		CreatedAt:     problem.CreatedAt,
 		TimeLimitMS:   problem.TimeLimitMS,
 		MemoryLimitMB: problem.MemoryLimitMB,
+		Checker:       problem.Checker,
 		Writer: response.User{
 			ID:       problem.WriterID,
 			Username: problem.WriterUsername,

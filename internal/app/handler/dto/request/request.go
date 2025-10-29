@@ -33,6 +33,7 @@ type CreateProblemRequest struct {
 	Difficulty    string               `json:"difficulty" required:"true"`
 	TimeLimitMS   int                  `json:"time_limit_ms"`
 	MemoryLimitMB int                  `json:"memory_limit_mb"`
+	Checker       string               `json:"checker"`
 	TestCases     []models.TestCaseDTO `json:"test_cases"`
 }
 

@@ -51,6 +51,7 @@ type Problem struct {
 	Difficulty     string    `db:"difficulty"`
 	TimeLimitMS    int32     `db:"time_limit_ms"`
 	MemoryLimitMB  int32     `db:"memory_limit_mb"`
+	Checker        string    `db:"checker"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 

@@ -17,7 +17,7 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, tcs []models.TestCaseDTO) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int32, error) {
 	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("tx begin failed: %w", err)
@@ -26,10 +26,10 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, sta
 
 	var problemID int32
 	err = tx.QueryRow(ctx, `
-        INSERT INTO problems (writer_id, title, statement, difficulty, time_limit_ms, memory_limit_mb)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO problems (writer_id, title, statement, difficulty, time_limit_ms, memory_limit_mb, checker)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
-    `, writerID, title, statement, difficulty, timeLimitMS, memoryLimitMB).Scan(&problemID)
+    `, writerID, title, statement, difficulty, timeLimitMS, memoryLimitMB, checker).Scan(&problemID)
 	if err != nil {
 		return 0, fmt.Errorf("insert problem failed: %w", err)
 	}
@@ -76,7 +76,7 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (m
 	var problem models.Problem
 	err := row.Scan(
 		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
-		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.CreatedAt,
+		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
 		&problem.Charcode, &problem.WriterUsername,
 	)
 
@@ -86,7 +86,7 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (m
 func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem, error) {
 	query := `SELECT
 			p.id, p.writer_id, p.title, p.statement,
-			p.difficulty, p.time_limit_ms, p.memory_limit_mb, p.created_at,
+			p.difficulty, p.time_limit_ms, p.memory_limit_mb, p.checker, p.created_at,
 			u.username AS writer_username
 		FROM problems p
 		JOIN users u ON u.id = p.writer_id
@@ -97,7 +97,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem
 	var problem models.Problem
 	err := row.Scan(
 		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
-		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.CreatedAt,
+		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
 		&problem.WriterUsername,
 	)
 
@@ -159,7 +159,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 		var p models.Problem
 		if err := rows.Scan(
 			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.CreatedAt, &p.WriterUsername,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
 			return nil, err
 		}
@@ -198,7 +198,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 		var p models.Problem
 		if err := rows.Scan(
 			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.CreatedAt, &p.WriterUsername,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
 		); err != nil {
 			rows.Close()
 			br.Close()

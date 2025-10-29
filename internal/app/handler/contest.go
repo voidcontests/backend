@@ -116,6 +116,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Difficulty:    problems[i].Difficulty,
 			TimeLimitMS:   problems[i].TimeLimitMS,
 			MemoryLimitMB: problems[i].MemoryLimitMB,
+			Checker:       problems[i].Checker,
 			CreatedAt:     problems[i].CreatedAt,
 		}
 	}

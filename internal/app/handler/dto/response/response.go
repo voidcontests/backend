@@ -109,6 +109,7 @@ type ContestProblemDetailed struct {
 	Status             string     `json:"status,omitempty"`
 	TimeLimitMS        int32      `json:"time_limit_ms"`
 	MemoryLimitMB      int32      `json:"memory_limit_mb"`
+	Checker            string     `json:"checker"`
 	SubmissionDeadline *time.Time `json:"submission_deadline,omitempty"`
 	CreatedAt          time.Time  `json:"created_at"`
 }
@@ -122,6 +123,7 @@ type ContestProblemListItem struct {
 	Status        string    `json:"status,omitempty"`
 	TimeLimitMS   int32     `json:"time_limit_ms"`
 	MemoryLimitMB int32     `json:"memory_limit_mb"`
+	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -134,6 +136,7 @@ type ProblemDetailed struct {
 	Difficulty    string    `json:"difficulty"`
 	TimeLimitMS   int32     `json:"time_limit_ms"`
 	MemoryLimitMB int32     `json:"memory_limit_mb"`
+	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -144,6 +147,7 @@ type ProblemListItem struct {
 	Difficulty    string    `json:"difficulty"`
 	TimeLimitMS   int32     `json:"time_limit_ms"`
 	MemoryLimitMB int32     `json:"memory_limit_mb"`
+	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
