@@ -24,7 +24,18 @@ jobs:
       - name: Build and push image
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+
           docker build -t ghcr.io/voidcontests/api:$SHORT_SHA \
-                       -t ghcr.io/voidcontests/api:latest .
-          docker push ghcr.io/voidcontests/api:$SHORT_SHA
-          docker push ghcr.io/voidcontests/api:latest
+            -t ghcr.io/voidcontests/api:$BRANCH_NAME .
+
+          if [[ "$BRANCH_NAME" == "master" || "$BRANCH_NAME" == "dev" ]]; then
+            docker push ghcr.io/voidcontests/api:$SHORT_SHA
+          fi
+
+          docker push ghcr.io/voidcontests/api:$BRANCH_NAME
+
+          if [[ "$BRANCH_NAME" == "master" ]]; then
+            docker tag ghcr.io/voidcontests/api:$SHORT_SHA ghcr.io/voidcontests/api:latest
+            docker push ghcr.io/voidcontests/api:latest
+          fi
