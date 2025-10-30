@@ -17,7 +17,6 @@ func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		start := time.Now()
-
 		err := next(c)
 
 		status := c.Response().Status
@@ -27,6 +26,10 @@ func Completed(next echo.HandlerFunc) echo.HandlerFunc {
 			} else {
 				status = 500
 			}
+		}
+
+		if c.Path() == "/api/healthcheck" && status == 200 {
+			return err
 		}
 
 		slog.Info("request completed",

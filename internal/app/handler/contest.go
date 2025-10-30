@@ -106,16 +106,18 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	for i := range n {
 		cdetailed.Problems[i] = response.ContestProblemListItem{
-			ID:        problems[i].ID,
-			Charcode:  problems[i].Charcode,
-			ContestID: contest.ID,
+			ID:       problems[i].ID,
+			Charcode: problems[i].Charcode,
 			Writer: response.User{
 				ID:       problems[i].WriterID,
 				Username: problems[i].WriterUsername,
 			},
-			Title:      problems[i].Title,
-			Difficulty: problems[i].Difficulty,
-			CreatedAt:  problems[i].CreatedAt,
+			Title:         problems[i].Title,
+			Difficulty:    problems[i].Difficulty,
+			TimeLimitMS:   problems[i].TimeLimitMS,
+			MemoryLimitMB: problems[i].MemoryLimitMB,
+			Checker:       problems[i].Checker,
+			CreatedAt:     problems[i].CreatedAt,
 		}
 	}
 
@@ -134,6 +136,11 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	}
 
 	cdetailed.IsParticipant = true
+
+	_, deadline := AllowSubmitAt(contest, entry)
+	if contest.StartTime.Before(time.Now()) {
+		cdetailed.SubmissionDeadline = &deadline
+	}
 
 	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
 	if err != nil {

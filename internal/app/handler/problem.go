@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
@@ -45,24 +46,33 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		}
 	}
 
-	var problemID int32
-	if body.Kind == models.TextAnswerProblem {
-		problemID, err = h.repo.Problem.Create(ctx, models.TextAnswerProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, body.Answer, 0)
-	} else if body.Kind == models.CodingProblem {
-		examplesCount := 0
-		for i := range body.TestCases {
-			if body.TestCases[i].IsExample {
-				examplesCount++
-			}
-
-			if examplesCount > 3 && body.TestCases[i].IsExample {
-				body.TestCases[i].IsExample = false
-			}
-		}
-		problemID, err = h.repo.Problem.CreateWithTCs(ctx, models.CodingProblem, claims.UserID, body.Title, body.Statement, body.Difficulty, "", body.TimeLimitMS, body.TestCases)
-	} else {
-		return Error(http.StatusBadRequest, "unknown problem kind")
+	if body.TimeLimitMS < 500 || body.TimeLimitMS > 10000 {
+		return Error(http.StatusBadRequest, "time_limit_ms must be between 500 and 10000")
 	}
+
+	if body.MemoryLimitMB < 16 || body.MemoryLimitMB > 512 {
+		return Error(http.StatusBadRequest, "memory_limit_mb must be between 16 and 512")
+	}
+
+	// TODO: Remove examples as database entity
+	// Forbid to create more examples than 3
+	examplesCount := 0
+	for i := range body.TestCases {
+		if body.TestCases[i].IsExample {
+			examplesCount++
+		}
+
+		if examplesCount > 3 && body.TestCases[i].IsExample {
+			body.TestCases[i].IsExample = false
+		}
+	}
+
+	checker := body.Checker
+	if checker == "" {
+		checker = "tokens"
+	}
+
+	problemID, err := h.repo.Problem.CreateWithTCs(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, checker, body.TestCases)
 
 	if err != nil {
 		return fmt.Errorf("%s: can't create problem: %v", op, err)
@@ -98,10 +108,13 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	problems := make([]response.ProblemListItem, n, n)
 	for i, p := range ps {
 		problems[i] = response.ProblemListItem{
-			ID:         p.ID,
-			Title:      p.Title,
-			Difficulty: p.Difficulty,
-			CreatedAt:  p.CreatedAt,
+			ID:            p.ID,
+			Title:         p.Title,
+			Difficulty:    p.Difficulty,
+			CreatedAt:     p.CreatedAt,
+			TimeLimitMS:   p.TimeLimitMS,
+			MemoryLimitMB: p.MemoryLimitMB,
+			Checker:       p.Checker,
 			Writer: response.User{
 				ID:       p.WriterID,
 				Username: p.WriterUsername,
@@ -137,6 +150,19 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "problem charcode couldn't be longer than 2 characters")
 	}
 	charcode = strings.ToUpper(charcode)
+
+	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Error(http.StatusNotFound, "contest not found")
+	}
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	if contest.StartTime.After(now) {
+		return Error(http.StatusForbidden, "contest not started yet")
+	}
 
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -174,21 +200,27 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	}
 
 	pdetailed := response.ContestProblemDetailed{
-		ID:          p.ID,
-		Charcode:    p.Charcode,
-		ContestID:   int32(contestID),
-		Kind:        p.Kind,
-		Title:       p.Title,
-		Statement:   p.Statement,
-		Examples:    examples,
-		Difficulty:  p.Difficulty,
-		Status:      status,
-		CreatedAt:   p.CreatedAt,
-		TimeLimitMS: p.TimeLimitMS,
+		ID:            p.ID,
+		Charcode:      p.Charcode,
+		ContestID:     int32(contestID),
+		Title:         p.Title,
+		Statement:     p.Statement,
+		Examples:      examples,
+		Difficulty:    p.Difficulty,
+		Status:        status,
+		CreatedAt:     p.CreatedAt,
+		TimeLimitMS:   p.TimeLimitMS,
+		MemoryLimitMB: p.MemoryLimitMB,
+		Checker:       p.Checker,
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
 		},
+	}
+
+	_, deadline := AllowSubmitAt(contest, entry)
+	if contest.StartTime.Before(time.Now()) {
+		pdetailed.SubmissionDeadline = &deadline
 	}
 
 	return c.JSON(http.StatusOK, pdetailed)
@@ -232,14 +264,15 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 	}
 
 	pdetailed := response.ProblemDetailed{
-		ID:          problem.ID,
-		Kind:        problem.Kind,
-		Title:       problem.Title,
-		Statement:   problem.Statement,
-		Examples:    examples,
-		Difficulty:  problem.Difficulty,
-		CreatedAt:   problem.CreatedAt,
-		TimeLimitMS: problem.TimeLimitMS,
+		ID:            problem.ID,
+		Title:         problem.Title,
+		Statement:     problem.Statement,
+		Examples:      examples,
+		Difficulty:    problem.Difficulty,
+		CreatedAt:     problem.CreatedAt,
+		TimeLimitMS:   problem.TimeLimitMS,
+		MemoryLimitMB: problem.MemoryLimitMB,
+		Checker:       problem.Checker,
 		Writer: response.User{
 			ID:       problem.WriterID,
 			Username: problem.WriterUsername,

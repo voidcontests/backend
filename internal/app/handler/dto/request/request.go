@@ -28,18 +28,16 @@ type CreateContestRequest struct {
 }
 
 type CreateProblemRequest struct {
-	Title       string               `json:"title" required:"true"`
-	Kind        string               `json:"kind" required:"true"`
-	Statement   string               `json:"statement" required:"true"`
-	Difficulty  string               `json:"difficulty" required:"true"`
-	TimeLimitMS int                  `json:"time_limit_ms"`
-	TestCases   []models.TestCaseDTO `json:"test_cases"`
-	Answer      string               `json:"answer"`
+	Title         string               `json:"title" required:"true"`
+	Statement     string               `json:"statement" required:"true"`
+	Difficulty    string               `json:"difficulty" required:"true"`
+	TimeLimitMS   int                  `json:"time_limit_ms"`
+	MemoryLimitMB int                  `json:"memory_limit_mb"`
+	Checker       string               `json:"checker"`
+	TestCases     []models.TestCaseDTO `json:"test_cases"`
 }
 
 type CreateSubmissionRequest struct {
-	ProblemKind string `json:"problem_kind" required:"true"`
-	Answer      string `json:"answer"`
-	Code        string `json:"code"`
-	Language    string `json:"language"`
+	Code     string `json:"code"`
+	Language string `json:"language"`
 }

@@ -9,11 +9,6 @@ const (
 	RoleBanned    = "banned"
 )
 
-const (
-	TextAnswerProblem = "text_answer_problem"
-	CodingProblem     = "coding_problem"
-)
-
 type User struct {
 	ID           int32     `db:"id"`
 	Username     string    `db:"username"`
@@ -49,20 +44,21 @@ type Contest struct {
 type Problem struct {
 	ID             int32     `db:"id"`
 	Charcode       string    `db:"charcode"`
-	Kind           string    `db:"kind"`
 	WriterID       int32     `db:"writer_id"`
 	WriterUsername string    `db:"writer_username"`
 	Title          string    `db:"title"`
 	Statement      string    `db:"statement"`
 	Difficulty     string    `db:"difficulty"`
-	Answer         string    `db:"answer"`
 	TimeLimitMS    int32     `db:"time_limit_ms"`
+	MemoryLimitMB  int32     `db:"memory_limit_mb"`
+	Checker        string    `db:"checker"`
 	CreatedAt      time.Time `db:"created_at"`
 }
 
 type TestCase struct {
 	ID        int32  `db:"id"`
 	ProblemID int32  `db:"problem_id"`
+	Ordinal   int32  `db:"ordinal"`
 	Input     string `db:"input"`
 	Output    string `db:"output"`
 	IsExample bool   `db:"is_example"`
@@ -82,17 +78,25 @@ type Entry struct {
 }
 
 type Submission struct {
-	ID               int32     `db:"id"`
-	EntryID          int32     `db:"entry_id"`
-	ProblemID        int32     `db:"problem_id"`
-	ProblemKind      string    `db:"problem_kind"`
-	Verdict          string    `db:"verdict"`
-	Answer           string    `db:"answer"`
-	Code             string    `db:"code"`
-	Language         string    `db:"language"`
-	PassedTestsCount int32     `db:"passed_tests_count"`
-	Stderr           string    `db:"stderr"`
-	CreatedAt        time.Time `db:"created_at"`
+	ID        int32     `db:"id"`
+	EntryID   int32     `db:"entry_id"`
+	ProblemID int32     `db:"problem_id"`
+	Status    string    `db:"status"`
+	Verdict   string    `db:"verdict"`
+	Code      string    `db:"code"`
+	Language  string    `db:"language"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
+type TestingReport struct {
+	ID                    int32     `db:"id"`
+	SubmissionID          int32     `db:"submission_id"`
+	PassedTestsCount      int32     `db:"passed_tests_count"`
+	TotalTestsCount       int32     `db:"total_tests_count"`
+	FirstFailedTestID     *int32    `db:"first_failed_test_id"`
+	FirstFailedTestOutput *string   `db:"first_failed_test_output"`
+	Stderr                string    `db:"stderr"`
+	CreatedAt             time.Time `db:"created_at"`
 }
 
 type LeaderboardEntry struct {

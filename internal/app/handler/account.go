@@ -84,7 +84,7 @@ func (h *Handler) GetAccount(c echo.Context) error {
 
 	user, err := h.repo.User.GetByID(ctx, claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "user not found")
+		return Error(http.StatusUnauthorized, "invalid or expired token")
 	}
 	if err != nil {
 		return fmt.Errorf("%s: can't get user: %v", op, err)

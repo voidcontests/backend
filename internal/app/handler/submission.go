@@ -13,7 +13,7 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/models"
-	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
+	"github.com/voidcontests/api/internal/storage/models/status"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
@@ -50,15 +50,6 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	if contest.StartTime.After(time.Now()) {
-		return Error(http.StatusForbidden, "contest is not started yet")
-	}
-
-	// TODO: maybe allow to submit solutions after end time if `contest.keep_as_training` is enabled
-	if contest.EndTime.Before(time.Now()) {
-		return Error(http.StatusForbidden, "contest alreay ended")
-	}
-
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Debug("trying to create submission without entry")
@@ -67,6 +58,12 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	if err != nil {
 		log.Error("can't get entry", sl.Err(err))
 		return err
+	}
+
+	now := time.Now()
+	earliest, deadline := AllowSubmitAt(contest, entry)
+	if earliest.After(now) || deadline.Before(now) {
+		return Error(http.StatusForbidden, "submission window is currently closed")
 	}
 
 	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
@@ -78,76 +75,43 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return err
 	}
 
-	if body.ProblemKind == models.TextAnswerProblem {
-		var verdict string
-		if problem.Answer != body.Answer {
-			verdict = submission.VerdictWrongAnswer
-		} else {
-			verdict = submission.VerdictOK
-		}
-
-		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, verdict, body.Answer, "", "", 0, "")
-		if err != nil {
-			log.Error("can't create submission", sl.Err(err))
-			return err
-		}
-
-		return c.JSON(http.StatusCreated, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     string(s.Verdict),
-			Answer:      body.Answer,
-			CreatedAt:   s.CreatedAt,
-		})
-	} else if body.ProblemKind == models.CodingProblem {
-		tcs, err := h.repo.Problem.GetTestCases(ctx, problem.ID)
-		if err != nil {
-			log.Error("can't get test cases for problem", sl.Err(err))
-			return err
-		}
-
-		rtcs := make([]models.TestCaseDTO, len(tcs))
-		for i := range rtcs {
-			rtcs[i].Input = tcs[i].Input
-			rtcs[i].Output = tcs[i].Output
-		}
-
-		s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, submission.VerdictPending, "", body.Code, body.Language, 0, "")
-		if err != nil {
-			log.Error("can't create submission", sl.Err(err))
-			return err
-		}
-
-		if err := h.broker.PublishSubmission(ctx, s); err != nil {
-			log.Error("can't publish submission", sl.Err(err))
-			// NOTE: should we return error to user?
-		}
-
-		return c.JSON(http.StatusCreated, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     submission.VerdictPending,
-			CreatedAt:   s.CreatedAt,
-		})
+	s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, body.Code, body.Language)
+	if err != nil {
+		log.Error("can't create submission", sl.Err(err))
+		return err
 	}
 
-	return Error(http.StatusBadRequest, "unknown problem kind")
+	// TODO: create initial testing report in database
+
+	if err := h.broker.PublishSubmission(ctx, s); err != nil {
+		log.Error("can't publish submission", sl.Err(err))
+		// TODO: if we can't push submission into execution queue, try to save it to local memory, and try to push later (?)
+		//   - but is it really needed, after some time?
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, response.Submission{
+		ID:        s.ID,
+		ProblemID: s.ProblemID,
+		Status:    s.Status,
+		Verdict:   s.Verdict,
+		CreatedAt: s.CreatedAt,
+	})
 }
 
 func (h *Handler) GetSubmissionByID(c echo.Context) error {
 	log := slog.With(slog.String("op", "handler.GetSubmissionByID"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	claims, _ := ExtractClaims(c)
+	// TODO: check if submission is submitted by request initiator
+	_, _ = ExtractClaims(c)
 
 	submissionID, ok := ExtractParamInt(c, "sid")
 	if !ok {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
-	s, err := h.repo.Submission.GetByID(ctx, claims.UserID, int32(submissionID))
+	s, err := h.repo.Submission.GetByID(ctx, int32(submissionID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusNotFound, "submission not found")
 	}
@@ -156,75 +120,68 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return err
 	}
 
-	if s.ProblemKind == models.TextAnswerProblem {
+	if s.Status != status.Success {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     s.Verdict,
-			Answer:      s.Answer,
-			CreatedAt:   s.CreatedAt,
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Status:    s.Status,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
+			CreatedAt: s.CreatedAt,
 		})
+
 	}
 
-	ttc, err := h.repo.Submission.CountTestsForProblem(ctx, s.ProblemID)
+	tr, err := h.repo.Submission.GetTestingReport(ctx, s.ID)
 	if err != nil {
-		log.Error("can't get total tests count", sl.Err(err))
+		log.Error("can't get testing report", sl.Err(err))
 		return err
 	}
 
-	switch s.Verdict {
-	case submission.VerdictRunning, submission.VerdictPending:
+	if tr.FirstFailedTestID == nil {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     s.Verdict,
-			Code:        s.Code,
-			Language:    s.Language,
-			CreatedAt:   s.CreatedAt,
-		})
-	}
-
-	failedTest, err := h.repo.Submission.GetFailedTest(ctx, s.ID)
-	// TODO: check if submission.Passed == submission.Total
-	if errors.Is(err, pgx.ErrNoRows) {
-		return c.JSON(http.StatusOK, response.Submission{
-			ID:          s.ID,
-			ProblemID:   s.ProblemID,
-			ProblemKind: s.ProblemKind,
-			Verdict:     s.Verdict,
-			Code:        s.Code,
-			Language:    s.Language,
+			ID:        s.ID,
+			ProblemID: s.ProblemID,
+			Status:    s.Status,
+			Verdict:   s.Verdict,
+			Code:      s.Code,
+			Language:  s.Language,
 			TestingReport: &response.TestingReport{
-				Passed: int(s.PassedTestsCount),
-				Total:  int(ttc),
-				Stderr: s.Stderr,
+				ID:               tr.ID,
+				PassedTestsCount: tr.PassedTestsCount,
+				TotalTestsCount:  tr.TotalTestsCount,
+				Stderr:           tr.Stderr,
+				CreatedAt:        tr.CreatedAt,
 			},
 			CreatedAt: s.CreatedAt,
 		})
 	}
+
+	ftc, err := h.repo.Problem.GetTestCaseByID(ctx, *tr.FirstFailedTestID)
 	if err != nil {
-		log.Error("can't get submissions", sl.Err(err))
+		log.Error("can't get test case", sl.Err(err))
 		return err
 	}
 
 	return c.JSON(http.StatusOK, response.Submission{
-		ID:          s.ID,
-		ProblemID:   s.ProblemID,
-		ProblemKind: s.ProblemKind,
-		Verdict:     s.Verdict,
-		Code:        s.Code,
-		Language:    s.Language,
+		ID:        s.ID,
+		ProblemID: s.ProblemID,
+		Status:    s.Status,
+		Verdict:   s.Verdict,
+		Code:      s.Code,
+		Language:  s.Language,
 		TestingReport: &response.TestingReport{
-			Passed: int(s.PassedTestsCount),
-			Total:  int(ttc),
-			Stderr: s.Stderr,
-			FailedTest: &response.FailedTest{
-				Input:          failedTest.Input,
-				ExpectedOutput: failedTest.ExpectedOutput,
-				ActualOutput:   failedTest.ActualOutput,
+			ID:               tr.ID,
+			PassedTestsCount: tr.PassedTestsCount,
+			TotalTestsCount:  tr.TotalTestsCount,
+			FailedTest: &response.Test{
+				Input:          ftc.Input,
+				ExpectedOutput: ftc.Output,
+				ActualOutput:   *tr.FirstFailedTestOutput,
 			},
+			Stderr:    tr.Stderr,
+			CreatedAt: tr.CreatedAt,
 		},
 		CreatedAt: s.CreatedAt,
 	})
@@ -276,11 +233,11 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	items := make([]response.Submission, n, n)
 	for i, submission := range submissions {
 		items[i] = response.Submission{
-			ID:          submission.ID,
-			ProblemID:   submission.ProblemID,
-			ProblemKind: submission.ProblemKind,
-			Verdict:     submission.Verdict,
-			CreatedAt:   submission.CreatedAt,
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Status:    submission.Status,
+			Verdict:   submission.Verdict,
+			CreatedAt: submission.CreatedAt,
 		}
 	}
 
@@ -294,4 +251,24 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		},
 		Items: items,
 	})
+}
+
+func AllowSubmitAt(contest models.Contest, entry models.Entry) (earliest time.Time, deadline time.Time) {
+	if contest.DurationMins == 0 {
+		return contest.StartTime, contest.EndTime
+	}
+
+	earliest = entry.CreatedAt
+	if contest.StartTime.After(earliest) {
+		earliest = contest.StartTime
+	}
+
+	personalDeadline := earliest.Add(time.Duration(contest.DurationMins) * time.Minute)
+	if personalDeadline.Before(contest.EndTime) {
+		deadline = personalDeadline
+	} else {
+		deadline = contest.EndTime
+	}
+
+	return earliest, deadline
 }

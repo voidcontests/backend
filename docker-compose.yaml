@@ -4,7 +4,7 @@ services:
     container_name: void-api
     restart: unless-stopped
     environment:
-      CONFIG_PATH: ./config/dev.yaml
+      CONFIG_PATH: ${CONFIG_PATH}
     ports:
       - "5919:5919"
     volumes:
