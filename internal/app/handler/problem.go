@@ -159,6 +159,11 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		return err
 	}
 
+	now := time.Now()
+	if contest.StartTime.After(now) {
+		return Error(http.StatusForbidden, "contest not started yet")
+	}
+
 	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Error(http.StatusForbidden, "no entry")
