@@ -26,19 +26,27 @@ func NewSubmissionService(repo *repository.Repository, broker broker.Broker) *Su
 	}
 }
 
+type CreateSubmissionParams struct {
+	ContestID int
+	UserID    int
+	Charcode  string
+	Code      string
+	Language  string
+}
+
 type CreateSubmissionResult struct {
 	Submission models.Submission
 }
 
-func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int, userID int, charcode, code, language string) (*CreateSubmissionResult, error) {
+func (s *SubmissionService) CreateSubmission(ctx context.Context, params CreateSubmissionParams) (*CreateSubmissionResult, error) {
 	op := "service.SubmissionService.CreateSubmission"
 
-	if len(charcode) > 2 {
+	if len(params.Charcode) > 2 {
 		return nil, ErrInvalidCharcode
 	}
-	charcode = strings.ToUpper(charcode)
+	charcode := strings.ToUpper(params.Charcode)
 
-	contest, err := s.repo.Contest.GetByID(ctx, contestID)
+	contest, err := s.repo.Contest.GetByID(ctx, params.ContestID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrContestNotFound
 	}
@@ -46,7 +54,7 @@ func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int,
 		return nil, fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
-	entry, err := s.repo.Entry.Get(ctx, contestID, userID)
+	entry, err := s.repo.Entry.Get(ctx, params.ContestID, params.UserID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoEntryForContest
 	}
@@ -60,7 +68,7 @@ func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int,
 		return nil, ErrSubmissionWindowClosed
 	}
 
-	problem, err := s.repo.Problem.Get(ctx, contestID, charcode)
+	problem, err := s.repo.Problem.Get(ctx, params.ContestID, charcode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrProblemNotFound
 	}
@@ -68,7 +76,7 @@ func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int,
 		return nil, fmt.Errorf("%s: failed to get problem: %w", op, err)
 	}
 
-	submission, err := s.repo.Submission.Create(ctx, entry.ID, problem.ID, code, language)
+	submission, err := s.repo.Submission.Create(ctx, entry.ID, problem.ID, params.Code, params.Language)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to create submission: %w", op, err)
 	}

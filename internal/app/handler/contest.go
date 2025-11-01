@@ -22,7 +22,17 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	id, err := h.service.Contest.CreateContest(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
+	id, err := h.service.Contest.CreateContest(ctx, service.CreateContestParams{
+		UserID:        claims.UserID,
+		Title:         body.Title,
+		Description:   body.Description,
+		StartTime:     body.StartTime,
+		EndTime:       body.EndTime,
+		DurationMins:  body.DurationMins,
+		MaxEntries:    body.MaxEntries,
+		AllowLateJoin: body.AllowLateJoin,
+		ProblemIDs:    body.ProblemsIDs,
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUserBanned):

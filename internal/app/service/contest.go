@@ -21,10 +21,23 @@ func NewContestService(repo *repository.Repository) *ContestService {
 	}
 }
 
-func (s *ContestService) CreateContest(ctx context.Context, userID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
+// CreateContestParams contains parameters for creating a contest
+type CreateContestParams struct {
+	UserID        int
+	Title         string
+	Description   string
+	StartTime     time.Time
+	EndTime       time.Time
+	DurationMins  int
+	MaxEntries    int
+	AllowLateJoin bool
+	ProblemIDs    []int
+}
+
+func (s *ContestService) CreateContest(ctx context.Context, params CreateContestParams) (int, error) {
 	op := "service.ContestService.CreateContest"
 
-	userRole, err := s.repo.User.GetRole(ctx, userID)
+	userRole, err := s.repo.User.GetRole(ctx, params.UserID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to get user role: %w", op, err)
 	}
@@ -34,17 +47,28 @@ func (s *ContestService) CreateContest(ctx context.Context, userID int, title, d
 	}
 
 	if userRole.Name == models.RoleLimited {
-		contestsCount, err := s.repo.User.GetCreatedContestsCount(ctx, userID)
+		contestsCount, err := s.repo.User.GetCreatedContestsCount(ctx, params.UserID)
 		if err != nil {
 			return 0, fmt.Errorf("%s: failed to get created contests count: %w", op, err)
 		}
 
-		if contestsCount >= int(userRole.CreatedContestsLimit) {
+		if contestsCount >= userRole.CreatedContestsLimit {
 			return 0, ErrContestsLimitExceeded
 		}
 	}
 
-	contestID, err := s.repo.Contest.CreateWithProblemIDs(ctx, userID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin, problemIDs)
+	contestID, err := s.repo.Contest.CreateWithProblemIDs(
+		ctx,
+		params.UserID,
+		params.Title,
+		params.Description,
+		params.StartTime,
+		params.EndTime,
+		params.DurationMins,
+		params.MaxEntries,
+		params.AllowLateJoin,
+		params.ProblemIDs,
+	)
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
 	}
@@ -157,7 +181,7 @@ type LeaderboardResult struct {
 func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limit, offset int) (*LeaderboardResult, error) {
 	op := "service.ContestService.GetLeaderboard"
 
-	_, err := s.repo.Contest.GetByID(ctx, int(contestID))
+	_, err := s.repo.Contest.GetByID(ctx, contestID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrContestNotFound
 	}

@@ -22,7 +22,16 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	id, err := h.service.Problem.CreateProblem(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, body.Checker, body.TestCases)
+	id, err := h.service.Problem.CreateProblem(ctx, service.CreateProblemParams{
+		UserID:        claims.UserID,
+		Title:         body.Title,
+		Statement:     body.Statement,
+		Difficulty:    body.Difficulty,
+		TimeLimitMS:   body.TimeLimitMS,
+		MemoryLimitMB: body.MemoryLimitMB,
+		Checker:       body.Checker,
+		TestCases:     body.TestCases,
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrUserBanned):
@@ -105,7 +114,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 
 	charcode := c.Param("charcode")
 
-	details, err := h.service.Problem.GetContestProblem(ctx, int(contestID), claims.UserID, charcode)
+	details, err := h.service.Problem.GetContestProblem(ctx, contestID, claims.UserID, charcode)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCharcode):
@@ -136,7 +145,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	pdetailed := response.ContestProblemDetailed{
 		ID:            p.ID,
 		Charcode:      p.Charcode,
-		ContestID:     int(contestID),
+		ContestID:     contestID,
 		Title:         p.Title,
 		Statement:     p.Statement,
 		Examples:      examples,
@@ -169,7 +178,7 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "problem ID should be an integer")
 	}
 
-	details, err := h.service.Problem.GetProblemByID(ctx, int(problemID), claims.UserID)
+	details, err := h.service.Problem.GetProblemByID(ctx, problemID, claims.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):

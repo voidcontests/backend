@@ -22,10 +22,22 @@ func NewProblemService(repo *repository.Repository) *ProblemService {
 	}
 }
 
-func (s *ProblemService) CreateProblem(ctx context.Context, userID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, testCases []models.TestCaseDTO) (int, error) {
+// CreateProblemParams contains parameters for creating a problem
+type CreateProblemParams struct {
+	UserID        int
+	Title         string
+	Statement     string
+	Difficulty    string
+	TimeLimitMS   int
+	MemoryLimitMB int
+	Checker       string
+	TestCases     []models.TestCaseDTO
+}
+
+func (s *ProblemService) CreateProblem(ctx context.Context, params CreateProblemParams) (int, error) {
 	op := "service.ProblemService.CreateProblem"
 
-	userRole, err := s.repo.User.GetRole(ctx, userID)
+	userRole, err := s.repo.User.GetRole(ctx, params.UserID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to get user role: %w", op, err)
 	}
@@ -35,40 +47,51 @@ func (s *ProblemService) CreateProblem(ctx context.Context, userID int, title, s
 	}
 
 	if userRole.Name == models.RoleLimited {
-		problemsCount, err := s.repo.User.GetCreatedProblemsCount(ctx, userID)
+		problemsCount, err := s.repo.User.GetCreatedProblemsCount(ctx, params.UserID)
 		if err != nil {
 			return 0, fmt.Errorf("%s: failed to get created problems count: %w", op, err)
 		}
 
-		if problemsCount >= int(userRole.CreatedProblemsLimit) {
+		if problemsCount >= userRole.CreatedProblemsLimit {
 			return 0, ErrProblemsLimitExceeded
 		}
 	}
 
-	if timeLimitMS < 500 || timeLimitMS > 10000 {
+	if params.TimeLimitMS < 500 || params.TimeLimitMS > 10000 {
 		return 0, ErrInvalidTimeLimit
 	}
 
-	if memoryLimitMB < 16 || memoryLimitMB > 512 {
+	if params.MemoryLimitMB < 16 || params.MemoryLimitMB > 512 {
 		return 0, ErrInvalidMemoryLimit
 	}
 
 	examplesCount := 0
-	for i := range testCases {
-		if testCases[i].IsExample {
+	for i := range params.TestCases {
+		if params.TestCases[i].IsExample {
 			examplesCount++
 		}
 
-		if examplesCount > 3 && testCases[i].IsExample {
-			testCases[i].IsExample = false
+		if examplesCount > 3 && params.TestCases[i].IsExample {
+			params.TestCases[i].IsExample = false
 		}
 	}
 
+	checker := params.Checker
 	if checker == "" {
 		checker = "tokens"
 	}
 
-	problemID, err := s.repo.Problem.CreateWithTCs(ctx, userID, title, statement, difficulty, timeLimitMS, memoryLimitMB, checker, testCases)
+	problemID, err := s.repo.Problem.CreateWithTCs(
+		ctx,
+		params.UserID,
+		params.Title,
+		params.Statement,
+		params.Difficulty,
+		params.TimeLimitMS,
+		params.MemoryLimitMB,
+		checker,
+		params.TestCases,
+	)
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to create problem: %w", op, err)
 	}
