@@ -60,7 +60,7 @@ type ContestDetails struct {
 	ProblemStatuses    map[int]string
 }
 
-func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID *int) (*ContestDetails, error) {
+func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID int, authenticated bool) (*ContestDetails, error) {
 	op := "service.ContestService.GetContestByID"
 
 	contest, err := s.repo.Contest.GetByID(ctx, contestID)
@@ -73,7 +73,7 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 
 	now := time.Now()
 	if contest.EndTime.Before(now) {
-		if userID == nil || *userID != contest.CreatorID {
+		if !authenticated || userID != contest.CreatorID {
 			return nil, ErrContestFinished
 		}
 	}
@@ -88,11 +88,11 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 		Problems: problems,
 	}
 
-	if userID == nil {
+	if !authenticated {
 		return details, nil
 	}
 
-	entry, err := s.repo.Entry.Get(ctx, contestID, *userID)
+	entry, err := s.repo.Entry.Get(ctx, contestID, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return details, nil
 	}
