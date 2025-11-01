@@ -30,7 +30,7 @@ type CreateSubmissionResult struct {
 	Submission models.Submission
 }
 
-func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int32, userID int32, charcode, code, language string) (*CreateSubmissionResult, error) {
+func (s *SubmissionService) CreateSubmission(ctx context.Context, contestID int, userID int, charcode, code, language string) (*CreateSubmissionResult, error) {
 	op := "service.SubmissionService.CreateSubmission"
 
 	if len(charcode) > 2 {
@@ -88,7 +88,7 @@ type SubmissionDetails struct {
 	FailedTest    *models.TestCase
 }
 
-func (s *SubmissionService) GetSubmissionByID(ctx context.Context, submissionID int32) (*SubmissionDetails, error) {
+func (s *SubmissionService) GetSubmissionByID(ctx context.Context, submissionID int) (*SubmissionDetails, error) {
 	op := "service.SubmissionService.GetSubmissionByID"
 
 	submission, err := s.repo.Submission.GetByID(ctx, submissionID)
@@ -129,7 +129,7 @@ type ListSubmissionsResult struct {
 	Total       int
 }
 
-func (s *SubmissionService) ListSubmissions(ctx context.Context, contestID int32, userID int32, charcode string, limit, offset int) (*ListSubmissionsResult, error) {
+func (s *SubmissionService) ListSubmissions(ctx context.Context, contestID int, userID int, charcode string, limit, offset int) (*ListSubmissionsResult, error) {
 	op := "service.SubmissionService.ListSubmissions"
 
 	if len(charcode) > 2 {

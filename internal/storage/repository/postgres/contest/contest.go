@@ -21,15 +21,15 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int32, title, description string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool) (int32, error) {
-	var id int32
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool) (int, error) {
+	var id int
 	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
 	err := p.pool.QueryRow(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
 	return id, err
 }
 
-func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error) {
+func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
 	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	if len(problemIDs) > len(charcodes) {
 		return 0, fmt.Errorf("not enough charcodes for the number of problems")
@@ -41,7 +41,7 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 	}
 	defer tx.Rollback(ctx)
 
-	var contestID int32
+	var contestID int
 	err = tx.QueryRow(ctx, `
 		INSERT INTO contests
 		(creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
@@ -80,7 +80,7 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, ti
 	return contestID, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, contestID int32) (models.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, error) {
 	var contest models.Contest
 	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
 		FROM contests
@@ -92,7 +92,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int32) (models.Contest
 	return contest, err
 }
 
-func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
+func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
 	query := `SELECT cp.charcode, p.*, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
@@ -172,7 +172,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 	return contests, total, nil
 }
 
-func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit, offset int) (contests []models.Contest, total int, err error) {
+func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error) {
 	batch := &pgx.Batch{}
 	batch.Queue(`
 		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
@@ -224,8 +224,8 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 	return contests, total, nil
 }
 
-func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int32) (int32, error) {
-	var count int32
+func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int) (int, error) {
+	var count int
 	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM entries WHERE contest_id = $1`, contestID).Scan(&count)
 	return count, err
 }

@@ -35,44 +35,44 @@ type User interface {
 	GetByCredentials(ctx context.Context, username string, passwordHash string) (models.User, error)
 	Create(ctx context.Context, username string, passwordHash string) (models.User, error)
 	Exists(ctx context.Context, username string) (bool, error)
-	GetByID(ctx context.Context, id int32) (models.User, error)
-	GetRole(ctx context.Context, userID int32) (models.Role, error)
-	GetCreatedProblemsCount(ctx context.Context, userID int32) (int, error)
-	GetCreatedContestsCount(ctx context.Context, userID int32) (int, error)
+	GetByID(ctx context.Context, id int) (models.User, error)
+	GetRole(ctx context.Context, userID int) (models.Role, error)
+	GetCreatedProblemsCount(ctx context.Context, userID int) (int, error)
+	GetCreatedContestsCount(ctx context.Context, userID int) (int, error)
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int32, title, description string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool) (int32, error)
-	CreateWithProblemIDs(ctx context.Context, creatorID int32, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error)
-	GetByID(ctx context.Context, contestID int32) (models.Contest, error)
-	GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error)
+	Create(ctx context.Context, creatorID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool) (int, error)
+	CreateWithProblemIDs(ctx context.Context, creatorID int, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error)
+	GetByID(ctx context.Context, contestID int) (models.Contest, error)
+	GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error)
 	ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error)
-	GetWithCreatorID(ctx context.Context, creatorID int32, limit, offset int) (contests []models.Contest, total int, err error)
-	GetEntriesCount(ctx context.Context, contestID int32) (int32, error)
+	GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error)
+	GetEntriesCount(ctx context.Context, contestID int) (int, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
 }
 
 type Problem interface {
-	CreateWithTCs(ctx context.Context, writerID int32, title string, statement string, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int32, error)
-	Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error)
-	GetByID(ctx context.Context, problemID int32) (models.Problem, error)
-	GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error)
-	GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error)
+	CreateWithTCs(ctx context.Context, writerID int, title string, statement string, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int, error)
+	Get(ctx context.Context, contestID int, charcode string) (models.Problem, error)
+	GetByID(ctx context.Context, problemID int) (models.Problem, error)
+	GetExampleCases(ctx context.Context, problemID int) ([]models.TestCase, error)
+	GetTestCaseByID(ctx context.Context, testCaseID int) (models.TestCase, error)
 	GetAll(ctx context.Context) ([]models.Problem, error)
-	GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error)
+	GetWithWriterID(ctx context.Context, writerID int, limit, offset int) (problems []models.Problem, total int, err error)
 }
 
 type Entry interface {
-	Create(ctx context.Context, contestID int32, userID int32) (int, error)
-	Get(ctx context.Context, contestID int32, userID int32) (models.Entry, error)
+	Create(ctx context.Context, contestID int, userID int) (int, error)
+	Get(ctx context.Context, contestID int, userID int) (models.Entry, error)
 }
 
 type Submission interface {
-	Create(ctx context.Context, entryID int32, problemID int32, code string, language string) (models.Submission, error)
-	GetProblemStatus(ctx context.Context, entryID int32, problemID int32) (string, error)
-	GetProblemStatuses(ctx context.Context, entryID int32) (map[int32]string, error)
-	GetByID(ctx context.Context, submissionID int32) (models.Submission, error)
-	ListByProblem(ctx context.Context, entryID int32, charcode string, limit int, offset int) (items []models.Submission, total int, err error)
-	GetTestingReport(ctx context.Context, submissionID int32) (models.TestingReport, error)
+	Create(ctx context.Context, entryID int, problemID int, code string, language string) (models.Submission, error)
+	GetProblemStatus(ctx context.Context, entryID int, problemID int) (string, error)
+	GetProblemStatuses(ctx context.Context, entryID int) (map[int]string, error)
+	GetByID(ctx context.Context, submissionID int) (models.Submission, error)
+	ListByProblem(ctx context.Context, entryID int, charcode string, limit int, offset int) (items []models.Submission, total int, err error)
+	GetTestingReport(ctx context.Context, submissionID int) (models.TestingReport, error)
 }

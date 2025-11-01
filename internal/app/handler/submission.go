@@ -33,7 +33,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
-	result, err := h.service.Submission.CreateSubmission(ctx, int32(contestID), claims.UserID, charcode, body.Code, body.Language)
+	result, err := h.service.Submission.CreateSubmission(ctx, int(contestID), claims.UserID, charcode, body.Code, body.Language)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCharcode):
@@ -75,7 +75,7 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
-	details, err := h.service.Submission.GetSubmissionByID(ctx, int32(submissionID))
+	details, err := h.service.Submission.GetSubmissionByID(ctx, int(submissionID))
 	if err != nil {
 		if errors.Is(err, service.ErrSubmissionNotFound) {
 			return Error(http.StatusNotFound, "submission not found")
@@ -169,7 +169,7 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		offset = 0
 	}
 
-	result, err := h.service.Submission.ListSubmissions(ctx, int32(contestID), claims.UserID, charcode, limit, offset)
+	result, err := h.service.Submission.ListSubmissions(ctx, int(contestID), claims.UserID, charcode, limit, offset)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCharcode):

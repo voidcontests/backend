@@ -21,7 +21,7 @@ func NewContestService(repo *repository.Repository) *ContestService {
 	}
 }
 
-func (s *ContestService) CreateContest(ctx context.Context, userID int32, title, description string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error) {
+func (s *ContestService) CreateContest(ctx context.Context, userID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
 	op := "service.ContestService.CreateContest"
 
 	userRole, err := s.repo.User.GetRole(ctx, userID)
@@ -57,10 +57,10 @@ type ContestDetails struct {
 	Problems           []models.Problem
 	IsParticipant      bool
 	SubmissionDeadline *time.Time
-	ProblemStatuses    map[int32]string
+	ProblemStatuses    map[int]string
 }
 
-func (s *ContestService) GetContestByID(ctx context.Context, contestID int32, userID *int32) (*ContestDetails, error) {
+func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID *int) (*ContestDetails, error) {
 	op := "service.ContestService.GetContestByID"
 
 	contest, err := s.repo.Contest.GetByID(ctx, contestID)
@@ -121,7 +121,7 @@ type ListContestsResult struct {
 	Total    int
 }
 
-func (s *ContestService) ListCreatedContests(ctx context.Context, creatorID int32, limit, offset int) (*ListContestsResult, error) {
+func (s *ContestService) ListCreatedContests(ctx context.Context, creatorID int, limit, offset int) (*ListContestsResult, error) {
 	op := "service.ContestService.ListCreatedContests"
 
 	contests, total, err := s.repo.Contest.GetWithCreatorID(ctx, creatorID, limit, offset)
@@ -157,7 +157,7 @@ type LeaderboardResult struct {
 func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limit, offset int) (*LeaderboardResult, error) {
 	op := "service.ContestService.GetLeaderboard"
 
-	_, err := s.repo.Contest.GetByID(ctx, int32(contestID))
+	_, err := s.repo.Contest.GetByID(ctx, int(contestID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrContestNotFound
 	}

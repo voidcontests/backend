@@ -22,7 +22,7 @@ func NewProblemService(repo *repository.Repository) *ProblemService {
 	}
 }
 
-func (s *ProblemService) CreateProblem(ctx context.Context, userID int32, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, testCases []models.TestCaseDTO) (int32, error) {
+func (s *ProblemService) CreateProblem(ctx context.Context, userID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, testCases []models.TestCaseDTO) (int, error) {
 	op := "service.ProblemService.CreateProblem"
 
 	userRole, err := s.repo.User.GetRole(ctx, userID)
@@ -81,7 +81,7 @@ type ListProblemsResult struct {
 	Total    int
 }
 
-func (s *ProblemService) GetCreatedProblems(ctx context.Context, writerID int32, limit, offset int) (*ListProblemsResult, error) {
+func (s *ProblemService) GetCreatedProblems(ctx context.Context, writerID int, limit, offset int) (*ListProblemsResult, error) {
 	op := "service.ProblemService.GetCreatedProblems"
 
 	problems, total, err := s.repo.Problem.GetWithWriterID(ctx, writerID, limit, offset)
@@ -107,7 +107,7 @@ type SubmissionWindow struct {
 	Deadline time.Time
 }
 
-func (s *ProblemService) GetContestProblem(ctx context.Context, contestID int32, userID int32, charcode string) (*ContestProblemDetails, error) {
+func (s *ProblemService) GetContestProblem(ctx context.Context, contestID int, userID int, charcode string) (*ContestProblemDetails, error) {
 	op := "service.ProblemService.GetContestProblem"
 
 	if len(charcode) > 2 {
@@ -172,7 +172,7 @@ type ProblemDetails struct {
 	Examples []models.TestCase
 }
 
-func (s *ProblemService) GetProblemByID(ctx context.Context, problemID int32, userID int32) (*ProblemDetails, error) {
+func (s *ProblemService) GetProblemByID(ctx context.Context, problemID int, userID int) (*ProblemDetails, error) {
 	op := "service.ProblemService.GetProblemByID"
 
 	problem, err := s.repo.Problem.GetByID(ctx, problemID)

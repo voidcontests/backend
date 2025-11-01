@@ -9,10 +9,10 @@ import (
 
 type CustomClaims struct {
 	jwt.RegisteredClaims
-	UserID int32 `json:"id"`
+	UserID int `json:"id"`
 }
 
-func GenerateToken(id int32, secret string) (string, error) {
+func GenerateToken(id int, secret string) (string, error) {
 	claims := &CustomClaims{
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(100, 0, 0)),
@@ -30,7 +30,7 @@ func GenerateToken(id int32, secret string) (string, error) {
 	return signedToken, nil
 }
 
-func Parse(token, secret string) (id int32, err error) {
+func Parse(token, secret string) (id int, err error) {
 	jsonwebtoken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

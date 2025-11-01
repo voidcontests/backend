@@ -105,7 +105,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 
 	charcode := c.Param("charcode")
 
-	details, err := h.service.Problem.GetContestProblem(ctx, int32(contestID), claims.UserID, charcode)
+	details, err := h.service.Problem.GetContestProblem(ctx, int(contestID), claims.UserID, charcode)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidCharcode):
@@ -136,7 +136,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	pdetailed := response.ContestProblemDetailed{
 		ID:            p.ID,
 		Charcode:      p.Charcode,
-		ContestID:     int32(contestID),
+		ContestID:     int(contestID),
 		Title:         p.Title,
 		Statement:     p.Statement,
 		Examples:      examples,
@@ -169,7 +169,7 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "problem ID should be an integer")
 	}
 
-	details, err := h.service.Problem.GetProblemByID(ctx, int32(problemID), claims.UserID)
+	details, err := h.service.Problem.GetProblemByID(ctx, int(problemID), claims.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):

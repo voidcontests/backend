@@ -15,7 +15,7 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, contestID int32, userID int32) (int, error) {
+func (p *Postgres) Create(ctx context.Context, contestID int, userID int) (int, error) {
 	query := `INSERT INTO entries (contest_id, user_id) VALUES ($1, $2) RETURNING id`
 
 	var id int
@@ -26,7 +26,7 @@ func (p *Postgres) Create(ctx context.Context, contestID int32, userID int32) (i
 	return id, nil
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, userID int32) (models.Entry, error) {
+func (p *Postgres) Get(ctx context.Context, contestID int, userID int) (models.Entry, error) {
 	query := `SELECT id, contest_id, user_id, created_at FROM entries
 	WHERE contest_id = $1 AND user_id = $2`
 

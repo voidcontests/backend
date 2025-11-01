@@ -49,12 +49,12 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	var userID *int32
+	var userID *int
 	if authenticated {
 		userID = &claims.UserID
 	}
 
-	details, err := h.service.Contest.GetContestByID(ctx, int32(contestID), userID)
+	details, err := h.service.Contest.GetContestByID(ctx, int(contestID), userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrContestNotFound):

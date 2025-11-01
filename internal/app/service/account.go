@@ -25,7 +25,7 @@ func NewAccountService(cfg *config.Config, repo *repository.Repository) *Account
 	}
 }
 
-func (s *AccountService) CreateAccount(ctx context.Context, username, password string) (int32, error) {
+func (s *AccountService) CreateAccount(ctx context.Context, username, password string) (int, error) {
 	op := "service.AccountService.CreateAccount"
 
 	exists, err := s.repo.User.Exists(ctx, username)
@@ -73,7 +73,7 @@ type AccountInfo struct {
 	Role models.Role
 }
 
-func (s *AccountService) GetAccount(ctx context.Context, userID int32) (*AccountInfo, error) {
+func (s *AccountService) GetAccount(ctx context.Context, userID int) (*AccountInfo, error) {
 	op := "service.AccountService.GetAccount"
 
 	user, err := s.repo.User.GetByID(ctx, userID)

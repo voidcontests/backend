@@ -20,7 +20,7 @@ func NewEntryService(repo *repository.Repository) *EntryService {
 	}
 }
 
-func (s *EntryService) CreateEntry(ctx context.Context, contestID int32, userID int32) error {
+func (s *EntryService) CreateEntry(ctx context.Context, contestID int, userID int) error {
 	op := "service.EntryService.CreateEntry"
 
 	contest, err := s.repo.Contest.GetByID(ctx, contestID)

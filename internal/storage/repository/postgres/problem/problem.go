@@ -17,14 +17,14 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int32, error) {
+func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int, error) {
 	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("tx begin failed: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	var problemID int32
+	var problemID int
 	err = tx.QueryRow(ctx, `
         INSERT INTO problems (writer_id, title, statement, difficulty, time_limit_ms, memory_limit_mb, checker)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -64,7 +64,7 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, sta
 	return problemID, nil
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error) {
+func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
 	query := `SELECT p.*, cp.charcode, u.username AS writer_username
 		FROM problems p
 		JOIN contest_problems cp ON p.id = cp.problem_id
@@ -83,7 +83,7 @@ func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (m
 	return problem, err
 }
 
-func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem, error) {
+func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, error) {
 	query := `SELECT
 			p.id, p.writer_id, p.title, p.statement,
 			p.difficulty, p.time_limit_ms, p.memory_limit_mb, p.checker, p.created_at,
@@ -104,7 +104,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem
 	return problem, err
 }
 
-func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+func (p *Postgres) GetExampleCases(ctx context.Context, problemID int) ([]models.TestCase, error) {
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE problem_id = $1 AND is_example = true`
 
 	rows, err := p.pool.Query(ctx, query, problemID)
@@ -125,7 +125,7 @@ func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]mode
 	return tcs, rows.Err()
 }
 
-func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error) {
+func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.TestCase, error) {
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE id = $1`
 
 	var tc models.TestCase
@@ -169,7 +169,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	return problems, rows.Err()
 }
 
-func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error) {
+func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, offset int) (problems []models.Problem, total int, err error) {
 	batch := &pgx.Batch{}
 
 	batch.Queue(`

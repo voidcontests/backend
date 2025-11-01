@@ -60,7 +60,7 @@ func (p *Postgres) Exists(ctx context.Context, username string) (bool, error) {
 	return count > 0, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, id int32) (models.User, error) {
+func (p *Postgres) GetByID(ctx context.Context, id int) (models.User, error) {
 	var user models.User
 
 	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE id = $1`
@@ -74,7 +74,7 @@ func (p *Postgres) GetByID(ctx context.Context, id int32) (models.User, error) {
 	return user, err
 }
 
-func (p *Postgres) GetRole(ctx context.Context, userID int32) (models.Role, error) {
+func (p *Postgres) GetRole(ctx context.Context, userID int) (models.Role, error) {
 	var role models.Role
 
 	query := `
@@ -94,7 +94,7 @@ func (p *Postgres) GetRole(ctx context.Context, userID int32) (models.Role, erro
 	return role, err
 }
 
-func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int32) (int, error) {
+func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int) (int, error) {
 	var count int
 
 	query := `SELECT COUNT(*) FROM problems WHERE writer_id = $1`
@@ -102,7 +102,7 @@ func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int32) (i
 	return count, err
 }
 
-func (p *Postgres) GetCreatedContestsCount(ctx context.Context, userID int32) (int, error) {
+func (p *Postgres) GetCreatedContestsCount(ctx context.Context, userID int) (int, error) {
 	var count int
 
 	query := `SELECT COUNT(*) FROM contests WHERE creator_id = $1`
