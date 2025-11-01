@@ -2,20 +2,17 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {
-	op := "handler.CreateContest"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -25,38 +22,24 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
+	id, err := h.service.Contest.CreateContest(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
 	if err != nil {
-		return fmt.Errorf("%s: can't get role: %v", op, err)
-	}
-
-	if userrole.Name == models.RoleBanned {
-		return Error(http.StatusForbidden, "you are banned from creating contests")
-	}
-
-	if userrole.Name == models.RoleLimited {
-		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.UserID)
-		if err != nil {
-			return fmt.Errorf("%s: can't get created contests count: %v", op, err)
-		}
-
-		if cscount >= int(userrole.CreatedContestsLimit) {
+		switch {
+		case errors.Is(err, service.ErrUserBanned):
+			return Error(http.StatusForbidden, "you are banned from creating contests")
+		case errors.Is(err, service.ErrContestsLimitExceeded):
 			return Error(http.StatusForbidden, "contests limit exceeded")
+		default:
+			return err
 		}
-	}
-
-	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
-	if err != nil {
-		return fmt.Errorf("%s: can't create contest: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
-		ID: contestID,
+		ID: id,
 	})
 }
 
 func (h *Handler) GetContestByID(c echo.Context) error {
-	op := "handler.GetContestByID"
 	ctx := c.Request().Context()
 
 	claims, authenticated := ExtractClaims(c)
@@ -66,26 +49,25 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
-	if err != nil {
-		return fmt.Errorf("%s: can't get contest: %v", op, err)
+	var userID *int32
+	if authenticated {
+		userID = &claims.UserID
 	}
 
-	if contest.EndTime.Before(time.Now()) {
-		if (authenticated && claims.UserID != contest.CreatorID) || !authenticated {
+	details, err := h.service.Contest.GetContestByID(ctx, int32(contestID), userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrContestNotFound):
 			return Error(http.StatusNotFound, "contest not found")
+		case errors.Is(err, service.ErrContestFinished):
+			return Error(http.StatusNotFound, "contest not found")
+		default:
+			return err
 		}
 	}
 
-	problems, err := h.repo.Contest.GetProblemset(ctx, contest.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get problemset: %v", op, err)
-	}
-
-	n := len(problems)
+	contest := details.Contest
+	n := len(details.Problems)
 	cdetailed := response.ContestDetailed{
 		ID:          contest.ID,
 		Title:       contest.Title,
@@ -95,68 +77,40 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
 		},
-		Participants:  contest.Participants,
-		StartTime:     contest.StartTime,
-		EndTime:       contest.EndTime,
-		DurationMins:  contest.DurationMins,
-		MaxEntries:    contest.MaxEntries,
-		AllowLateJoin: contest.AllowLateJoin,
-		CreatedAt:     contest.CreatedAt,
+		Participants:       contest.Participants,
+		StartTime:          contest.StartTime,
+		EndTime:            contest.EndTime,
+		DurationMins:       contest.DurationMins,
+		MaxEntries:         contest.MaxEntries,
+		AllowLateJoin:      contest.AllowLateJoin,
+		CreatedAt:          contest.CreatedAt,
+		IsParticipant:      details.IsParticipant,
+		SubmissionDeadline: details.SubmissionDeadline,
 	}
 
 	for i := range n {
+		p := details.Problems[i]
 		cdetailed.Problems[i] = response.ContestProblemListItem{
-			ID:       problems[i].ID,
-			Charcode: problems[i].Charcode,
+			ID:       p.ID,
+			Charcode: p.Charcode,
 			Writer: response.User{
-				ID:       problems[i].WriterID,
-				Username: problems[i].WriterUsername,
+				ID:       p.WriterID,
+				Username: p.WriterUsername,
 			},
-			Title:         problems[i].Title,
-			Difficulty:    problems[i].Difficulty,
-			TimeLimitMS:   problems[i].TimeLimitMS,
-			MemoryLimitMB: problems[i].MemoryLimitMB,
-			Checker:       problems[i].Checker,
-			CreatedAt:     problems[i].CreatedAt,
+			Title:         p.Title,
+			Difficulty:    p.Difficulty,
+			TimeLimitMS:   p.TimeLimitMS,
+			MemoryLimitMB: p.MemoryLimitMB,
+			Checker:       p.Checker,
+			CreatedAt:     p.CreatedAt,
+			Status:        details.ProblemStatuses[p.ID],
 		}
-	}
-
-	// NOTE: Return contest without problem submissions
-	// statuses if user is not authenticated
-	if !authenticated {
-		return c.JSON(http.StatusOK, cdetailed)
-	}
-
-	entry, err := h.repo.Entry.Get(ctx, contest.ID, claims.UserID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%s: can't get entry: %v", op, err)
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return c.JSON(http.StatusOK, cdetailed)
-	}
-
-	cdetailed.IsParticipant = true
-
-	_, deadline := AllowSubmitAt(contest, entry)
-	if contest.StartTime.Before(time.Now()) {
-		cdetailed.SubmissionDeadline = &deadline
-	}
-
-	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get submissions: %v", op, err)
-	}
-
-	for i := range n {
-		problemID := cdetailed.Problems[i].ID
-		cdetailed.Problems[i].Status = statuses[problemID]
 	}
 
 	return c.JSON(http.StatusOK, cdetailed)
 }
 
 func (h *Handler) GetCreatedContests(c echo.Context) error {
-	op := "handler.GetCreatedContests"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -171,13 +125,13 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 		offset = 0
 	}
 
-	contests, total, err := h.repo.Contest.GetWithCreatorID(ctx, claims.UserID, limit, offset)
+	result, err := h.service.Contest.ListCreatedContests(ctx, claims.UserID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get created contests: %v", op, err)
+		return err
 	}
 
 	items := make([]response.ContestListItem, 0)
-	for _, contest := range contests {
+	for _, contest := range result.Contests {
 		item := response.ContestListItem{
 			ID: contest.ID,
 			Creator: response.User{
@@ -197,10 +151,10 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: items,
@@ -208,7 +162,6 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 }
 
 func (h *Handler) GetContests(c echo.Context) error {
-	op := "handler.GetContests"
 	ctx := c.Request().Context()
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
@@ -221,13 +174,13 @@ func (h *Handler) GetContests(c echo.Context) error {
 		offset = 0
 	}
 
-	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
+	result, err := h.service.Contest.ListAllContests(ctx, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contests: %w", op, err)
+		return err
 	}
 
 	items := make([]response.ContestListItem, 0)
-	for _, contest := range contests {
+	for _, contest := range result.Contests {
 		item := response.ContestListItem{
 			ID: contest.ID,
 			Creator: response.User{
@@ -247,10 +200,10 @@ func (h *Handler) GetContests(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: items,
@@ -258,7 +211,6 @@ func (h *Handler) GetContests(c echo.Context) error {
 }
 
 func (h *Handler) GetLeaderboard(c echo.Context) error {
-	op := "handler.GetLeaderboard"
 	ctx := c.Request().Context()
 
 	contestID, ok := ExtractParamInt(c, "cid")
@@ -276,27 +228,22 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 		offset = 0
 	}
 
-	_, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
+	result, err := h.service.Contest.GetLeaderboard(ctx, contestID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contest: %v", op, err)
-	}
-
-	leaderboard, total, err := h.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)
-	if err != nil {
-		return fmt.Errorf("%s: can't get leaderboard: %v", op, err)
+		if errors.Is(err, service.ErrContestNotFound) {
+			return Error(http.StatusNotFound, "contest not found")
+		}
+		return err
 	}
 
 	return c.JSON(http.StatusOK, response.Pagination[models.LeaderboardEntry]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
-		Items: leaderboard,
+		Items: result.Leaderboard,
 	})
 }

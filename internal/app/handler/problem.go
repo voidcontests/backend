@@ -2,21 +2,17 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
-	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateProblem(c echo.Context) error {
-	op := "handler.CreateProblem"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -26,65 +22,28 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
+	id, err := h.service.Problem.CreateProblem(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, body.Checker, body.TestCases)
 	if err != nil {
-		return fmt.Errorf("%s: can't get role: %v", op, err)
-	}
-
-	if userrole.Name == models.RoleBanned {
-		return Error(http.StatusForbidden, "you are banned from creating problems")
-	}
-
-	if userrole.Name == models.RoleLimited {
-		pscount, err := h.repo.User.GetCreatedProblemsCount(ctx, claims.UserID)
-		if err != nil {
-			return fmt.Errorf("%s: can't get created problems count: %v", op, err)
-		}
-
-		if pscount >= int(userrole.CreatedProblemsLimit) {
+		switch {
+		case errors.Is(err, service.ErrUserBanned):
+			return Error(http.StatusForbidden, "you are banned from creating problems")
+		case errors.Is(err, service.ErrProblemsLimitExceeded):
 			return Error(http.StatusForbidden, "problems limit exceeded")
+		case errors.Is(err, service.ErrInvalidTimeLimit):
+			return Error(http.StatusBadRequest, "time_limit_ms must be between 500 and 10000")
+		case errors.Is(err, service.ErrInvalidMemoryLimit):
+			return Error(http.StatusBadRequest, "memory_limit_mb must be between 16 and 512")
+		default:
+			return err
 		}
-	}
-
-	if body.TimeLimitMS < 500 || body.TimeLimitMS > 10000 {
-		return Error(http.StatusBadRequest, "time_limit_ms must be between 500 and 10000")
-	}
-
-	if body.MemoryLimitMB < 16 || body.MemoryLimitMB > 512 {
-		return Error(http.StatusBadRequest, "memory_limit_mb must be between 16 and 512")
-	}
-
-	// TODO: Remove examples as database entity
-	// Forbid to create more examples than 3
-	examplesCount := 0
-	for i := range body.TestCases {
-		if body.TestCases[i].IsExample {
-			examplesCount++
-		}
-
-		if examplesCount > 3 && body.TestCases[i].IsExample {
-			body.TestCases[i].IsExample = false
-		}
-	}
-
-	checker := body.Checker
-	if checker == "" {
-		checker = "tokens"
-	}
-
-	problemID, err := h.repo.Problem.CreateWithTCs(ctx, claims.UserID, body.Title, body.Statement, body.Difficulty, body.TimeLimitMS, body.MemoryLimitMB, checker, body.TestCases)
-
-	if err != nil {
-		return fmt.Errorf("%s: can't create problem: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
-		ID: problemID,
+		ID: id,
 	})
 }
 
 func (h *Handler) GetCreatedProblems(c echo.Context) error {
-	op := "handler.GetCreatedProblems"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -99,14 +58,14 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 		offset = 0
 	}
 
-	ps, total, err := h.repo.Problem.GetWithWriterID(ctx, claims.UserID, limit, offset)
+	result, err := h.service.Problem.GetCreatedProblems(ctx, claims.UserID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get created problems: %v", op, err)
+		return err
 	}
 
-	n := len(ps)
+	n := len(result.Problems)
 	problems := make([]response.ProblemListItem, n, n)
-	for i, p := range ps {
+	for i, p := range result.Problems {
 		problems[i] = response.ProblemListItem{
 			ID:            p.ID,
 			Title:         p.Title,
@@ -124,10 +83,10 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response.Pagination[response.ProblemListItem]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: problems,
@@ -135,7 +94,6 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 }
 
 func (h *Handler) GetContestProblem(c echo.Context) error {
-	op := "handler.GetContestProblem"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -146,57 +104,33 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	}
 
 	charcode := c.Param("charcode")
-	if len(charcode) > 2 {
-		return Error(http.StatusBadRequest, "problem charcode couldn't be longer than 2 characters")
-	}
-	charcode = strings.ToUpper(charcode)
 
-	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
+	details, err := h.service.Problem.GetContestProblem(ctx, int32(contestID), claims.UserID, charcode)
 	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-	if contest.StartTime.After(now) {
-		return Error(http.StatusForbidden, "contest not started yet")
-	}
-
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusForbidden, "no entry")
-	}
-	if err != nil {
-		return fmt.Errorf("%s: can't get entry: %v", op, err)
-	}
-
-	p, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "problem not found")
-	}
-	if err != nil {
-		return fmt.Errorf("%s: can't get problem: %v", op, err)
-	}
-
-	etc, err := h.repo.Problem.GetExampleCases(ctx, p.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get tc examples: %v", op, err)
-	}
-
-	n := len(etc)
-	examples := make([]response.TC, n, n)
-	for i := 0; i < n; i++ {
-		examples[i] = response.TC{
-			Input:  etc[i].Input,
-			Output: etc[i].Output,
+		switch {
+		case errors.Is(err, service.ErrInvalidCharcode):
+			return Error(http.StatusBadRequest, "problem charcode couldn't be longer than 2 characters")
+		case errors.Is(err, service.ErrContestNotFound):
+			return Error(http.StatusNotFound, "contest not found")
+		case errors.Is(err, service.ErrContestNotStarted):
+			return Error(http.StatusForbidden, "contest not started yet")
+		case errors.Is(err, service.ErrNoEntryForContest):
+			return Error(http.StatusForbidden, "no entry")
+		case errors.Is(err, service.ErrProblemNotFound):
+			return Error(http.StatusNotFound, "problem not found")
+		default:
+			return err
 		}
 	}
 
-	status, err := h.repo.Submission.GetProblemStatus(ctx, entry.ID, p.ID)
-	if err != nil {
-		return err
+	p := details.Problem
+	n := len(details.Examples)
+	examples := make([]response.TC, n, n)
+	for i := 0; i < n; i++ {
+		examples[i] = response.TC{
+			Input:  details.Examples[i].Input,
+			Output: details.Examples[i].Output,
+		}
 	}
 
 	pdetailed := response.ContestProblemDetailed{
@@ -207,7 +141,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		Statement:     p.Statement,
 		Examples:      examples,
 		Difficulty:    p.Difficulty,
-		Status:        status,
+		Status:        details.Status,
 		CreatedAt:     p.CreatedAt,
 		TimeLimitMS:   p.TimeLimitMS,
 		MemoryLimitMB: p.MemoryLimitMB,
@@ -218,16 +152,14 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		},
 	}
 
-	_, deadline := AllowSubmitAt(contest, entry)
-	if contest.StartTime.Before(time.Now()) {
-		pdetailed.SubmissionDeadline = &deadline
+	if details.SubmissionWindow.Earliest.Before(time.Now()) {
+		pdetailed.SubmissionDeadline = &details.SubmissionWindow.Deadline
 	}
 
 	return c.JSON(http.StatusOK, pdetailed)
 }
 
 func (h *Handler) GetProblemByID(c echo.Context) error {
-	op := "handler.GetProblemByID"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -237,29 +169,25 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "problem ID should be an integer")
 	}
 
-	problem, err := h.repo.Problem.GetByID(ctx, int32(problemID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "problem not found")
-	}
+	details, err := h.service.Problem.GetProblemByID(ctx, int32(problemID), claims.UserID)
 	if err != nil {
-		return fmt.Errorf("%s: can't get problem: %v", op, err)
+		switch {
+		case errors.Is(err, service.ErrProblemNotFound):
+			return Error(http.StatusNotFound, "problem not found")
+		case errors.Is(err, service.ErrNotProblemWriter):
+			return Error(http.StatusNotFound, "problem not found")
+		default:
+			return err
+		}
 	}
 
-	if problem.WriterID != claims.UserID {
-		return Error(http.StatusNotFound, "problem not found")
-	}
-
-	etc, err := h.repo.Problem.GetExampleCases(ctx, problem.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get tc examples: %v", op, err)
-	}
-
-	n := len(etc)
+	problem := details.Problem
+	n := len(details.Examples)
 	examples := make([]response.TC, n, n)
 	for i := 0; i < n; i++ {
 		examples[i] = response.TC{
-			Input:  etc[i].Input,
-			Output: etc[i].Output,
+			Input:  details.Examples[i].Input,
+			Output: details.Examples[i].Output,
 		}
 	}
 
