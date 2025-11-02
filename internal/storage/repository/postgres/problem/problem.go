@@ -65,11 +65,14 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int, title, state
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
-	query := `SELECT p.*, cp.charcode, u.username AS writer_username
-		FROM problems p
-		JOIN contest_problems cp ON p.id = cp.problem_id
-		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1 AND cp.charcode = $2`
+	query := `
+SELECT
+	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
+	p.memory_limit_mb, p.checker, p.created_at, cp.charcode, u.username AS writer_username
+FROM problems p
+JOIN contest_problems cp ON p.id = cp.problem_id
+JOIN users u ON u.id = p.writer_id
+WHERE cp.contest_id = $1 AND cp.charcode = $2`
 
 	row := p.pool.QueryRow(ctx, query, contestID, charcode)
 
@@ -146,7 +149,12 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.
 }
 
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
-	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id`
+	query := `
+SELECT
+	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
+	p.memory_limit_mb, p.checker, p.created_at, u.username AS writer_username
+FROM problems p
+JOIN users u ON u.id = p.writer_id`
 
 	rows, err := p.pool.Query(ctx, query)
 	if err != nil {
@@ -173,12 +181,14 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, off
 	batch := &pgx.Batch{}
 
 	batch.Queue(`
-		SELECT problems.*, users.username AS writer_username
-		FROM problems
-		JOIN users ON users.id = problems.writer_id
-		WHERE writer_id = $1
-		ORDER BY problems.id ASC
-		LIMIT $2 OFFSET $3
+SELECT
+	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
+	p.memory_limit_mb, p.checker, p.created_at, u.username AS writer_username
+FROM problems p
+JOIN users u ON u.id = p.writer_id
+WHERE writer_id = $1
+ORDER BY p.id ASC
+LIMIT $2 OFFSET $3
 	`, writerID, limit, offset)
 
 	batch.Queue(`

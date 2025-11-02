@@ -23,8 +23,9 @@ func New(pool *pgxpool.Pool) *Postgres {
 
 func (p *Postgres) Create(ctx context.Context, creatorID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool) (int, error) {
 	var id int
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+	query := `
+INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
 	err := p.pool.QueryRow(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
 	return id, err
 }
@@ -43,10 +44,8 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, titl
 
 	var contestID int
 	err = tx.QueryRow(ctx, `
-		INSERT INTO contests
-		(creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id
+INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
 	`, creatorID, title, desc, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
 	if err != nil {
 		return 0, fmt.Errorf("insert contest failed: %w", err)
@@ -54,10 +53,8 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, titl
 
 	batch := &pgx.Batch{}
 	for i, pid := range problemIDs {
-		batch.Queue(`
-			INSERT INTO contest_problems (contest_id, problem_id, charcode)
-			VALUES ($1, $2, $3)
-		`, contestID, pid, string(charcodes[i]))
+		batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
+			contestID, pid, string(charcodes[i]))
 	}
 
 	br := tx.SendBatch(ctx, batch)
@@ -82,22 +79,31 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, titl
 
 func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, error) {
 	var contest models.Contest
-	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.id = $1
-		GROUP BY contests.id, users.username`
-	err := p.pool.QueryRow(ctx, query, contestID).Scan(&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime, &contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
+	query := `
+SELECT
+	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
+	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
+FROM contests c
+JOIN users u ON u.id = c.creator_id
+LEFT JOIN entries e ON e.contest_id = c.id
+WHERE c.id = $1
+GROUP BY c.id, u.username`
+	err := p.pool.QueryRow(ctx, query, contestID).Scan(
+		&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime,
+		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
+		&contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
 	return contest, err
 }
 
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
-	query := `SELECT cp.charcode, p.*, u.username AS writer_username
-		FROM problems p
-		JOIN contest_problems cp ON p.id = cp.problem_id
-		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1 ORDER BY charcode ASC`
+	query := `
+SELECT
+	p.id, cp.charcode, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
+	p.memory_limit_mb, p.checker, p.created_at, u.username AS writer_username
+FROM problems p
+JOIN contest_problems cp ON p.id = cp.problem_id
+JOIN users u ON u.id = p.writer_id
+WHERE cp.contest_id = $1 ORDER BY charcode ASC`
 
 	rows, err := p.pool.Query(ctx, query, contestID)
 	if err != nil {
@@ -108,7 +114,7 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.P
 	var problems []models.Problem
 	for rows.Next() {
 		var problem models.Problem
-		if err := rows.Scan(&problem.Charcode, &problem.ID, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt, &problem.WriterUsername); err != nil {
+		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt, &problem.WriterUsername); err != nil {
 			return nil, err
 		}
 		problems = append(problems, problem)
@@ -123,14 +129,16 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 
 	batch := &pgx.Batch{}
 	batch.Queue(`
-		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.end_time >= now()
-		GROUP BY contests.id, users.username
-		ORDER BY contests.id ASC
-		LIMIT $1 OFFSET $2
+SELECT
+	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
+	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(u.id) AS participants
+FROM contests c
+JOIN users u ON u.id = c.creator_id
+LEFT JOIN entries e ON e.contest_id = c.id
+WHERE c.end_time >= now()
+GROUP BY c.id, u.username
+ORDER BY c.id ASC
+LIMIT $1 OFFSET $2
 	`, limit, offset)
 
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE contests.end_time >= now()`)
@@ -175,14 +183,16 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error) {
 	batch := &pgx.Batch{}
 	batch.Queue(`
-		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.creator_id = $1
-		GROUP BY contests.id, users.username
-		ORDER BY contests.id ASC
-		LIMIT $2 OFFSET $3
+SELECT
+	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
+	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
+FROM contests c
+JOIN users u ON u.id = c.creator_id
+LEFT JOIN entries e ON e.contest_id = c.id
+WHERE c.creator_id = $1
+GROUP BY c.id, u.username
+ORDER BY c.id ASC
+LIMIT $2 OFFSET $3
 	`, creatorID, limit, offset)
 
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE creator_id = $1`, creatorID)
