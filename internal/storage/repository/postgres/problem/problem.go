@@ -49,7 +49,7 @@ func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []
 
 	for i := 0; i < batch.Len(); i++ {
 		if _, err := br.Exec(); err != nil {
-			return fmt.Errorf("insert test case %d failed: %w", i, err)
+			return fmt.Errorf("insert test case %d (ordinal=%d, is_example=%v) failed: %w", i, i+1, tcs[i].IsExample, err)
 		}
 	}
 

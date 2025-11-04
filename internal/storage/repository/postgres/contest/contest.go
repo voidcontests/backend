@@ -21,8 +21,13 @@ func New(txr postgres.Transactor) *Postgres {
 	return &Postgres{conn: txr}
 }
 
+// TODO: associate problem with charcode at the service layer
 func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletID *int) (int, error) {
 	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	if len(problemIDs) > len(charcodes) {
+		return 0, fmt.Errorf("too many problems: got %d, max %d", len(problemIDs), len(charcodes))
+	}
 
 	var contestID int
 	var err error
@@ -54,7 +59,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
 	for i := 0; i < len(problemIDs); i++ {
 		if _, err := br.Exec(); err != nil {
 			br.Close()
-			return 0, fmt.Errorf("insert contest_problem %d failed: %w", i, err)
+			return 0, fmt.Errorf("insert contest_problem %d (problem_id=%d, charcode=%s) failed: %w", i, problemIDs[i], string(charcodes[i]), err)
 		}
 	}
 

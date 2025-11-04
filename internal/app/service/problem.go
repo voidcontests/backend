@@ -81,18 +81,29 @@ func (s *ProblemService) CreateProblem(ctx context.Context, params CreateProblem
 		checker = "tokens"
 	}
 
+	const MAX_TEST_CASES = 100
+	if len(params.TestCases) > MAX_TEST_CASES {
+		return 0, fmt.Errorf("too many test cases: got %d, max %d", len(params.TestCases), MAX_TEST_CASES)
+	}
+
+	for i, tc := range params.TestCases {
+		if tc.Input == "" && tc.Output == "" {
+			return 0, fmt.Errorf("test case %d: both input and output are empty", i)
+		}
+	}
+
 	var problemID int
 	err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		repo := repository.NewTxRepository(tx)
 
-		problemID, err = repo.Problem.Create(ctx, params.UserID, params.Title, params.Statement, params.Difficulty, params.TimeLimitMS, params.MemoryLimitMB, params.Checker)
+		problemID, err = repo.Problem.Create(ctx, params.UserID, params.Title, params.Statement, params.Difficulty, params.TimeLimitMS, params.MemoryLimitMB, checker)
 		if err != nil {
-			return err
+			return fmt.Errorf("create problem: %w", err)
 		}
 
 		err = repo.Problem.AssociateTestCases(ctx, problemID, params.TestCases)
 		if err != nil {
-			return err
+			return fmt.Errorf("associate test cases: %w", err)
 		}
 
 		return nil
