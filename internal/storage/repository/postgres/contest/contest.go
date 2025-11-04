@@ -135,7 +135,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 	batch.Queue(`
 SELECT
 	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
-	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(u.id) AS participants
+	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
