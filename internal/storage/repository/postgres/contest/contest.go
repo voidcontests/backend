@@ -7,94 +7,38 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 const defaultLimit = 20
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(txr postgres.Transactor) *Postgres {
+	return &Postgres{conn: txr}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletID *int) (int, error) {
 	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	if len(problemIDs) > len(charcodes) {
-		return 0, fmt.Errorf("not enough charcodes for the number of problems")
-	}
-
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
 
 	var contestID int
-	err = tx.QueryRow(ctx, `
-INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
-	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
-	if err != nil {
-		return 0, fmt.Errorf("insert contest failed: %w", err)
-	}
+	var err error
 
-	batch := &pgx.Batch{}
-	for i, pid := range problemIDs {
-		batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
-			contestID, pid, string(charcodes[i]))
-	}
-
-	br := tx.SendBatch(ctx, batch)
-
-	for i := 0; i < len(problemIDs); i++ {
-		if _, err := br.Exec(); err != nil {
-			br.Close()
-			return 0, fmt.Errorf("insert contest_problem %d failed: %w", i, err)
-		}
-	}
-
-	if err := br.Close(); err != nil {
-		return 0, fmt.Errorf("batch close failed: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit failed: %w", err)
-	}
-
-	return contestID, nil
-}
-
-// TODO: extract contest creation into separate function, probably with tx manager
-func (p *Postgres) CreateWithWallet(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletAddress, walletMnemonic string) (int, error) {
-	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	if len(problemIDs) > len(charcodes) {
-		return 0, fmt.Errorf("not enough charcodes for the number of problems")
-	}
-
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	var walletID int
-	err = tx.QueryRow(ctx, `
-INSERT INTO wallets (address, mnemonic)
-VALUES ($1, $2) RETURNING id
-	`, walletAddress, walletMnemonic).Scan(&walletID)
-	if err != nil {
-		return 0, fmt.Errorf("insert wallet failed: %w", err)
-	}
-
-	var contestID int
-	err = tx.QueryRow(ctx, `
+	if walletID != nil {
+		err = p.conn.QueryRow(ctx, `
 INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join, wallet_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
 	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin, walletID).Scan(&contestID)
+	} else {
+		err = p.conn.QueryRow(ctx, `
+INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
+	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
+	}
+
 	if err != nil {
 		return 0, fmt.Errorf("insert contest failed: %w", err)
 	}
@@ -105,7 +49,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
 			contestID, pid, string(charcodes[i]))
 	}
 
-	br := tx.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	for i := 0; i < len(problemIDs); i++ {
 		if _, err := br.Exec(); err != nil {
@@ -116,10 +60,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
 
 	if err := br.Close(); err != nil {
 		return 0, fmt.Errorf("batch close failed: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit failed: %w", err)
 	}
 
 	return contestID, nil
@@ -136,7 +76,7 @@ JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
 WHERE c.id = $1
 GROUP BY c.id, u.username`
-	err := p.pool.QueryRow(ctx, query, contestID).Scan(
+	err := p.conn.QueryRow(ctx, query, contestID).Scan(
 		&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
 		&contest.WalletID, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
@@ -150,7 +90,7 @@ SELECT
 	w.id, w.address, w.mnemonic, w.created_at
 FROM wallets w
 WHERE w.id = $1`
-	err := p.pool.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.Mnemonic, &wallet.CreatedAt)
+	err := p.conn.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.Mnemonic, &wallet.CreatedAt)
 	return wallet, err
 }
 
@@ -164,7 +104,7 @@ JOIN contest_problems cp ON p.id = cp.problem_id
 JOIN users u ON u.id = p.writer_id
 WHERE cp.contest_id = $1 ORDER BY charcode ASC`
 
-	rows, err := p.pool.Query(ctx, query, contestID)
+	rows, err := p.conn.Query(ctx, query, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +142,7 @@ LIMIT $1 OFFSET $2
 
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE contests.end_time >= now()`)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {
@@ -256,7 +196,7 @@ LIMIT $2 OFFSET $3
 
 	batch.Queue(`SELECT COUNT(*) FROM contests WHERE creator_id = $1`, creatorID)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {
@@ -295,13 +235,13 @@ LIMIT $2 OFFSET $3
 
 func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int) (int, error) {
 	var count int
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM entries WHERE contest_id = $1`, contestID).Scan(&count)
+	err := p.conn.QueryRow(ctx, `SELECT COUNT(*) FROM entries WHERE contest_id = $1`, contestID).Scan(&count)
 	return count, err
 }
 
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
 	var count int
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`, strings.ToLower(title)).Scan(&count)
+	err := p.conn.QueryRow(ctx, `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`, strings.ToLower(title)).Scan(&count)
 	return count > 0, err
 }
 
@@ -338,7 +278,7 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 		WHERE e.contest_id = $1
 	`, contestID)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {

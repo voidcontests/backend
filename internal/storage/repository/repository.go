@@ -4,13 +4,16 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/contest"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/entry"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/problem"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/user"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/wallet"
 )
 
 type Repository struct {
@@ -19,6 +22,7 @@ type Repository struct {
 	Problem    Problem
 	Entry      Entry
 	Submission Submission
+	TxManager  *postgres.TxManager
 }
 
 func New(pool *pgxpool.Pool) *Repository {
@@ -28,6 +32,28 @@ func New(pool *pgxpool.Pool) *Repository {
 		Problem:    problem.New(pool),
 		Entry:      entry.New(pool),
 		Submission: submission.New(pool),
+		TxManager:  postgres.NewTxManager(pool),
+	}
+}
+
+// TxRepository provides repository instances within a transaction
+type TxRepository struct {
+	User       User
+	Contest    Contest
+	Problem    Problem
+	Entry      Entry
+	Submission Submission
+	Wallet     Wallet
+}
+
+// NewTxRepository creates repository instances that use the provided transaction
+func NewTxRepository(tx pgx.Tx) *TxRepository {
+	return &TxRepository{
+		Contest:    contest.New(tx),
+		Wallet:     wallet.New(tx),
+		User:       user.New(tx),
+		Entry:      entry.New(tx),
+		Submission: submission.New(tx),
 	}
 }
 
@@ -42,8 +68,7 @@ type User interface {
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error)
-	CreateWithWallet(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletAddress, walletMnemonic string) (int, error)
+	Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletID *int) (int, error)
 	GetByID(ctx context.Context, contestID int) (models.Contest, error)
 	GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error)
 	ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error)
@@ -52,6 +77,10 @@ type Contest interface {
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
 	GetWallet(ctx context.Context, walletID int) (models.Wallet, error)
+}
+
+type Wallet interface {
+	Create(ctx context.Context, address, mnemonic string) (int, error)
 }
 
 type Problem interface {

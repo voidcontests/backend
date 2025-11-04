@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 const (
@@ -14,11 +14,11 @@ const (
 )
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(conn postgres.Transactor) *Postgres {
+	return &Postgres{conn}
 }
 
 func (p *Postgres) Create(ctx context.Context, entryID int, problemID int, code string, language string) (models.Submission, error) {
@@ -27,7 +27,7 @@ func (p *Postgres) Create(ctx context.Context, entryID int, problemID int, code 
 		RETURNING id, entry_id, problem_id, status, verdict, code, language, created_at`
 
 	var submission models.Submission
-	err := p.pool.QueryRow(ctx, query, entryID, problemID, code, language).Scan(
+	err := p.conn.QueryRow(ctx, query, entryID, problemID, code, language).Scan(
 		&submission.ID,
 		&submission.EntryID,
 		&submission.ProblemID,
@@ -54,7 +54,7 @@ func (p *Postgres) GetProblemStatus(ctx context.Context, entryID int, problemID 
 	`
 
 	var status sql.NullString
-	err := p.pool.QueryRow(ctx, query, entryID, problemID).Scan(&status)
+	err := p.conn.QueryRow(ctx, query, entryID, problemID).Scan(&status)
 	if err != nil {
 		return "", fmt.Errorf("query failed: %w", err)
 	}
@@ -79,7 +79,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int) (map[int
 		GROUP BY s.problem_id
 	`
 
-	rows, err := p.pool.Query(ctx, query, entryID)
+	rows, err := p.conn.Query(ctx, query, entryID)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
@@ -114,7 +114,7 @@ func (p *Postgres) GetByID(ctx context.Context, submissionID int) (models.Submis
 		FROM submissions s WHERE s.id = $1`
 
 	var s models.Submission
-	err := p.pool.QueryRow(ctx, query, submissionID).Scan(
+	err := p.conn.QueryRow(ctx, query, submissionID).Scan(
 		&s.ID,
 		&s.EntryID,
 		&s.ProblemID,
@@ -143,7 +143,7 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int, charcode stri
 		ORDER BY s.created_at DESC
 		LIMIT $3 OFFSET $4`
 
-	rows, err := p.pool.Query(ctx, query, entryID, charcode, limit, offset)
+	rows, err := p.conn.Query(ctx, query, entryID, charcode, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("query rows failed: %w", err)
 	}
@@ -180,7 +180,7 @@ func (p *Postgres) GetTestingReport(ctx context.Context, submissionID int) (mode
 		FROM testing_reports WHERE submission_id = $1`
 
 	var report models.TestingReport
-	err := p.pool.QueryRow(ctx, query, submissionID).Scan(
+	err := p.conn.QueryRow(ctx, query, submissionID).Scan(
 		&report.ID,
 		&report.SubmissionID,
 		&report.PassedTestsCount,

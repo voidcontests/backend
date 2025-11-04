@@ -74,21 +74,37 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		address := w.Address.String()
 		mnemonic := strings.Join(w.Mnemonic, " ")
 
-		contestID, err = s.repo.Contest.CreateWithWallet(
-			ctx,
-			params.UserID,
-			params.Title,
-			params.Description,
-			params.AwardType,
-			params.StartTime,
-			params.EndTime,
-			params.DurationMins,
-			params.MaxEntries,
-			params.AllowLateJoin,
-			params.ProblemIDs,
-			address,
-			mnemonic,
-		)
+		err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+			repo := repository.NewTxRepository(tx)
+
+			walletID, err := repo.Wallet.Create(ctx, address, mnemonic)
+			if err != nil {
+				return fmt.Errorf("create wallet: %w", err)
+			}
+
+			contestID, err = repo.Contest.Create(
+				ctx,
+				params.UserID,
+				params.Title,
+				params.Description,
+				params.AwardType,
+				params.StartTime,
+				params.EndTime,
+				params.DurationMins,
+				params.MaxEntries,
+				params.AllowLateJoin,
+				params.ProblemIDs,
+				&walletID,
+			)
+			if err != nil {
+				return fmt.Errorf("create contest: %w", err)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
+		}
 	} else {
 		contestID, err = s.repo.Contest.Create(
 			ctx,
@@ -102,11 +118,11 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 			params.MaxEntries,
 			params.AllowLateJoin,
 			params.ProblemIDs,
+			nil,
 		)
-	}
-
-	if err != nil {
-		return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
+		if err != nil {
+			return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
+		}
 	}
 
 	return contestID, nil

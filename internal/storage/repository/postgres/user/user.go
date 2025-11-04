@@ -3,23 +3,23 @@ package user
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(conn postgres.Transactor) *Postgres {
+	return &Postgres{conn}
 }
 
 func (p *Postgres) GetByCredentials(ctx context.Context, username string, passwordHash string) (models.User, error) {
 	var user models.User
 
 	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE username = $1 AND password_hash = $2`
-	err := p.pool.QueryRow(ctx, query, username, passwordHash).Scan(
+	err := p.conn.QueryRow(ctx, query, username, passwordHash).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -38,7 +38,7 @@ func (p *Postgres) Create(ctx context.Context, username string, passwordHash str
 		RETURNING id, username, password_hash, role_id, created_at
 	`
 
-	err := p.pool.QueryRow(ctx, query, username, passwordHash).Scan(
+	err := p.conn.QueryRow(ctx, query, username, passwordHash).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -52,7 +52,7 @@ func (p *Postgres) Exists(ctx context.Context, username string) (bool, error) {
 	var count int
 
 	query := `SELECT COUNT(*) FROM users WHERE username = $1`
-	err := p.pool.QueryRow(ctx, query, username).Scan(&count)
+	err := p.conn.QueryRow(ctx, query, username).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -64,7 +64,7 @@ func (p *Postgres) GetByID(ctx context.Context, id int) (models.User, error) {
 	var user models.User
 
 	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE id = $1`
-	err := p.pool.QueryRow(ctx, query, id).Scan(
+	err := p.conn.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
@@ -83,7 +83,7 @@ func (p *Postgres) GetRole(ctx context.Context, userID int) (models.Role, error)
 		JOIN roles r ON u.role_id = r.id
 		WHERE u.id = $1
 	`
-	err := p.pool.QueryRow(ctx, query, userID).Scan(
+	err := p.conn.QueryRow(ctx, query, userID).Scan(
 		&role.ID,
 		&role.Name,
 		&role.CreatedProblemsLimit,
@@ -98,7 +98,7 @@ func (p *Postgres) GetCreatedProblemsCount(ctx context.Context, userID int) (int
 	var count int
 
 	query := `SELECT COUNT(*) FROM problems WHERE writer_id = $1`
-	err := p.pool.QueryRow(ctx, query, userID).Scan(&count)
+	err := p.conn.QueryRow(ctx, query, userID).Scan(&count)
 	return count, err
 }
 
@@ -106,6 +106,6 @@ func (p *Postgres) GetCreatedContestsCount(ctx context.Context, userID int) (int
 	var count int
 
 	query := `SELECT COUNT(*) FROM contests WHERE creator_id = $1`
-	err := p.pool.QueryRow(ctx, query, userID).Scan(&count)
+	err := p.conn.QueryRow(ctx, query, userID).Scan(&count)
 	return count, err
 }
