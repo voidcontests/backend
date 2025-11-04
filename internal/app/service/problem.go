@@ -81,17 +81,22 @@ func (s *ProblemService) CreateProblem(ctx context.Context, params CreateProblem
 		checker = "tokens"
 	}
 
-	problemID, err := s.repo.Problem.CreateWithTCs(
-		ctx,
-		params.UserID,
-		params.Title,
-		params.Statement,
-		params.Difficulty,
-		params.TimeLimitMS,
-		params.MemoryLimitMB,
-		checker,
-		params.TestCases,
-	)
+	var problemID int
+	err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		repo := repository.NewTxRepository(tx)
+
+		problemID, err = repo.Problem.Create(ctx, params.UserID, params.Title, params.Statement, params.Difficulty, params.TimeLimitMS, params.MemoryLimitMB, params.Checker)
+		if err != nil {
+			return err
+		}
+
+		err = repo.Problem.AssociateTestCases(ctx, problemID, params.TestCases)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to create problem: %w", op, err)
 	}

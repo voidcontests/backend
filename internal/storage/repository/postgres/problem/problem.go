@@ -5,27 +5,21 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(conn postgres.Transactor) *Postgres {
+	return &Postgres{conn: conn}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int, error) {
-	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("tx begin failed: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
+func (p *Postgres) Create(ctx context.Context, writerID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string) (int, error) {
 	var problemID int
-	err = tx.QueryRow(ctx, `
+	err := p.conn.QueryRow(ctx, `
         INSERT INTO problems (writer_id, title, statement, difficulty, time_limit_ms, memory_limit_mb, checker)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
@@ -34,34 +28,36 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int, title, state
 		return 0, fmt.Errorf("insert problem failed: %w", err)
 	}
 
-	if len(tcs) > 0 {
-		batch := &pgx.Batch{}
-		for i, tc := range tcs {
-			batch.Queue(`
-                INSERT INTO test_cases (problem_id, ordinal, input, output, is_example)
-                VALUES ($1, $2, $3, $4, $5)
-            `, problemID, i+1, tc.Input, tc.Output, tc.IsExample)
-		}
-
-		br := tx.SendBatch(ctx, batch)
-
-		for i := 0; i < batch.Len(); i++ {
-			if _, err := br.Exec(); err != nil {
-				br.Close()
-				return 0, fmt.Errorf("insert test case %d failed: %w", i, err)
-			}
-		}
-
-		if err := br.Close(); err != nil {
-			return 0, fmt.Errorf("batch close failed: %w", err)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit failed: %w", err)
-	}
-
 	return problemID, nil
+}
+
+func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []models.TestCaseDTO) error {
+	if len(tcs) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+	for i, tc := range tcs {
+		batch.Queue(`
+            INSERT INTO test_cases (problem_id, ordinal, input, output, is_example)
+            VALUES ($1, $2, $3, $4, $5)
+        `, problemID, i+1, tc.Input, tc.Output, tc.IsExample)
+	}
+
+	br := p.conn.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("insert test case %d failed: %w", i, err)
+		}
+	}
+
+	if err := br.Close(); err != nil {
+		return fmt.Errorf("batch close failed: %w", err)
+	}
+
+	return nil
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
@@ -74,7 +70,7 @@ JOIN contest_problems cp ON p.id = cp.problem_id
 JOIN users u ON u.id = p.writer_id
 WHERE cp.contest_id = $1 AND cp.charcode = $2`
 
-	row := p.pool.QueryRow(ctx, query, contestID, charcode)
+	row := p.conn.QueryRow(ctx, query, contestID, charcode)
 
 	var problem models.Problem
 	err := row.Scan(
@@ -95,7 +91,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, 
 		JOIN users u ON u.id = p.writer_id
 		WHERE p.id = $1`
 
-	row := p.pool.QueryRow(ctx, query, problemID)
+	row := p.conn.QueryRow(ctx, query, problemID)
 
 	var problem models.Problem
 	err := row.Scan(
@@ -110,7 +106,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, 
 func (p *Postgres) GetExampleCases(ctx context.Context, problemID int) ([]models.TestCase, error) {
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE problem_id = $1 AND is_example = true`
 
-	rows, err := p.pool.Query(ctx, query, problemID)
+	rows, err := p.conn.Query(ctx, query, problemID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +128,7 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE id = $1`
 
 	var tc models.TestCase
-	err := p.pool.QueryRow(ctx, query, testCaseID).Scan(
+	err := p.conn.QueryRow(ctx, query, testCaseID).Scan(
 		&tc.ID,
 		&tc.ProblemID,
 		&tc.Ordinal,
@@ -156,7 +152,7 @@ SELECT
 FROM problems p
 JOIN users u ON u.id = p.writer_id`
 
-	rows, err := p.pool.Query(ctx, query)
+	rows, err := p.conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +191,7 @@ LIMIT $2 OFFSET $3
 		SELECT COUNT(*) FROM problems WHERE writer_id = $1
 	`, writerID)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {

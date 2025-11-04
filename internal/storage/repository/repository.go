@@ -54,6 +54,7 @@ func NewTxRepository(tx pgx.Tx) *TxRepository {
 		User:       user.New(tx),
 		Entry:      entry.New(tx),
 		Submission: submission.New(tx),
+		Problem:    problem.New(tx),
 	}
 }
 
@@ -84,7 +85,8 @@ type Wallet interface {
 }
 
 type Problem interface {
-	CreateWithTCs(ctx context.Context, writerID int, title string, statement string, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int, error)
+	Create(ctx context.Context, writerID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string) (int, error)
+	AssociateTestCases(ctx context.Context, problemID int, tcs []models.TestCaseDTO) error
 	Get(ctx context.Context, contestID int, charcode string) (models.Problem, error)
 	GetByID(ctx context.Context, problemID int) (models.Problem, error)
 	GetExampleCases(ctx context.Context, problemID int) ([]models.TestCase, error)
