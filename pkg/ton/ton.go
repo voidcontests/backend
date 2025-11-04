@@ -81,10 +81,11 @@ func (c *Client) GetBalance(ctx context.Context, address *address.Address) (uint
 	return account.State.Balance.Nano().Uint64(), nil
 }
 
-func (w *Wallet) TransferTo(ctx context.Context, recipient *address.Address, amount tlb.Coins, comment string) (tx string, err error) {
+func (w *Wallet) TransferTo(ctx context.Context, recipient *address.Address, amount tlb.Coins, comments ...string) (tx string, err error) {
 	var body *cell.Cell
-	if comment != "" {
-		var err error
+
+	if len(comments) > 0 {
+		comment := strings.Join(comments, ", ")
 		body, err = wallet.CreateCommentCell(comment)
 		if err != nil {
 			return "", fmt.Errorf("failed to create comment cell: %w", err)
