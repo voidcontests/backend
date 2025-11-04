@@ -72,7 +72,7 @@ type Contest interface {
 	Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletID *int) (int, error)
 	GetByID(ctx context.Context, contestID int) (models.Contest, error)
 	GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error)
-	ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error)
+	ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) (contests []models.Contest, total int, err error)
 	GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error)
 	GetEntriesCount(ctx context.Context, contestID int) (int, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)

@@ -181,7 +181,20 @@ func (h *Handler) GetContests(c echo.Context) error {
 		offset = 0
 	}
 
-	result, err := h.service.Contest.ListAllContests(ctx, limit, offset)
+	filters := models.ContestFilters{}
+
+	if creatorID, ok := ExtractQueryParamInt(c, "creator_id"); ok {
+		if creatorID > 0 {
+			return Error(http.StatusBadRequest, "creator_id should be a valid integer, greater 0")
+		}
+		filters.CreatorID = creatorID
+	}
+
+	if title := c.QueryParam("title"); title != "" {
+		filters.Title = title
+	}
+
+	result, err := h.service.Contest.ListAllContests(ctx, limit, offset, filters)
 	if err != nil {
 		return err
 	}

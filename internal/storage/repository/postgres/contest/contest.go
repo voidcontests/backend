@@ -126,26 +126,68 @@ WHERE cp.contest_id = $1 ORDER BY charcode ASC`
 	return problems, nil
 }
 
-func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error) {
+func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) (contests []models.Contest, total int, err error) {
 	if limit < 0 {
 		limit = defaultLimit
 	}
 
 	batch := &pgx.Batch{}
-	batch.Queue(`
+
+	whereClauses := []string{"c.end_time >= now()"}
+	queryArgs := []interface{}{limit, offset}
+	countArgs := []interface{}{}
+	paramIndex := 3
+
+	if filters.CreatorID != 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("c.creator_id = $%d", paramIndex))
+		queryArgs = append(queryArgs, filters.CreatorID)
+		countArgs = append(countArgs, filters.CreatorID)
+		paramIndex++
+	}
+
+	if filters.Title != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("LOWER(c.title) LIKE LOWER($%d)", paramIndex))
+		queryArgs = append(queryArgs, "%"+filters.Title+"%")
+		countArgs = append(countArgs, "%"+filters.Title+"%")
+		paramIndex++
+	}
+
+	whereClause := "WHERE " + strings.Join(whereClauses, " AND ")
+
+	query := fmt.Sprintf(`
 SELECT
 	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
 	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
-WHERE c.end_time >= now()
+%s
 GROUP BY c.id, u.username
 ORDER BY c.id ASC
 LIMIT $1 OFFSET $2
-	`, limit, offset)
+	`, whereClause)
 
-	batch.Queue(`SELECT COUNT(*) FROM contests WHERE contests.end_time >= now()`)
+	batch.Queue(query, queryArgs...)
+
+	countWhereClauses := []string{"contests.end_time >= now()"}
+	if filters.CreatorID != 0 {
+		countWhereClauses = append(countWhereClauses, "contests.creator_id = $1")
+	}
+	if filters.Title != "" {
+		countParamIndex := 1
+		if filters.CreatorID != 0 {
+			countParamIndex = 2
+		}
+		countWhereClauses = append(countWhereClauses, fmt.Sprintf("LOWER(contests.title) LIKE LOWER($%d)", countParamIndex))
+	}
+	countWhereClause := strings.Join(countWhereClauses, " AND ")
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM contests WHERE %s", countWhereClause)
+
+	if len(countArgs) > 0 {
+		batch.Queue(countQuery, countArgs...)
+	} else {
+		batch.Queue(countQuery)
+	}
 
 	br := p.conn.SendBatch(ctx, batch)
 

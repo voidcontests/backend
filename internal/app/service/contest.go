@@ -231,10 +231,10 @@ func (s *ContestService) ListCreatedContests(ctx context.Context, creatorID int,
 	}, nil
 }
 
-func (s *ContestService) ListAllContests(ctx context.Context, limit, offset int) (*ListContestsResult, error) {
+func (s *ContestService) ListAllContests(ctx context.Context, limit, offset int, filters models.ContestFilters) (*ListContestsResult, error) {
 	op := "service.ContestService.ListAllContests"
 
-	contests, total, err := s.repo.Contest.ListAll(ctx, limit, offset)
+	contests, total, err := s.repo.Contest.ListAll(ctx, limit, offset, filters)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to list all contests: %w", op, err)
 	}

@@ -42,6 +42,11 @@ type Contest struct {
 	CreatedAt       time.Time `db:"created_at"`
 }
 
+type ContestFilters struct {
+	CreatorID int
+	Title     string
+}
+
 type Wallet struct {
 	ID        int       `db:"id"`
 	Address   string    `db:"address"`
