@@ -4,20 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ton"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 type ContestService struct {
 	repo *repository.Repository
+	ton  *ton.Client
 }
 
-func NewContestService(repo *repository.Repository) *ContestService {
+func NewContestService(repo *repository.Repository, tc *ton.Client) *ContestService {
 	return &ContestService{
 		repo: repo,
+		ton:  tc,
 	}
 }
 
@@ -26,6 +31,7 @@ type CreateContestParams struct {
 	UserID        int
 	Title         string
 	Description   string
+	AwardType     string
 	StartTime     time.Time
 	EndTime       time.Time
 	DurationMins  int
@@ -57,18 +63,48 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		}
 	}
 
-	contestID, err := s.repo.Contest.CreateWithProblemIDs(
-		ctx,
-		params.UserID,
-		params.Title,
-		params.Description,
-		params.StartTime,
-		params.EndTime,
-		params.DurationMins,
-		params.MaxEntries,
-		params.AllowLateJoin,
-		params.ProblemIDs,
-	)
+	// NOTE: if award type is not `paid_entry` or `sponsored` - use `no_prize` by default
+	var contestID int
+	if params.AwardType == "paid_entry" || params.AwardType == "sponsored" {
+		w, err := s.ton.CreateWallet()
+		if err != nil {
+			return 0, err
+		}
+
+		address := w.Address.String()
+		mnemonic := strings.Join(w.Mnemonic, " ")
+
+		contestID, err = s.repo.Contest.CreateWithWallet(
+			ctx,
+			params.UserID,
+			params.Title,
+			params.Description,
+			params.AwardType,
+			params.StartTime,
+			params.EndTime,
+			params.DurationMins,
+			params.MaxEntries,
+			params.AllowLateJoin,
+			params.ProblemIDs,
+			address,
+			mnemonic,
+		)
+	} else {
+		contestID, err = s.repo.Contest.Create(
+			ctx,
+			params.UserID,
+			params.Title,
+			params.Description,
+			"no_award",
+			params.StartTime,
+			params.EndTime,
+			params.DurationMins,
+			params.MaxEntries,
+			params.AllowLateJoin,
+			params.ProblemIDs,
+		)
+	}
+
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
 	}
@@ -82,6 +118,7 @@ type ContestDetails struct {
 	IsParticipant      bool
 	SubmissionDeadline *time.Time
 	ProblemStatuses    map[int]string
+	PrizePot           uint64
 }
 
 func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID int, authenticated bool) (*ContestDetails, error) {
@@ -110,6 +147,25 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 	details := &ContestDetails{
 		Contest:  contest,
 		Problems: problems,
+	}
+
+	// TODO: can additionally check for contest.award_type
+	if contest.WalletID != nil {
+		wallet, err := s.repo.Contest.GetWallet(ctx, *contest.WalletID)
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to get wallet: %w", op, err)
+		}
+
+		addr, err := address.ParseAddr(wallet.Address)
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to parse wallet address: %w", op, err)
+		}
+
+		details.PrizePot, err = s.ton.GetBalance(ctx, addr)
+		if err != nil {
+			// TODO: maybe on this error, just return balance = 0 (?)
+			return nil, fmt.Errorf("%s: failed to get wallet balance: %w", op, err)
+		}
 	}
 
 	if !authenticated {

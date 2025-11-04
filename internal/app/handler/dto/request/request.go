@@ -19,11 +19,12 @@ type CreateSession struct {
 type CreateContestRequest struct {
 	Title         string    `json:"title" required:"true"`
 	Description   string    `json:"description"`
-	ProblemsIDs   []int   `json:"problems_ids" required:"true"`
+	AwardType     string    `json:"award_type"`
+	ProblemsIDs   []int     `json:"problems_ids" required:"true"`
 	StartTime     time.Time `json:"start_time" required:"true"`
 	EndTime       time.Time `json:"end_time" required:"true"`
-	DurationMins  int     `json:"duration_mins" requried:"true"`
-	MaxEntries    int     `json:"max_entries"`
+	DurationMins  int       `json:"duration_mins" requried:"true"`
+	MaxEntries    int       `json:"max_entries"`
 	AllowLateJoin bool      `json:"allow_late_join"`
 }
 

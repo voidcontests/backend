@@ -14,11 +14,11 @@ import (
 )
 
 type AccountService struct {
-	config *config.Config
+	config *config.Security
 	repo   *repository.Repository
 }
 
-func NewAccountService(cfg *config.Config, repo *repository.Repository) *AccountService {
+func NewAccountService(cfg *config.Security, repo *repository.Repository) *AccountService {
 	return &AccountService{
 		config: cfg,
 		repo:   repo,
@@ -37,7 +37,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, username, password s
 		return 0, ErrUserAlreadyExists
 	}
 
-	passwordHash := hasher.Sha256String([]byte(password), []byte(s.config.Security.Salt))
+	passwordHash := hasher.Sha256String([]byte(password), []byte(s.config.Salt))
 
 	user, err := s.repo.User.Create(ctx, username, passwordHash)
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, username, password s
 func (s *AccountService) CreateSession(ctx context.Context, username, password string) (string, error) {
 	op := "service.AccountService.CreateSession"
 
-	passwordHash := hasher.Sha256String([]byte(password), []byte(s.config.Security.Salt))
+	passwordHash := hasher.Sha256String([]byte(password), []byte(s.config.Salt))
 
 	user, err := s.repo.User.GetByCredentials(ctx, username, passwordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -60,7 +60,7 @@ func (s *AccountService) CreateSession(ctx context.Context, username, password s
 		return "", fmt.Errorf("%s: failed to get user by credentials: %w", op, err)
 	}
 
-	token, err := jwt.GenerateToken(user.ID, s.config.Security.SignatureKey)
+	token, err := jwt.GenerateToken(user.ID, s.config.SignatureKey)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w: %v", op, ErrTokenGeneration, err)
 	}

@@ -21,10 +21,19 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE contest_prize_type AS ENUM (
-  'no_prize',
+CREATE TYPE contest_award_type AS ENUM (
+  'no_award',
   'paid_entry',
   'sponsored'
+);
+
+-- TODO: add unique index on `contests.wallet_id`
+-- TODO: encrypt the mnemonic before saving
+CREATE TABLE wallets (
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(100) NOT NULL,
+    mnemonic TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
 CREATE TABLE contests (
@@ -32,20 +41,13 @@ CREATE TABLE contests (
     creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(64) NOT NULL,
     description VARCHAR(300) DEFAULT '' NOT NULL,
-    prize_type contest_prize_type NOT NULL,
+    award_type contest_award_type NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL CHECK (duration_mins >= 0),
     max_entries INTEGER DEFAULT 0 NOT NULL CHECK (max_entries >= 0),
     allow_late_join BOOLEAN DEFAULT true NOT NULL,
     wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT now() NOT NULL
-);
-
-CREATE TABLE wallets (
-    id SERIAL PRIMARY KEY,
-    address VARCHAR(100) NOT NULL,
-    mnemonic TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 

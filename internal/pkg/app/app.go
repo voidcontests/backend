@@ -19,6 +19,7 @@ import (
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
 	"github.com/voidcontests/api/internal/version"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type App struct {
@@ -74,7 +75,15 @@ func (a *App) Run() {
 
 	repo := repository.New(db)
 	brok := broker.New(rc)
-	r := router.New(a.config, repo, brok)
+	tc, err := ton.NewClient(ctx)
+	if err != nil {
+		slog.Error("ton: could not establish connection", sl.Err(err))
+		return
+	}
+
+	slog.Info("ton: ok")
+
+	r := router.New(a.config, repo, brok, tc)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,

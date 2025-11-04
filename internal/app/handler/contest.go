@@ -26,6 +26,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 		UserID:        claims.UserID,
 		Title:         body.Title,
 		Description:   body.Description,
+		AwardType:     body.AwardType,
 		StartTime:     body.StartTime,
 		EndTime:       body.EndTime,
 		DurationMins:  body.DurationMins,
@@ -77,20 +78,21 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		ID:          contest.ID,
 		Title:       contest.Title,
 		Description: contest.Description,
-		Problems:    make([]response.ContestProblemListItem, n, n),
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
 		},
+		Problems:           make([]response.ContestProblemListItem, n, n),
 		Participants:       contest.Participants,
 		StartTime:          contest.StartTime,
 		EndTime:            contest.EndTime,
 		DurationMins:       contest.DurationMins,
 		MaxEntries:         contest.MaxEntries,
 		AllowLateJoin:      contest.AllowLateJoin,
-		CreatedAt:          contest.CreatedAt,
 		IsParticipant:      details.IsParticipant,
 		SubmissionDeadline: details.SubmissionDeadline,
+		PrizePot:           details.PrizePot,
+		CreatedAt:          contest.CreatedAt,
 	}
 
 	for i := range n {

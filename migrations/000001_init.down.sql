@@ -4,9 +4,9 @@ DROP TABLE IF EXISTS entries;
 DROP TABLE IF EXISTS contest_problems;
 DROP TABLE IF EXISTS test_cases;
 DROP TABLE IF EXISTS problems;
-DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS contests;
+DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 
-DROP TYPE IF EXISTS contest_prize_type;
+DROP TYPE IF EXISTS contest_award_type;

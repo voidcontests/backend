@@ -15,6 +15,7 @@ import (
 	"github.com/voidcontests/api/pkg/ratelimit"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/requestlog"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type Router struct {
@@ -22,8 +23,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker) *Router {
-	h := handler.New(c, r, b)
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Router {
+	h := handler.New(c, r, b, tc)
 	return &Router{config: c, handler: h}
 }
 

@@ -21,16 +21,7 @@ func New(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool) (int, error) {
-	var id int
-	query := `
-INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	err := p.pool.QueryRow(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
-	return id, err
-}
-
-func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error) {
 	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	if len(problemIDs) > len(charcodes) {
 		return 0, fmt.Errorf("not enough charcodes for the number of problems")
@@ -44,9 +35,66 @@ func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int, titl
 
 	var contestID int
 	err = tx.QueryRow(ctx, `
-INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
-	`, creatorID, title, desc, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
+INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
+	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
+	if err != nil {
+		return 0, fmt.Errorf("insert contest failed: %w", err)
+	}
+
+	batch := &pgx.Batch{}
+	for i, pid := range problemIDs {
+		batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
+			contestID, pid, string(charcodes[i]))
+	}
+
+	br := tx.SendBatch(ctx, batch)
+
+	for i := 0; i < len(problemIDs); i++ {
+		if _, err := br.Exec(); err != nil {
+			br.Close()
+			return 0, fmt.Errorf("insert contest_problem %d failed: %w", i, err)
+		}
+	}
+
+	if err := br.Close(); err != nil {
+		return 0, fmt.Errorf("batch close failed: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit failed: %w", err)
+	}
+
+	return contestID, nil
+}
+
+// TODO: extract contest creation into separate function, probably with tx manager
+func (p *Postgres) CreateWithWallet(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletAddress, walletMnemonic string) (int, error) {
+	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if len(problemIDs) > len(charcodes) {
+		return 0, fmt.Errorf("not enough charcodes for the number of problems")
+	}
+
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var walletID int
+	err = tx.QueryRow(ctx, `
+INSERT INTO wallets (address, mnemonic)
+VALUES ($1, $2) RETURNING id
+	`, walletAddress, walletMnemonic).Scan(&walletID)
+	if err != nil {
+		return 0, fmt.Errorf("insert wallet failed: %w", err)
+	}
+
+	var contestID int
+	err = tx.QueryRow(ctx, `
+INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join, wallet_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
+	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin, walletID).Scan(&contestID)
 	if err != nil {
 		return 0, fmt.Errorf("insert contest failed: %w", err)
 	}
@@ -82,7 +130,7 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, 
 	query := `
 SELECT
 	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
-	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
+	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
@@ -91,8 +139,19 @@ GROUP BY c.id, u.username`
 	err := p.pool.QueryRow(ctx, query, contestID).Scan(
 		&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
-		&contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
+		&contest.WalletID, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
 	return contest, err
+}
+
+func (p *Postgres) GetWallet(ctx context.Context, walletID int) (models.Wallet, error) {
+	var wallet models.Wallet
+	query := `
+SELECT
+	w.id, w.address, w.mnemonic, w.created_at
+FROM wallets w
+WHERE w.id = $1`
+	err := p.pool.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.Mnemonic, &wallet.CreatedAt)
+	return wallet, err
 }
 
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
@@ -131,7 +190,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests
 	batch.Queue(`
 SELECT
 	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
-	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(u.id) AS participants
+	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(u.id) AS participants
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
@@ -157,7 +216,7 @@ LIMIT $1 OFFSET $2
 		if err := rows.Scan(
 			&c.ID, &c.CreatorID, &c.Title, &c.Description,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.CreatedAt,
 			&c.CreatorUsername, &c.Participants,
 		); err != nil {
 			rows.Close()
@@ -185,7 +244,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, o
 	batch.Queue(`
 SELECT
 	c.id, c.creator_id, c.title, c.description, c.start_time, c.end_time, c.duration_mins, c.max_entries,
-	c.allow_late_join, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
+	c.allow_late_join, c.wallet_id, c.created_at, u.username AS creator_username, COUNT(e.id) AS participants
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
@@ -211,7 +270,7 @@ LIMIT $2 OFFSET $3
 		if err := rows.Scan(
 			&c.ID, &c.CreatorID, &c.Title, &c.Description,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.CreatedAt,
 			&c.CreatorUsername, &c.Participants,
 		); err != nil {
 			rows.Close()

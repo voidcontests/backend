@@ -26,54 +26,55 @@ type Token struct {
 }
 
 type Account struct {
-	ID       int  `json:"id"`
+	ID       int    `json:"id"`
 	Username string `json:"username"`
 	Role     Role   `json:"role"`
 }
 
 type Role struct {
 	Name                 string `json:"name"`
-	CreatedProblemsLimit int  `json:"created_problems_limit"`
-	CreatedContestsLimit int  `json:"created_contests_limit"`
+	CreatedProblemsLimit int    `json:"created_problems_limit"`
+	CreatedContestsLimit int    `json:"created_contests_limit"`
 }
 
 type User struct {
-	ID       int  `json:"id"`
+	ID       int    `json:"id"`
 	Username string `json:"username"`
 }
 
 type ContestDetailed struct {
-	ID                 int                    `json:"id"`
-	Creator            User                     `json:"creator"`
+	ID                 int                      `json:"id"`
 	Title              string                   `json:"title"`
 	Description        string                   `json:"description"`
+	Creator            User                     `json:"creator"`
 	StartTime          time.Time                `json:"start_time"`
 	EndTime            time.Time                `json:"end_time"`
-	DurationMins       int                    `json:"duration_mins"`
-	MaxEntries         int                    `json:"max_entries,omitempty"`
-	Participants       int                    `json:"participants"`
+	DurationMins       int                      `json:"duration_mins"`
+	MaxEntries         int                      `json:"max_entries,omitempty"`
+	Participants       int                      `json:"participants"`
 	AllowLateJoin      bool                     `json:"allow_late_join"`
 	IsParticipant      bool                     `json:"is_participant,omitempty"`
 	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
 	Problems           []ContestProblemListItem `json:"problems"`
+	PrizePot           uint64                   `json:"prize_pot,omitempty"` // in TON nanos (1 TON = 1,000,000,000 nanos)
 	CreatedAt          time.Time                `json:"created_at"`
 }
 
 type ContestListItem struct {
-	ID           int     `json:"id"`
+	ID           int       `json:"id"`
 	Creator      User      `json:"creator"`
 	Title        string    `json:"title"`
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
-	DurationMins int     `json:"duration_mins"`
-	MaxEntries   int     `json:"max_entries,omitempty"`
-	Participants int     `json:"participants"`
+	DurationMins int       `json:"duration_mins"`
+	MaxEntries   int       `json:"max_entries,omitempty"`
+	Participants int       `json:"participants"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Submission struct {
-	ID            int          `json:"id"`
-	ProblemID     int          `json:"problem_id"`
+	ID            int            `json:"id"`
+	ProblemID     int            `json:"problem_id"`
 	Status        string         `json:"status"`
 	Verdict       string         `json:"verdict"`
 	Code          string         `json:"code,omitempty"`
@@ -83,9 +84,9 @@ type Submission struct {
 }
 
 type TestingReport struct {
-	ID               int     `json:"id"`
-	PassedTestsCount int     `json:"passed_tests_count"`
-	TotalTestsCount  int     `json:"total_tests_count"`
+	ID               int       `json:"id"`
+	PassedTestsCount int       `json:"passed_tests_count"`
+	TotalTestsCount  int       `json:"total_tests_count"`
 	FailedTest       *Test     `json:"failed_test,omitempty"`
 	Stderr           string    `json:"stderr"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -98,55 +99,55 @@ type Test struct {
 }
 
 type ContestProblemDetailed struct {
-	ID                 int      `json:"id"`
+	ID                 int        `json:"id"`
 	Charcode           string     `json:"charcode"`
-	ContestID          int      `json:"contest_id"`
+	ContestID          int        `json:"contest_id"`
 	Writer             User       `json:"writer"`
 	Title              string     `json:"title"`
 	Statement          string     `json:"statement"`
 	Examples           []TC       `json:"examples,omitempty"`
 	Difficulty         string     `json:"difficulty"`
 	Status             string     `json:"status,omitempty"`
-	TimeLimitMS        int      `json:"time_limit_ms"`
-	MemoryLimitMB      int      `json:"memory_limit_mb"`
+	TimeLimitMS        int        `json:"time_limit_ms"`
+	MemoryLimitMB      int        `json:"memory_limit_mb"`
 	Checker            string     `json:"checker"`
 	SubmissionDeadline *time.Time `json:"submission_deadline,omitempty"`
 	CreatedAt          time.Time  `json:"created_at"`
 }
 
 type ContestProblemListItem struct {
-	ID            int     `json:"id"`
+	ID            int       `json:"id"`
 	Charcode      string    `json:"charcode"`
 	Writer        User      `json:"writer"`
 	Title         string    `json:"title"`
 	Difficulty    string    `json:"difficulty"`
 	Status        string    `json:"status,omitempty"`
-	TimeLimitMS   int     `json:"time_limit_ms"`
-	MemoryLimitMB int     `json:"memory_limit_mb"`
+	TimeLimitMS   int       `json:"time_limit_ms"`
+	MemoryLimitMB int       `json:"memory_limit_mb"`
 	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
 type ProblemDetailed struct {
-	ID            int     `json:"id"`
+	ID            int       `json:"id"`
 	Writer        User      `json:"writer"`
 	Title         string    `json:"title"`
 	Statement     string    `json:"statement"`
 	Examples      []TC      `json:"examples,omitempty"`
 	Difficulty    string    `json:"difficulty"`
-	TimeLimitMS   int     `json:"time_limit_ms"`
-	MemoryLimitMB int     `json:"memory_limit_mb"`
+	TimeLimitMS   int       `json:"time_limit_ms"`
+	MemoryLimitMB int       `json:"memory_limit_mb"`
 	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
 type ProblemListItem struct {
-	ID            int     `json:"id"`
+	ID            int       `json:"id"`
 	Writer        User      `json:"writer"`
 	Title         string    `json:"title"`
 	Difficulty    string    `json:"difficulty"`
-	TimeLimitMS   int     `json:"time_limit_ms"`
-	MemoryLimitMB int     `json:"memory_limit_mb"`
+	TimeLimitMS   int       `json:"time_limit_ms"`
+	MemoryLimitMB int       `json:"memory_limit_mb"`
 	Checker       string    `json:"checker"`
 	CreatedAt     time.Time `json:"created_at"`
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/voidcontests/api/internal/jwt"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type Handler struct {
@@ -19,12 +20,12 @@ type Handler struct {
 	service *service.Service
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker) *Handler {
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Handler {
 	return &Handler{
 		config:  c,
 		repo:    r,
 		broker:  b,
-		service: service.New(c, r, b),
+		service: service.New(&c.Security, r, b, tc),
 	}
 }
 

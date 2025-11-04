@@ -4,6 +4,7 @@ import (
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type Service struct {
@@ -14,12 +15,13 @@ type Service struct {
 	Contest    *ContestService
 }
 
-func New(cfg *config.Config, repo *repository.Repository, broker broker.Broker) *Service {
+func New(cfg *config.Security, repo *repository.Repository, broker broker.Broker, tc *ton.Client) *Service {
 	return &Service{
+		// TODO: pass only salt and signature key, not entire config
 		Account:    NewAccountService(cfg, repo),
 		Entry:      NewEntryService(repo),
 		Submission: NewSubmissionService(repo, broker),
 		Problem:    NewProblemService(repo),
-		Contest:    NewContestService(repo),
+		Contest:    NewContestService(repo, tc),
 	}
 }

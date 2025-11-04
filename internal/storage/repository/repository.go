@@ -42,8 +42,8 @@ type User interface {
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int, title, description string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool) (int, error)
-	CreateWithProblemIDs(ctx context.Context, creatorID int, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error)
+	Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int) (int, error)
+	CreateWithWallet(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletAddress, walletMnemonic string) (int, error)
 	GetByID(ctx context.Context, contestID int) (models.Contest, error)
 	GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error)
 	ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error)
@@ -51,6 +51,7 @@ type Contest interface {
 	GetEntriesCount(ctx context.Context, contestID int) (int, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
+	GetWallet(ctx context.Context, walletID int) (models.Wallet, error)
 }
 
 type Problem interface {
