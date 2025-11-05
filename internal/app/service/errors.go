@@ -16,6 +16,7 @@ var (
 	ErrMaxSlotsReached     = errors.New("max slots limit reached")
 	ErrApplicationTimeOver = errors.New("application time is over")
 	ErrEntryAlreadyExists  = errors.New("user already has entry for this contest")
+	ErrEntryNotFound       = errors.New("entry not found")
 
 	// problem
 	ErrUserBanned            = errors.New("you are banned from creating problems")

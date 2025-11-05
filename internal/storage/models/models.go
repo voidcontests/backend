@@ -14,6 +14,7 @@ type User struct {
 	Username     string    `db:"username"`
 	PasswordHash string    `db:"password_hash"`
 	RoleID       int       `db:"role_id"`
+	Address      *string   `db:"address"`
 	CreatedAt    time.Time `db:"created_at"`
 }
 
@@ -93,6 +94,7 @@ type Entry struct {
 	ID        int       `db:"id"`
 	ContestID int       `db:"contest_id"`
 	UserID    int       `db:"user_id"`
+	IsPaid    bool      `db:"is_paid"`
 	CreatedAt time.Time `db:"created_at"`
 }
 

@@ -1,7 +1,7 @@
 package award
 
 const (
-	No        = "free"
+	No        = "no"
 	Sponsored = "sponsored"
-	Pool      = "entry_pool"
+	Pool      = "pool"
 )

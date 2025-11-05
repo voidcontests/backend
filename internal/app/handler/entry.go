@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/app/service"
 )
 
@@ -35,4 +36,35 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusCreated)
+}
+
+func (h *Handler) GetEntry(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	contestID, ok := ExtractParamInt(c, "cid")
+	if !ok {
+		return Error(http.StatusBadRequest, "contest ID should be an integer")
+	}
+
+	entry, err := h.service.Entry.GetEntry(ctx, contestID, claims.UserID)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrEntryNotFound):
+			return Error(http.StatusNotFound, "entry not found")
+		case errors.Is(err, service.ErrContestNotFound):
+			return Error(http.StatusNotFound, "contest not found")
+		default:
+			return err
+		}
+	}
+
+	return c.JSON(http.StatusOK, response.Entry{
+		ID:        entry.ID,
+		ContestID: entry.ContestID,
+		UserID:    entry.UserID,
+		IsPaid:    entry.IsPaid,
+		CreatedAt: entry.CreatedAt,
+	})
 }

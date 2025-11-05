@@ -18,12 +18,13 @@ func New(conn postgres.Transactor) *Postgres {
 func (p *Postgres) GetByCredentials(ctx context.Context, username string, passwordHash string) (models.User, error) {
 	var user models.User
 
-	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE username = $1 AND password_hash = $2`
+	query := `SELECT id, username, password_hash, role_id, address, created_at FROM users WHERE username = $1 AND password_hash = $2`
 	err := p.conn.QueryRow(ctx, query, username, passwordHash).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
 		&user.RoleID,
+		&user.Address,
 		&user.CreatedAt,
 	)
 	return user, err
@@ -35,7 +36,7 @@ func (p *Postgres) Create(ctx context.Context, username string, passwordHash str
 	query := `
 		INSERT INTO users (username, password_hash, role_id)
 		VALUES ($1, $2, (SELECT id FROM roles WHERE is_default = true LIMIT 1))
-		RETURNING id, username, password_hash, role_id, created_at
+		RETURNING id, username, password_hash, role_id, address, created_at
 	`
 
 	err := p.conn.QueryRow(ctx, query, username, passwordHash).Scan(
@@ -43,6 +44,7 @@ func (p *Postgres) Create(ctx context.Context, username string, passwordHash str
 		&user.Username,
 		&user.PasswordHash,
 		&user.RoleID,
+		&user.Address,
 		&user.CreatedAt,
 	)
 	return user, err
@@ -63,12 +65,13 @@ func (p *Postgres) Exists(ctx context.Context, username string) (bool, error) {
 func (p *Postgres) GetByID(ctx context.Context, id int) (models.User, error) {
 	var user models.User
 
-	query := `SELECT id, username, password_hash, role_id, created_at FROM users WHERE id = $1`
+	query := `SELECT id, username, password_hash, role_id, address, created_at FROM users WHERE id = $1`
 	err := p.conn.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
 		&user.PasswordHash,
 		&user.RoleID,
+		&user.Address,
 		&user.CreatedAt,
 	)
 	return user, err

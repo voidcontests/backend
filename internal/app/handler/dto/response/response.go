@@ -162,3 +162,11 @@ type TC struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
 }
+
+type Entry struct {
+	ID        int       `json:"id"`
+	ContestID int       `json:"contest_id"`
+	UserID    int       `json:"user_id"`
+	IsPaid    bool      `json:"is_paid"`
+	CreatedAt time.Time `json:"created_at"`
+}

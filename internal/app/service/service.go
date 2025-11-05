@@ -17,9 +17,8 @@ type Service struct {
 
 func New(cfg *config.Security, repo *repository.Repository, broker broker.Broker, tc *ton.Client) *Service {
 	return &Service{
-		// TODO: pass only salt and signature key, not entire config
 		Account:    NewAccountService(cfg, repo),
-		Entry:      NewEntryService(repo),
+		Entry:      NewEntryService(repo, tc),
 		Submission: NewSubmissionService(repo, broker),
 		Problem:    NewProblemService(repo),
 		Contest:    NewContestService(repo, tc),

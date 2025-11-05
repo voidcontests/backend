@@ -18,6 +18,7 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    address VARCHAR(100),
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
@@ -83,6 +84,7 @@ CREATE TABLE entries (
     id SERIAL PRIMARY KEY,
     contest_id INTEGER NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_paid BOOLEAN DEFAULT false NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL,
     UNIQUE (contest_id, user_id)
 );
