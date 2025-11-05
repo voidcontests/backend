@@ -24,15 +24,27 @@ func New(conn postgres.Transactor) *Postgres {
 }
 
 func (p *Postgres) Create(ctx context.Context, entryID int, problemID int, code string, language string) (models.Submission, error) {
-	query := `INSERT INTO submissions (entry_id, problem_id, code, language)
+	var submissionID int
+	insertQuery := `INSERT INTO submissions (entry_id, problem_id, code, language)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, entry_id, problem_id, status, verdict, code, language, created_at`
+		RETURNING id`
+
+	err := p.conn.QueryRow(ctx, insertQuery, entryID, problemID, code, language).Scan(&submissionID)
+	if err != nil {
+		return models.Submission{}, fmt.Errorf("insert failed: %w", err)
+	}
+
+	selectQuery := `SELECT id, entry_id, contest_id, problem_id, user_id, username, status, verdict, code, language, created_at
+		FROM submission_details WHERE id = $1`
 
 	var submission models.Submission
-	err := p.conn.QueryRow(ctx, query, entryID, problemID, code, language).Scan(
+	err = p.conn.QueryRow(ctx, selectQuery, submissionID).Scan(
 		&submission.ID,
 		&submission.EntryID,
+		&submission.ContestID,
 		&submission.ProblemID,
+		&submission.UserID,
+		&submission.Username,
 		&submission.Status,
 		&submission.Verdict,
 		&submission.Code,
@@ -105,14 +117,17 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int) (map[int
 }
 
 func (p *Postgres) GetByID(ctx context.Context, submissionID int) (models.Submission, error) {
-	query := `SELECT s.id, s.entry_id, s.problem_id, s.status, s.verdict, s.code, s.language, s.created_at
-		FROM submissions s WHERE s.id = $1`
+	query := `SELECT id, entry_id, contest_id, problem_id, user_id, username, status, verdict, code, language, created_at
+		FROM submission_details WHERE id = $1`
 
 	var s models.Submission
 	err := p.conn.QueryRow(ctx, query, submissionID).Scan(
 		&s.ID,
 		&s.EntryID,
+		&s.ContestID,
 		&s.ProblemID,
+		&s.UserID,
+		&s.Username,
 		&s.Status,
 		&s.Verdict,
 		&s.Code,
@@ -129,11 +144,9 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int, charcode stri
 	}
 
 	query := `
-		SELECT s.id, s.entry_id, s.problem_id, s.status, s.verdict, s.code, s.language, s.created_at, COUNT(*) OVER() as total_count
-		FROM submissions s
-		JOIN problems p ON p.id = s.problem_id
-		JOIN entries e ON s.entry_id = e.id
-		JOIN contest_problems cp ON cp.contest_id = e.contest_id AND cp.problem_id = s.problem_id
+		SELECT s.id, s.entry_id, s.contest_id, s.problem_id, s.user_id, s.username, s.status, s.verdict, s.code, s.language, s.created_at, COUNT(*) OVER() as total_count
+		FROM submission_details s
+		JOIN contest_problems cp ON cp.contest_id = s.contest_id AND cp.problem_id = s.problem_id
 		WHERE s.entry_id = $1 AND cp.charcode = $2
 		ORDER BY s.created_at DESC
 		LIMIT $3 OFFSET $4`
@@ -150,7 +163,10 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int, charcode stri
 		if err := rows.Scan(
 			&s.ID,
 			&s.EntryID,
+			&s.ContestID,
 			&s.ProblemID,
+			&s.UserID,
+			&s.Username,
 			&s.Status,
 			&s.Verdict,
 			&s.Code,

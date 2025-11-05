@@ -100,6 +100,9 @@ type Submission struct {
 	ID        int       `db:"id"`
 	EntryID   int       `db:"entry_id"`
 	ProblemID int       `db:"problem_id"`
+	ContestID int       `db:"contest_id"`
+	UserID    int       `db:"user_id"`
+	Username  string    `db:"username"`
 	Status    string    `db:"status"`
 	Verdict   string    `db:"verdict"`
 	Code      string    `db:"code"`

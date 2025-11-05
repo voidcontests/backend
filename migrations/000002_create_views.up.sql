@@ -89,3 +89,21 @@ SELECT
 FROM problems p
 JOIN contest_problems cp ON p.id = cp.problem_id
 JOIN users u ON u.id = p.writer_id;
+
+
+CREATE VIEW submission_details AS
+SELECT
+    s.id,
+    s.entry_id,
+    e.contest_id,
+    s.problem_id,
+    e.user_id,
+    u.username,
+    s.status,
+    s.verdict,
+    s.code,
+    s.language,
+    s.created_at
+FROM submissions s
+JOIN entries e ON s.entry_id = e.id
+JOIN users u ON e.user_id = u.id;
