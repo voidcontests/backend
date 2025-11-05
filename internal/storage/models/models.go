@@ -47,6 +47,11 @@ type ContestFilters struct {
 	Title     string
 }
 
+type ProblemCharcode struct {
+	ProblemID int
+	Charcode  string
+}
+
 type Wallet struct {
 	ID        int       `db:"id"`
 	Address   string    `db:"address"`

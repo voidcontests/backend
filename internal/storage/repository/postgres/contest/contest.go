@@ -21,14 +21,7 @@ func New(txr postgres.Transactor) *Postgres {
 	return &Postgres{conn: txr}
 }
 
-// TODO: associate problem with charcode at the service layer
-func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problemIDs []int, walletID *int) (int, error) {
-	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-	if len(problemIDs) > len(charcodes) {
-		return 0, fmt.Errorf("too many problems: got %d, max %d", len(problemIDs), len(charcodes))
-	}
-
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error) {
 	var contestID int
 	var err error
 
@@ -48,23 +41,25 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
 		return 0, fmt.Errorf("insert contest failed: %w", err)
 	}
 
-	batch := &pgx.Batch{}
-	for i, pid := range problemIDs {
-		batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
-			contestID, pid, string(charcodes[i]))
-	}
-
-	br := p.conn.SendBatch(ctx, batch)
-
-	for i := 0; i < len(problemIDs); i++ {
-		if _, err := br.Exec(); err != nil {
-			br.Close()
-			return 0, fmt.Errorf("insert contest_problem %d (problem_id=%d, charcode=%s) failed: %w", i, problemIDs[i], string(charcodes[i]), err)
+	if len(problems) > 0 {
+		batch := &pgx.Batch{}
+		for _, p := range problems {
+			batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
+				contestID, p.ProblemID, p.Charcode)
 		}
-	}
 
-	if err := br.Close(); err != nil {
-		return 0, fmt.Errorf("batch close failed: %w", err)
+		br := p.conn.SendBatch(ctx, batch)
+
+		for i := 0; i < len(problems); i++ {
+			if _, err := br.Exec(); err != nil {
+				br.Close()
+				return 0, fmt.Errorf("insert contest_problem %d (problem_id=%d, charcode=%s) failed: %w", i, problems[i].ProblemID, problems[i].Charcode, err)
+			}
+		}
+
+		if err := br.Close(); err != nil {
+			return 0, fmt.Errorf("batch close failed: %w", err)
+		}
 	}
 
 	return contestID, nil

@@ -63,6 +63,19 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		}
 	}
 
+	const charcodes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if len(params.ProblemIDs) > len(charcodes) {
+		return 0, fmt.Errorf("too many problems: got %d, max %d", len(params.ProblemIDs), len(charcodes))
+	}
+
+	problems := make([]models.ProblemCharcode, len(params.ProblemIDs))
+	for i, problemID := range params.ProblemIDs {
+		problems[i] = models.ProblemCharcode{
+			ProblemID: problemID,
+			Charcode:  string(charcodes[i]),
+		}
+	}
+
 	// NOTE: if award type is not `paid_entry` or `sponsored` - use `no_prize` by default
 	var contestID int
 	if params.AwardType == "paid_entry" || params.AwardType == "sponsored" {
@@ -93,7 +106,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 				params.DurationMins,
 				params.MaxEntries,
 				params.AllowLateJoin,
-				params.ProblemIDs,
+				problems,
 				&walletID,
 			)
 			if err != nil {
@@ -117,7 +130,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 			params.DurationMins,
 			params.MaxEntries,
 			params.AllowLateJoin,
-			params.ProblemIDs,
+			problems,
 			nil,
 		)
 		if err != nil {
