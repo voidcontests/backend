@@ -47,7 +47,7 @@ type ContestDetailed struct {
 	Title              string                   `json:"title"`
 	Description        string                   `json:"description"`
 	AwardType          string                   `json:"award_type"`
-	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos,omitempty"`
+	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos"`
 	Address            string                   `json:"address,omitempty"`
 	Creator            User                     `json:"creator"`
 	StartTime          time.Time                `json:"start_time"`
@@ -72,7 +72,7 @@ type ContestListItem struct {
 	Creator            User      `json:"creator"`
 	Title              string    `json:"title"`
 	AwardType          string    `json:"award_type"`
-	EntryPriceTonNanos uint64    `json:"entry_price_ton_nanos,omitempty"`
+	EntryPriceTonNanos uint64    `json:"entry_price_ton_nanos"`
 	StartTime          time.Time `json:"start_time"`
 	EndTime            time.Time `json:"end_time"`
 	DurationMins       int       `json:"duration_mins"`
@@ -97,7 +97,7 @@ type TestingReport struct {
 	PassedTestsCount int       `json:"passed_tests_count"`
 	TotalTestsCount  int       `json:"total_tests_count"`
 	FailedTest       *Test     `json:"failed_test,omitempty"`
-	Stderr           string    `json:"stderr"`
+	Stderr           string    `json:"stderr,omitemtpy"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 

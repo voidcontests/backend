@@ -118,7 +118,7 @@ func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) 
 		}, nil
 	}
 
-	// TODO: maybe this is a 5xx
+	// TODO: maybe this is a 5xx error
 	if contest.WalletID == nil {
 		return EntryDetails{
 			Entry:      entry,
