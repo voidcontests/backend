@@ -48,7 +48,7 @@ func (h *Handler) GetEntry(c echo.Context) error {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	entry, err := h.service.Entry.GetEntry(ctx, contestID, claims.UserID)
+	details, err := h.service.Entry.GetEntry(ctx, contestID, claims.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrEntryNotFound):
@@ -60,12 +60,16 @@ func (h *Handler) GetEntry(c echo.Context) error {
 		}
 	}
 
+	entry := details.Entry
+
 	return c.JSON(http.StatusOK, response.Entry{
-		ID:        entry.ID,
-		ContestID: entry.ContestID,
-		UserID:    entry.UserID,
-		IsPaid:    entry.IsPaid,
-		TxHash:    entry.TxHash,
-		CreatedAt: entry.CreatedAt,
+		ID:         entry.ID,
+		ContestID:  entry.ContestID,
+		UserID:     entry.UserID,
+		IsPaid:     entry.IsPaid,
+		TxHash:     entry.TxHash,
+		IsAdmitted: details.IsAdmitted,
+		Message:    details.Message,
+		CreatedAt:  entry.CreatedAt,
 	})
 }

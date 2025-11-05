@@ -69,72 +69,100 @@ func (s *EntryService) CreateEntry(ctx context.Context, contestID int, userID in
 	return nil
 }
 
-func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) (models.Entry, error) {
+type EntryDetails struct {
+	Entry      models.Entry
+	IsAdmitted bool
+	Message    string
+}
+
+func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) (EntryDetails, error) {
 	op := "service.EntryService.GetEntry"
 
 	entry, err := s.repo.Entry.Get(ctx, contestID, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return models.Entry{}, ErrEntryNotFound
+		return EntryDetails{}, ErrEntryNotFound
 	}
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to get entry: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to get entry: %w", op, err)
 	}
 
 	if entry.IsPaid {
-		return entry, nil
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: true,
+		}, nil
 	}
 
 	contest, err := s.repo.Contest.GetByID(ctx, contestID)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to get contest: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
 	if contest.AwardType != award.Pool {
-		return entry, nil
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: true,
+		}, nil
 	}
 
 	user, err := s.repo.User.GetByID(ctx, userID)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to get user: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to get user: %w", op, err)
 	}
 
 	if user.Address == nil || *user.Address == "" {
-		return entry, nil
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: false,
+			Message:    "connect wallet to your account, and pay entry price to contest's wallet",
+		}, nil
 	}
 
+	// TODO: maybe this is a 5xx
 	if contest.WalletID == nil {
-		return entry, nil
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: false,
+			Message:    "contest has ho wallet associated",
+		}, nil
 	}
 
 	wallet, err := s.repo.Contest.GetWallet(ctx, *contest.WalletID)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to get wallet: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to get wallet: %w", op, err)
 	}
 
 	from, err := address.ParseAddr(*user.Address)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to parse sender address: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to parse sender address: %w", op, err)
 	}
 
 	to, err := address.ParseAddr(wallet.Address)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to parse recepient address: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to parse recepient address: %w", op, err)
 	}
 
 	amount := tlb.FromNanoTON(big.NewInt(int64(contest.EntryPriceTonNanos)))
 
 	tx, exists := s.ton.LookupTx(ctx, from, to, amount)
 	if !exists {
-		return entry, nil
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: false,
+			Message:    "tx not found",
+		}, nil
 	}
 
 	err = s.repo.Entry.MarkAsPaid(ctx, entry.ID, tx)
 	if err != nil {
-		return models.Entry{}, fmt.Errorf("%s: failed to mark entry as paid: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: failed to mark entry as paid: %w", op, err)
 	}
 
 	entry.IsPaid = true
 	entry.TxHash = tx
 
-	return entry, nil
+	return EntryDetails{
+		Entry:      entry,
+		IsAdmitted: true,
+	}, nil
 }

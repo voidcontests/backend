@@ -166,10 +166,12 @@ type TC struct {
 }
 
 type Entry struct {
-	ID        int       `json:"id"`
-	ContestID int       `json:"contest_id"`
-	UserID    int       `json:"user_id"`
-	IsPaid    bool      `json:"is_paid"`
-	TxHash    string    `json:"tx_hash,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         int       `json:"id"`
+	ContestID  int       `json:"contest_id"`
+	UserID     int       `json:"user_id"`
+	IsPaid     bool      `json:"is_paid"`
+	TxHash     string    `json:"tx_hash,omitempty"`
+	IsAdmitted bool      `json:"is_admitted"`
+	Message    string    `json:"message,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
