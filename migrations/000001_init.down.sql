@@ -1,3 +1,5 @@
+DROP VIEW IF EXISTS leaderboard;
+
 DROP TABLE IF EXISTS testing_reports;
 DROP TABLE IF EXISTS submissions;
 DROP TABLE IF EXISTS entries;

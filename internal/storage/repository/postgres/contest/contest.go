@@ -293,64 +293,30 @@ func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, err
 }
 
 func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error) {
-	batch := &pgx.Batch{}
-	batch.Queue(`
-		SELECT u.id AS user_id, u.username, COALESCE(SUM(
-			CASE
-				WHEN p.difficulty = 'easy' THEN 1
-				WHEN p.difficulty = 'mid' THEN 3
-				WHEN p.difficulty = 'hard' THEN 5
-				ELSE 0
-			END
-		), 0) AS points
-		FROM users u
-		JOIN entries e ON u.id = e.user_id
-		JOIN contests c ON e.contest_id = c.id
-		LEFT JOIN (
-			SELECT DISTINCT entry_id, problem_id
-			FROM submissions
-			WHERE verdict = 'ok'
-		) s ON e.id = s.entry_id
-		LEFT JOIN problems p ON s.problem_id = p.id
-		WHERE c.id = $1
-		GROUP BY u.id, u.username
+	query := `
+		SELECT user_id, username, points, COUNT(*) OVER() AS total
+		FROM leaderboard
+		WHERE contest_id = $1
 		ORDER BY points DESC
 		LIMIT $2 OFFSET $3
-	`, contestID, limit, offset)
+	`
 
-	batch.Queue(`
-		SELECT COUNT(DISTINCT u.id)
-		FROM users u
-		JOIN entries e ON u.id = e.user_id
-		WHERE e.contest_id = $1
-	`, contestID)
-
-	br := p.conn.SendBatch(ctx, batch)
-
-	rows, err := br.Query()
+	rows, err := p.conn.Query(ctx, query, contestID, limit, offset)
 	if err != nil {
-		br.Close()
 		return nil, 0, fmt.Errorf("leaderboard query failed: %w", err)
 	}
+	defer rows.Close()
 
 	leaderboard = make([]models.LeaderboardEntry, 0)
 	for rows.Next() {
 		var entry models.LeaderboardEntry
-		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points); err != nil {
-			rows.Close()
-			br.Close()
+		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points, &total); err != nil {
 			return nil, 0, err
 		}
 		leaderboard = append(leaderboard, entry)
 	}
-	rows.Close()
 
-	if err := br.QueryRow().Scan(&total); err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("total count query failed: %w", err)
-	}
-
-	if err := br.Close(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
 

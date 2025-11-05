@@ -110,3 +110,26 @@ CREATE TABLE testing_reports (
     stderr TEXT DEFAULT '' NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
+
+CREATE VIEW leaderboard AS
+SELECT
+    e.contest_id,
+    u.id AS user_id,
+    u.username,
+    COALESCE(SUM(
+        CASE
+            WHEN p.difficulty = 'easy' THEN 1
+            WHEN p.difficulty = 'mid' THEN 3
+            WHEN p.difficulty = 'hard' THEN 5
+            ELSE 0
+        END
+    ), 0) AS points
+FROM users u
+JOIN entries e ON u.id = e.user_id
+LEFT JOIN (
+    SELECT DISTINCT entry_id, problem_id
+    FROM submissions
+    WHERE verdict = 'ok'
+) s ON e.id = s.entry_id
+LEFT JOIN problems p ON s.problem_id = p.id
+GROUP BY e.contest_id, u.id, u.username;
