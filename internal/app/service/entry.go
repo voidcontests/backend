@@ -121,18 +121,20 @@ func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) 
 		return models.Entry{}, fmt.Errorf("%s: failed to parse recepient address: %w", op, err)
 	}
 
-	// TODO: unhardcode, move to contest settings
-	amount := tlb.FromNanoTON(big.NewInt(500000000))
+	amount := tlb.FromNanoTON(big.NewInt(int64(contest.EntryPriceTonNanos)))
 
-	exists := s.ton.LookupTx(ctx, from, to, amount)
-
-	if exists {
-		err = s.repo.Entry.MarkAsPaid(ctx, entry.ID)
-		if err != nil {
-			return models.Entry{}, fmt.Errorf("%s: failed to mark entry as paid: %w", op, err)
-		}
-		entry.IsPaid = true
+	tx, exists := s.ton.LookupTx(ctx, from, to, amount)
+	if !exists {
+		return entry, nil
 	}
+
+	err = s.repo.Entry.MarkAsPaid(ctx, entry.ID, tx)
+	if err != nil {
+		return models.Entry{}, fmt.Errorf("%s: failed to mark entry as paid: %w", op, err)
+	}
+
+	entry.IsPaid = true
+	entry.TxHash = tx
 
 	return entry, nil
 }

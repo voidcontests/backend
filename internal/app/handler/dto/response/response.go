@@ -47,6 +47,7 @@ type ContestDetailed struct {
 	Title              string                   `json:"title"`
 	Description        string                   `json:"description"`
 	AwardType          string                   `json:"award_type"`
+	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos,omitempty"`
 	Creator            User                     `json:"creator"`
 	StartTime          time.Time                `json:"start_time"`
 	EndTime            time.Time                `json:"end_time"`
@@ -66,16 +67,17 @@ type Prizes struct {
 }
 
 type ContestListItem struct {
-	ID           int       `json:"id"`
-	Creator      User      `json:"creator"`
-	Title        string    `json:"title"`
-	AwardType    string    `json:"award_type"`
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	DurationMins int       `json:"duration_mins"`
-	MaxEntries   int       `json:"max_entries,omitempty"`
-	Participants int       `json:"participants"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                 int       `json:"id"`
+	Creator            User      `json:"creator"`
+	Title              string    `json:"title"`
+	AwardType          string    `json:"award_type"`
+	EntryPriceTonNanos uint64    `json:"entry_price_ton_nanos,omitempty"`
+	StartTime          time.Time `json:"start_time"`
+	EndTime            time.Time `json:"end_time"`
+	DurationMins       int       `json:"duration_mins"`
+	MaxEntries         int       `json:"max_entries,omitempty"`
+	Participants       int       `json:"participants"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 type Submission struct {
@@ -168,5 +170,6 @@ type Entry struct {
 	ContestID int       `json:"contest_id"`
 	UserID    int       `json:"user_id"`
 	IsPaid    bool      `json:"is_paid"`
+	TxHash    string    `json:"tx_hash,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }

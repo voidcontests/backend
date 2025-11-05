@@ -98,7 +98,7 @@ type Problem interface {
 type Entry interface {
 	Create(ctx context.Context, contestID int, userID int) (int, error)
 	Get(ctx context.Context, contestID int, userID int) (models.Entry, error)
-	MarkAsPaid(ctx context.Context, entryID int) error
+	MarkAsPaid(ctx context.Context, entryID int, txHash string) error
 }
 
 type Submission interface {

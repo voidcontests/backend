@@ -30,6 +30,7 @@ SELECT
     c.title,
     c.description,
     c.award_type,
+    c.entry_price_ton_nanos,
     c.start_time,
     c.end_time,
     c.duration_mins,

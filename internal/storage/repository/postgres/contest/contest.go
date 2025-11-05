@@ -69,12 +69,12 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, 
 	var contest models.Contest
 	query := `
 SELECT
-	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins,
+	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
 	max_entries, allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 WHERE id = $1`
 	err := p.conn.QueryRow(ctx, query, contestID).Scan(
-		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.Title, &contest.Description, &contest.AwardType, &contest.StartTime,
+		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.Title, &contest.Description, &contest.AwardType, &contest.EntryPriceTonNanos, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
 		&contest.WalletID, &contest.ParticipantsCount, &contest.CreatedAt)
 	return contest, err
@@ -146,7 +146,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters m
 
 	query := fmt.Sprintf(`
 SELECT
-	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins, max_entries,
+	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
 	allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 %s
@@ -188,7 +188,7 @@ LIMIT $1 OFFSET $2
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
 			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
@@ -216,7 +216,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, o
 	batch := &pgx.Batch{}
 	batch.Queue(`
 SELECT
-	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins, max_entries,
+	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
 	allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 WHERE creator_id = $1
@@ -238,7 +238,7 @@ LIMIT $2 OFFSET $3
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
 			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {

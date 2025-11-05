@@ -39,6 +39,7 @@ CREATE TABLE contests (
     title VARCHAR(64) NOT NULL,
     description VARCHAR(300) DEFAULT '' NOT NULL,
     award_type award_type NOT NULL,
+    entry_price_ton_nanos BIGINT DEFAULT 0 NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL CHECK (duration_mins >= 0),
@@ -85,6 +86,7 @@ CREATE TABLE entries (
     contest_id INTEGER NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     is_paid BOOLEAN DEFAULT false NOT NULL,
+    tx_hash VARCHAR(64) NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT now() NOT NULL,
     UNIQUE (contest_id, user_id)
 );

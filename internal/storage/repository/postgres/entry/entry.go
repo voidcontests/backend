@@ -27,7 +27,7 @@ func (p *Postgres) Create(ctx context.Context, contestID int, userID int) (int, 
 }
 
 func (p *Postgres) Get(ctx context.Context, contestID int, userID int) (models.Entry, error) {
-	query := `SELECT id, contest_id, user_id, is_paid, created_at FROM entries
+	query := `SELECT id, contest_id, user_id, is_paid, tx_hash, created_at FROM entries
 	WHERE contest_id = $1 AND user_id = $2`
 
 	var entry models.Entry
@@ -36,6 +36,7 @@ func (p *Postgres) Get(ctx context.Context, contestID int, userID int) (models.E
 		&entry.ContestID,
 		&entry.UserID,
 		&entry.IsPaid,
+		&entry.TxHash,
 		&entry.CreatedAt,
 	)
 	if err != nil {
@@ -44,8 +45,8 @@ func (p *Postgres) Get(ctx context.Context, contestID int, userID int) (models.E
 	return entry, nil
 }
 
-func (p *Postgres) MarkAsPaid(ctx context.Context, entryID int) error {
-	query := `UPDATE entries SET is_paid = true WHERE id = $1`
-	_, err := p.conn.Exec(ctx, query, entryID)
+func (p *Postgres) MarkAsPaid(ctx context.Context, entryID int, txHash string) error {
+	query := `UPDATE entries SET is_paid = true, tx_hash = $1 WHERE id = $2`
+	_, err := p.conn.Exec(ctx, query, txHash, entryID)
 	return err
 }

@@ -114,43 +114,43 @@ func FromNano(nano uint64) string {
 	return tlb.FromNanoTONU(nano).String()
 }
 
-func (c *Client) LookupTx(ctx context.Context, from *address.Address, to *address.Address, amount tlb.Coins) bool {
+func (c *Client) LookupTx(ctx context.Context, from *address.Address, to *address.Address, amount tlb.Coins) (string, bool) {
 	block, err := c.api.CurrentMasterchainInfo(ctx)
 	if err != nil {
-		return false
+		return "", false
 	}
 
 	account, err := c.api.GetAccount(ctx, block, to)
 	if err != nil {
-		return false
+		return "", false
 	}
 
 	if !account.IsActive {
-		return false
+		return "", false
 	}
 
-	txList, err := c.api.ListTransactions(ctx, to, 100, account.LastTxLT, account.LastTxHash)
+	txs, err := c.api.ListTransactions(ctx, to, 100, account.LastTxLT, account.LastTxHash)
 	if err != nil {
-		return false
+		return "", false
 	}
 
-	for _, tx := range txList {
+	for _, tx := range txs {
 		if tx.IO.In == nil || tx.IO.In.MsgType != tlb.MsgTypeInternal {
 			continue
 		}
 
-		inMsg := tx.IO.In.AsInternal()
-		if inMsg == nil {
+		inmsg := tx.IO.In.AsInternal()
+		if inmsg == nil {
 			continue
 		}
 
-		if inMsg.SrcAddr.Equals(from) {
+		if inmsg.SrcAddr.Equals(from) {
 			// checks if in tx transferred at least `amount`
-			if inMsg.Amount.Nano().Cmp(amount.Nano()) >= 0 {
-				return true
+			if inmsg.Amount.Nano().Cmp(amount.Nano()) >= 0 {
+				return fmt.Sprintf("%x", tx.Hash), true
 			}
 		}
 	}
 
-	return false
+	return "", false
 }

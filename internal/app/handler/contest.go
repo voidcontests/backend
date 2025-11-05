@@ -75,10 +75,11 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	contest := details.Contest
 	n := len(details.Problems)
 	cdetailed := response.ContestDetailed{
-		ID:          contest.ID,
-		Title:       contest.Title,
-		Description: contest.Description,
-		AwardType:   contest.AwardType,
+		ID:                 contest.ID,
+		Title:              contest.Title,
+		Description:        contest.Description,
+		AwardType:          contest.AwardType,
+		EntryPriceTonNanos: contest.EntryPriceTonNanos,
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
@@ -148,14 +149,15 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
 			},
-			Title:        contest.Title,
-			AwardType:    contest.AwardType,
-			StartTime:    contest.StartTime,
-			EndTime:      contest.EndTime,
-			DurationMins: contest.DurationMins,
-			MaxEntries:   contest.MaxEntries,
-			Participants: contest.ParticipantsCount,
-			CreatedAt:    contest.CreatedAt,
+			Title:              contest.Title,
+			AwardType:          contest.AwardType,
+			EntryPriceTonNanos: contest.EntryPriceTonNanos,
+			StartTime:          contest.StartTime,
+			EndTime:            contest.EndTime,
+			DurationMins:       contest.DurationMins,
+			MaxEntries:         contest.MaxEntries,
+			Participants:       contest.ParticipantsCount,
+			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)
 	}
@@ -211,14 +213,15 @@ func (h *Handler) GetContests(c echo.Context) error {
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
 			},
-			Title:        contest.Title,
-			AwardType:    contest.AwardType,
-			StartTime:    contest.StartTime,
-			EndTime:      contest.EndTime,
-			DurationMins: contest.DurationMins,
-			MaxEntries:   contest.MaxEntries,
-			Participants: contest.ParticipantsCount,
-			CreatedAt:    contest.CreatedAt,
+			Title:              contest.Title,
+			AwardType:          contest.AwardType,
+			EntryPriceTonNanos: contest.EntryPriceTonNanos,
+			StartTime:          contest.StartTime,
+			EndTime:            contest.EndTime,
+			DurationMins:       contest.DurationMins,
+			MaxEntries:         contest.MaxEntries,
+			Participants:       contest.ParticipantsCount,
+			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)
 	}

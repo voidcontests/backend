@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -180,8 +179,7 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 		Problems: problems,
 	}
 
-	// TODO: can additionally check for contest.award_type
-	if contest.WalletID != nil {
+	if contest.WalletID != nil && (contest.AwardType == award.Pool || contest.AwardType == award.Sponsored) {
 		wallet, err := s.repo.Contest.GetWallet(ctx, *contest.WalletID)
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to get wallet: %w", op, err)
@@ -192,15 +190,11 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			return nil, fmt.Errorf("%s: failed to parse wallet address: %w", op, err)
 		}
 
-		start := time.Now()
 		details.PrizeNanosTON, err = s.ton.GetBalance(ctx, addr)
-		end := time.Now()
 		if err != nil {
 			// TODO: maybe on this error, just return balance = 0 (?)
 			return nil, fmt.Errorf("%s: failed to get wallet balance: %w", op, err)
 		}
-
-		slog.Info("fetching balance for wallet took", slog.Any("ms", end.Sub(start).Milliseconds()))
 	}
 
 	if !authenticated {

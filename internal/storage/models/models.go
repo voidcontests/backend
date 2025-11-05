@@ -28,20 +28,21 @@ type Role struct {
 }
 
 type Contest struct {
-	ID                int       `db:"id"`
-	CreatorID         int       `db:"creator_id"`
-	CreatorUsername   string    `db:"creator_username"`
-	Title             string    `db:"title"`
-	Description       string    `db:"description"`
-	AwardType         string    `db:"award_type"`
-	StartTime         time.Time `db:"start_time"`
-	EndTime           time.Time `db:"end_time"`
-	DurationMins      int       `db:"duration_mins"`
-	MaxEntries        int       `db:"max_entries"`
-	AllowLateJoin     bool      `db:"allow_late_join"`
-	ParticipantsCount int       `db:"participants"`
-	WalletID          *int      `db:"wallet_id"`
-	CreatedAt         time.Time `db:"created_at"`
+	ID                 int       `db:"id"`
+	CreatorID          int       `db:"creator_id"`
+	CreatorUsername    string    `db:"creator_username"`
+	Title              string    `db:"title"`
+	Description        string    `db:"description"`
+	AwardType          string    `db:"award_type"`
+	EntryPriceTonNanos uint64    `db:"entry_price_ton_nanos"`
+	StartTime          time.Time `db:"start_time"`
+	EndTime            time.Time `db:"end_time"`
+	DurationMins       int       `db:"duration_mins"`
+	MaxEntries         int       `db:"max_entries"`
+	AllowLateJoin      bool      `db:"allow_late_join"`
+	ParticipantsCount  int       `db:"participants"`
+	WalletID           *int      `db:"wallet_id"`
+	CreatedAt          time.Time `db:"created_at"`
 }
 
 type ContestFilters struct {
@@ -95,6 +96,7 @@ type Entry struct {
 	ContestID int       `db:"contest_id"`
 	UserID    int       `db:"user_id"`
 	IsPaid    bool      `db:"is_paid"`
+	TxHash    string    `db:"tx_hash"`
 	CreatedAt time.Time `db:"created_at"`
 }
 

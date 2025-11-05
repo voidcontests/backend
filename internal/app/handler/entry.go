@@ -65,6 +65,7 @@ func (h *Handler) GetEntry(c echo.Context) error {
 		ContestID: entry.ContestID,
 		UserID:    entry.UserID,
 		IsPaid:    entry.IsPaid,
+		TxHash:    entry.TxHash,
 		CreatedAt: entry.CreatedAt,
 	})
 }
