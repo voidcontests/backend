@@ -46,6 +46,7 @@ type ContestDetailed struct {
 	ID                 int                      `json:"id"`
 	Title              string                   `json:"title"`
 	Description        string                   `json:"description"`
+	AwardType          string                   `json:"award_type"`
 	Creator            User                     `json:"creator"`
 	StartTime          time.Time                `json:"start_time"`
 	EndTime            time.Time                `json:"end_time"`
@@ -68,6 +69,7 @@ type ContestListItem struct {
 	ID           int       `json:"id"`
 	Creator      User      `json:"creator"`
 	Title        string    `json:"title"`
+	AwardType    string    `json:"award_type"`
 	StartTime    time.Time `json:"start_time"`
 	EndTime      time.Time `json:"end_time"`
 	DurationMins int       `json:"duration_mins"`

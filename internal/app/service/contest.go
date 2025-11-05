@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models/award"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/pkg/ton"
 	"github.com/xssnick/tonutils-go/address"
@@ -79,7 +80,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 
 	// NOTE: if award type is not `paid_entry` or `sponsored` - use `no_prize` by default
 	var contestID int
-	if params.AwardType == "paid_entry" || params.AwardType == "sponsored" {
+	if params.AwardType == award.Pool || params.AwardType == award.Sponsored {
 		w, err := s.ton.CreateWallet()
 		if err != nil {
 			return 0, err
@@ -125,7 +126,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 			params.UserID,
 			params.Title,
 			params.Description,
-			"no_award",
+			award.No,
 			params.StartTime,
 			params.EndTime,
 			params.DurationMins,
