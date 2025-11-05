@@ -23,16 +23,17 @@ func (h *Handler) CreateContest(c echo.Context) error {
 	}
 
 	id, err := h.service.Contest.CreateContest(ctx, service.CreateContestParams{
-		UserID:        claims.UserID,
-		Title:         body.Title,
-		Description:   body.Description,
-		AwardType:     body.AwardType,
-		StartTime:     body.StartTime,
-		EndTime:       body.EndTime,
-		DurationMins:  body.DurationMins,
-		MaxEntries:    body.MaxEntries,
-		AllowLateJoin: body.AllowLateJoin,
-		ProblemIDs:    body.ProblemsIDs,
+		UserID:             claims.UserID,
+		Title:              body.Title,
+		Description:        body.Description,
+		AwardType:          body.AwardType,
+		EntryPriceTonNanos: body.EntryPriceTonNanos,
+		StartTime:          body.StartTime,
+		EndTime:            body.EndTime,
+		DurationMins:       body.DurationMins,
+		MaxEntries:         body.MaxEntries,
+		AllowLateJoin:      body.AllowLateJoin,
+		ProblemIDs:         body.ProblemsIDs,
 	})
 	if err != nil {
 		switch {

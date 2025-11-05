@@ -10,6 +10,9 @@ var (
 	ErrTokenGeneration    = errors.New("failed to generate token")
 	ErrInvalidToken       = errors.New("invalid or expired token")
 
+	// contest
+	ErrUnknownAwardType = errors.New("unknown award type")
+
 	// entry
 	ErrContestFinished     = errors.New("contest not found")
 	ErrContestNotFound     = errors.New("contest not found")

@@ -21,21 +21,14 @@ func New(txr postgres.Transactor) *Postgres {
 	return &Postgres{conn: txr}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error) {
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, entryPriceTonNanos uint64, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error) {
 	var contestID int
 	var err error
 
-	if walletID != nil {
-		err = p.conn.QueryRow(ctx, `
-INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join, wallet_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
-	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin, walletID).Scan(&contestID)
-	} else {
-		err = p.conn.QueryRow(ctx, `
-INSERT INTO contests (creator_id, title, description, award_type, start_time, end_time, duration_mins, max_entries, allow_late_join)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
-	`, creatorID, title, desc, awardType, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
-	}
+	err = p.conn.QueryRow(ctx, `
+INSERT INTO contests (creator_id, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries, allow_late_join, wallet_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
+`, creatorID, title, desc, awardType, entryPriceTonNanos, startTime, endTime, durationMins, maxEntries, allowLateJoin, walletID).Scan(&contestID)
 
 	if err != nil {
 		return 0, fmt.Errorf("insert contest failed: %w", err)

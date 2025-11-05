@@ -29,16 +29,17 @@ func NewContestService(repo *repository.Repository, tc *ton.Client) *ContestServ
 
 // CreateContestParams contains parameters for creating a contest
 type CreateContestParams struct {
-	UserID        int
-	Title         string
-	Description   string
-	AwardType     string
-	StartTime     time.Time
-	EndTime       time.Time
-	DurationMins  int
-	MaxEntries    int
-	AllowLateJoin bool
-	ProblemIDs    []int
+	UserID             int
+	Title              string
+	Description        string
+	AwardType          string
+	EntryPriceTonNanos uint64
+	StartTime          time.Time
+	EndTime            time.Time
+	DurationMins       int
+	MaxEntries         int
+	AllowLateJoin      bool
+	ProblemIDs         []int
 }
 
 func (s *ContestService) CreateContest(ctx context.Context, params CreateContestParams) (int, error) {
@@ -79,7 +80,8 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 
 	// NOTE: if award type is not `paid_entry` or `sponsored` - use `no_prize` by default
 	var contestID int
-	if params.AwardType == award.Pool || params.AwardType == award.Sponsored {
+	switch params.AwardType {
+	case award.Sponsored, award.Pool:
 		w, err := s.ton.CreateWallet()
 		if err != nil {
 			return 0, err
@@ -102,6 +104,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 				params.Title,
 				params.Description,
 				params.AwardType,
+				params.EntryPriceTonNanos,
 				params.StartTime,
 				params.EndTime,
 				params.DurationMins,
@@ -119,13 +122,14 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		if err != nil {
 			return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
 		}
-	} else {
+	case award.No:
 		contestID, err = s.repo.Contest.Create(
 			ctx,
 			params.UserID,
 			params.Title,
 			params.Description,
 			award.No,
+			0,
 			params.StartTime,
 			params.EndTime,
 			params.DurationMins,
@@ -137,6 +141,8 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		if err != nil {
 			return 0, fmt.Errorf("%s: failed to create contest: %w", op, err)
 		}
+	default:
+		return 0, ErrUnknownAwardType
 	}
 
 	return contestID, nil

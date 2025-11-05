@@ -69,7 +69,7 @@ type User interface {
 }
 
 type Contest interface {
-	Create(ctx context.Context, creatorID int, title, desc, awardType string, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error)
+	Create(ctx context.Context, creatorID int, title, desc, awardType string, entryPriceTonNanos uint64, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error)
 	GetByID(ctx context.Context, contestID int) (models.Contest, error)
 	GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error)
 	ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) (contests []models.Contest, total int, err error)

@@ -17,15 +17,16 @@ type CreateSession struct {
 }
 
 type CreateContest struct {
-	Title         string    `json:"title" required:"true"`
-	Description   string    `json:"description"`
-	AwardType     string    `json:"award_type"`
-	ProblemsIDs   []int     `json:"problems_ids" required:"true"`
-	StartTime     time.Time `json:"start_time" required:"true"`
-	EndTime       time.Time `json:"end_time" required:"true"`
-	DurationMins  int       `json:"duration_mins" requried:"true"`
-	MaxEntries    int       `json:"max_entries"`
-	AllowLateJoin bool      `json:"allow_late_join"`
+	Title              string    `json:"title" required:"true"`
+	Description        string    `json:"description"`
+	AwardType          string    `json:"award_type"`
+	EntryPriceTonNanos uint64    `json:"entry_price_ton_nanos"`
+	ProblemsIDs        []int     `json:"problems_ids" required:"true"`
+	StartTime          time.Time `json:"start_time" required:"true"`
+	EndTime            time.Time `json:"end_time" required:"true"`
+	DurationMins       int       `json:"duration_mins" requried:"true"`
+	MaxEntries         int       `json:"max_entries"`
+	AllowLateJoin      bool      `json:"allow_late_join"`
 }
 
 type CreateProblem struct {
