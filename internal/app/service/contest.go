@@ -154,6 +154,7 @@ type ContestDetails struct {
 	IsParticipant      bool
 	SubmissionDeadline *time.Time
 	ProblemStatuses    map[int]string
+	WalletAddress      string
 	PrizeNanosTON      uint64
 }
 
@@ -190,6 +191,8 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to get wallet: %w", op, err)
 		}
+
+		details.WalletAddress = wallet.Address
 
 		addr, err := address.ParseAddr(wallet.Address)
 		if err != nil {

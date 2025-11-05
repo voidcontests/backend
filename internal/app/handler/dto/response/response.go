@@ -48,6 +48,7 @@ type ContestDetailed struct {
 	Description        string                   `json:"description"`
 	AwardType          string                   `json:"award_type"`
 	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos,omitempty"`
+	Address            string                   `json:"address,omitempty"`
 	Creator            User                     `json:"creator"`
 	StartTime          time.Time                `json:"start_time"`
 	EndTime            time.Time                `json:"end_time"`

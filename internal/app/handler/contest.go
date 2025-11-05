@@ -81,6 +81,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		Description:        contest.Description,
 		AwardType:          contest.AwardType,
 		EntryPriceTonNanos: contest.EntryPriceTonNanos,
+		Address:            details.WalletAddress,
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
