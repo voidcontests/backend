@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -147,7 +148,7 @@ type ContestDetails struct {
 	IsParticipant      bool
 	SubmissionDeadline *time.Time
 	ProblemStatuses    map[int]string
-	PrizePot           uint64
+	PrizeNanosTON      uint64
 }
 
 func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID int, authenticated bool) (*ContestDetails, error) {
@@ -190,11 +191,15 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			return nil, fmt.Errorf("%s: failed to parse wallet address: %w", op, err)
 		}
 
-		details.PrizePot, err = s.ton.GetBalance(ctx, addr)
+		start := time.Now()
+		details.PrizeNanosTON, err = s.ton.GetBalance(ctx, addr)
+		end := time.Now()
 		if err != nil {
 			// TODO: maybe on this error, just return balance = 0 (?)
 			return nil, fmt.Errorf("%s: failed to get wallet balance: %w", op, err)
 		}
+
+		slog.Info("fetching balance for wallet took", slog.Any("ms", end.Sub(start).Milliseconds()))
 	}
 
 	if !authenticated {

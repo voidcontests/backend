@@ -16,7 +16,7 @@ type CreateSession struct {
 	Password string `json:"password" required:"true"`
 }
 
-type CreateContestRequest struct {
+type CreateContest struct {
 	Title         string    `json:"title" required:"true"`
 	Description   string    `json:"description"`
 	AwardType     string    `json:"award_type"`
@@ -28,7 +28,7 @@ type CreateContestRequest struct {
 	AllowLateJoin bool      `json:"allow_late_join"`
 }
 
-type CreateProblemRequest struct {
+type CreateProblem struct {
 	Title         string               `json:"title" required:"true"`
 	Statement     string               `json:"statement" required:"true"`
 	Difficulty    string               `json:"difficulty" required:"true"`
@@ -38,7 +38,7 @@ type CreateProblemRequest struct {
 	TestCases     []models.TestCaseDTO `json:"test_cases"`
 }
 
-type CreateSubmissionRequest struct {
+type CreateSubmission struct {
 	Code     string `json:"code"`
 	Language string `json:"language"`
 }

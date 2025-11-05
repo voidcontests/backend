@@ -56,8 +56,12 @@ type ContestDetailed struct {
 	IsParticipant      bool                     `json:"is_participant,omitempty"`
 	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
 	Problems           []ContestProblemListItem `json:"problems"`
-	PrizePot           uint64                   `json:"prize_pot,omitempty"` // in TON nanos (1 TON = 1,000,000,000 nanos)
+	Prizes             Prizes                   `json:"prizes"`
 	CreatedAt          time.Time                `json:"created_at"`
+}
+
+type Prizes struct {
+	Nanos uint64 `json:"ton_nanos"`
 }
 
 type ContestListItem struct {

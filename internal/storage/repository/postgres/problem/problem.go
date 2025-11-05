@@ -63,8 +63,8 @@ func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []
 func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
 	query := `
 SELECT
-	id, writer_id, title, statement, difficulty, time_limit_ms,
-	memory_limit_mb, checker, created_at, charcode, writer_username
+	problem_id, charcode, writer_id, writer_username, title, statement,
+	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 FROM contest_problemsets
 WHERE contest_id = $1 AND charcode = $2`
 
@@ -72,9 +72,8 @@ WHERE contest_id = $1 AND charcode = $2`
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
-		&problem.Charcode, &problem.WriterUsername,
 	)
 
 	return problem, err
@@ -82,9 +81,8 @@ WHERE contest_id = $1 AND charcode = $2`
 
 func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, error) {
 	query := `SELECT
-			id, writer_id, title, statement,
-			difficulty, time_limit_ms, memory_limit_mb, checker, created_at,
-			writer_username
+			id, writer_id, writer_username, title, statement,
+			difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 		FROM problem_details
 		WHERE id = $1`
 
@@ -92,9 +90,8 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, 
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
-		&problem.WriterUsername,
 	)
 
 	return problem, err
@@ -144,8 +141,8 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	query := `
 SELECT
-	id, writer_id, title, statement, difficulty, time_limit_ms,
-	memory_limit_mb, checker, created_at, writer_username
+	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at
 FROM problem_details`
 
 	rows, err := p.conn.Query(ctx, query)
@@ -158,8 +155,8 @@ FROM problem_details`
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.Title, &p.Statement, &p.Difficulty,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -174,17 +171,15 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, off
 
 	batch.Queue(`
 SELECT
-	id, writer_id, title, statement, difficulty, time_limit_ms,
-	memory_limit_mb, checker, created_at, writer_username
+	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at
 FROM problem_details
 WHERE writer_id = $1
 ORDER BY id ASC
 LIMIT $2 OFFSET $3
 	`, writerID, limit, offset)
 
-	batch.Queue(`
-		SELECT COUNT(*) FROM problem_details WHERE writer_id = $1
-	`, writerID)
+	batch.Queue(`SELECT COUNT(*) FROM problem_details WHERE writer_id = $1`, writerID)
 
 	br := p.conn.SendBatch(ctx, batch)
 
@@ -198,8 +193,8 @@ LIMIT $2 OFFSET $3
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.Title, &p.Statement, &p.Difficulty,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()

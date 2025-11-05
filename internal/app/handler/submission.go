@@ -27,7 +27,7 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 
 	charcode := c.Param("charcode")
 
-	var body request.CreateSubmissionRequest
+	var body request.CreateSubmission
 	if err := validate.Bind(c, &body); err != nil {
 		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")

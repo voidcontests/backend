@@ -3,8 +3,10 @@ package submission
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
@@ -51,6 +53,9 @@ func (p *Postgres) GetProblemStatus(ctx context.Context, entryID int, problemID 
 	var status sql.NullString
 	err := p.conn.QueryRow(ctx, query, entryID, problemID).Scan(&status)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
 		return "", fmt.Errorf("query failed: %w", err)
 	}
 

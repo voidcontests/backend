@@ -17,7 +17,7 @@ func (h *Handler) CreateProblem(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	var body request.CreateProblemRequest
+	var body request.CreateProblem
 	if err := validate.Bind(c, &body); err != nil {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}

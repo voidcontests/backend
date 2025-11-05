@@ -17,7 +17,7 @@ func (h *Handler) CreateContest(c echo.Context) error {
 
 	claims, _ := ExtractClaims(c)
 
-	var body request.CreateContestRequest
+	var body request.CreateContest
 	if err := validate.Bind(c, &body); err != nil {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
@@ -83,7 +83,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Username: contest.CreatorUsername,
 		},
 		Problems:           make([]response.ContestProblemListItem, n, n),
-		Participants:       contest.Participants,
+		Participants:       contest.ParticipantsCount,
 		StartTime:          contest.StartTime,
 		EndTime:            contest.EndTime,
 		DurationMins:       contest.DurationMins,
@@ -91,8 +91,10 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		AllowLateJoin:      contest.AllowLateJoin,
 		IsParticipant:      details.IsParticipant,
 		SubmissionDeadline: details.SubmissionDeadline,
-		PrizePot:           details.PrizePot,
-		CreatedAt:          contest.CreatedAt,
+		Prizes: response.Prizes{
+			Nanos: details.PrizeNanosTON,
+		},
+		CreatedAt: contest.CreatedAt,
 	}
 
 	for i := range n {
@@ -150,7 +152,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			EndTime:      contest.EndTime,
 			DurationMins: contest.DurationMins,
 			MaxEntries:   contest.MaxEntries,
-			Participants: contest.Participants,
+			Participants: contest.ParticipantsCount,
 			CreatedAt:    contest.CreatedAt,
 		}
 		items = append(items, item)
@@ -212,7 +214,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			EndTime:      contest.EndTime,
 			DurationMins: contest.DurationMins,
 			MaxEntries:   contest.MaxEntries,
-			Participants: contest.Participants,
+			Participants: contest.ParticipantsCount,
 			CreatedAt:    contest.CreatedAt,
 		}
 		items = append(items, item)

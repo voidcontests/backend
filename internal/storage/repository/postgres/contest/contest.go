@@ -69,14 +69,14 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, 
 	var contest models.Contest
 	query := `
 SELECT
-	id, creator_id, title, description, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, created_at, creator_username, participants
+	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins,
+	max_entries, allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 WHERE id = $1`
 	err := p.conn.QueryRow(ctx, query, contestID).Scan(
-		&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime,
+		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.Title, &contest.Description, &contest.AwardType, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
-		&contest.WalletID, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
+		&contest.WalletID, &contest.ParticipantsCount, &contest.CreatedAt)
 	return contest, err
 }
 
@@ -94,8 +94,8 @@ WHERE w.id = $1`
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
 	query := `
 SELECT
-	id, charcode, writer_id, title, statement, difficulty, time_limit_ms,
-	memory_limit_mb, checker, created_at, writer_username
+	problem_id, charcode, writer_id, writer_username, title, statement,
+	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 FROM contest_problemsets
 WHERE contest_id = $1 ORDER BY charcode ASC`
 
@@ -108,7 +108,7 @@ WHERE contest_id = $1 ORDER BY charcode ASC`
 	var problems []models.Problem
 	for rows.Next() {
 		var problem models.Problem
-		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt, &problem.WriterUsername); err != nil {
+		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt); err != nil {
 			return nil, err
 		}
 		problems = append(problems, problem)
@@ -146,8 +146,8 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters m
 
 	query := fmt.Sprintf(`
 SELECT
-	id, creator_id, title, description, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, created_at, creator_username, participants
+	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins, max_entries,
+	allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 %s
 ORDER BY id ASC
@@ -188,10 +188,9 @@ LIMIT $1 OFFSET $2
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.Title, &c.Description,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.CreatedAt,
-			&c.CreatorUsername, &c.Participants,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()
@@ -217,8 +216,8 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, o
 	batch := &pgx.Batch{}
 	batch.Queue(`
 SELECT
-	id, creator_id, title, description, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, created_at, creator_username, participants
+	id, creator_id, creator_username, title, description, award_type, start_time, end_time, duration_mins, max_entries,
+	allow_late_join, wallet_id, participants_count, created_at
 FROM contest_details
 WHERE creator_id = $1
 ORDER BY id ASC
@@ -239,10 +238,9 @@ LIMIT $2 OFFSET $3
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.Title, &c.Description,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.CreatedAt,
-			&c.CreatorUsername, &c.Participants,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()
