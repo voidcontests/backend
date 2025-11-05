@@ -63,12 +63,10 @@ func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []
 func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
 	query := `
 SELECT
-	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
-	p.memory_limit_mb, p.checker, p.created_at, cp.charcode, u.username AS writer_username
-FROM problems p
-JOIN contest_problems cp ON p.id = cp.problem_id
-JOIN users u ON u.id = p.writer_id
-WHERE cp.contest_id = $1 AND cp.charcode = $2`
+	id, writer_id, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at, charcode, writer_username
+FROM contest_problemsets
+WHERE contest_id = $1 AND charcode = $2`
 
 	row := p.conn.QueryRow(ctx, query, contestID, charcode)
 
@@ -84,12 +82,11 @@ WHERE cp.contest_id = $1 AND cp.charcode = $2`
 
 func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, error) {
 	query := `SELECT
-			p.id, p.writer_id, p.title, p.statement,
-			p.difficulty, p.time_limit_ms, p.memory_limit_mb, p.checker, p.created_at,
-			u.username AS writer_username
-		FROM problems p
-		JOIN users u ON u.id = p.writer_id
-		WHERE p.id = $1`
+			id, writer_id, title, statement,
+			difficulty, time_limit_ms, memory_limit_mb, checker, created_at,
+			writer_username
+		FROM problem_details
+		WHERE id = $1`
 
 	row := p.conn.QueryRow(ctx, query, problemID)
 
@@ -147,10 +144,9 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	query := `
 SELECT
-	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
-	p.memory_limit_mb, p.checker, p.created_at, u.username AS writer_username
-FROM problems p
-JOIN users u ON u.id = p.writer_id`
+	id, writer_id, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at, writer_username
+FROM problem_details`
 
 	rows, err := p.conn.Query(ctx, query)
 	if err != nil {
@@ -178,17 +174,16 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, off
 
 	batch.Queue(`
 SELECT
-	p.id, p.writer_id, p.title, p.statement, p.difficulty, p.time_limit_ms,
-	p.memory_limit_mb, p.checker, p.created_at, u.username AS writer_username
-FROM problems p
-JOIN users u ON u.id = p.writer_id
+	id, writer_id, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at, writer_username
+FROM problem_details
 WHERE writer_id = $1
-ORDER BY p.id ASC
+ORDER BY id ASC
 LIMIT $2 OFFSET $3
 	`, writerID, limit, offset)
 
 	batch.Queue(`
-		SELECT COUNT(*) FROM problems WHERE writer_id = $1
+		SELECT COUNT(*) FROM problem_details WHERE writer_id = $1
 	`, writerID)
 
 	br := p.conn.SendBatch(ctx, batch)

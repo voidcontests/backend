@@ -133,3 +133,67 @@ LEFT JOIN (
 ) s ON e.id = s.entry_id
 LEFT JOIN problems p ON s.problem_id = p.id
 GROUP BY e.contest_id, u.id, u.username;
+
+CREATE VIEW contest_details AS
+SELECT
+    c.id,
+    c.creator_id,
+    c.title,
+    c.description,
+    c.start_time,
+    c.end_time,
+    c.duration_mins,
+    c.max_entries,
+    c.allow_late_join,
+    c.wallet_id,
+    c.created_at,
+    u.username AS creator_username,
+    COUNT(e.id) AS participants
+FROM contests c
+JOIN users u ON u.id = c.creator_id
+LEFT JOIN entries e ON e.contest_id = c.id
+GROUP BY c.id, u.username;
+
+CREATE VIEW problem_details AS
+SELECT
+    p.id,
+    p.writer_id,
+    p.title,
+    p.statement,
+    p.difficulty,
+    p.time_limit_ms,
+    p.memory_limit_mb,
+    p.checker,
+    p.created_at,
+    u.username AS writer_username
+FROM problems p
+JOIN users u ON u.id = p.writer_id;
+
+CREATE VIEW problem_statuses AS
+SELECT
+    s.entry_id,
+    s.problem_id,
+    CASE
+        WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
+        WHEN COUNT(*) > 0 THEN 'tried'
+    END AS status
+FROM submissions s
+GROUP BY s.entry_id, s.problem_id;
+
+CREATE VIEW contest_problemsets AS
+SELECT
+    cp.contest_id,
+    p.id,
+    cp.charcode,
+    p.writer_id,
+    p.title,
+    p.statement,
+    p.difficulty,
+    p.time_limit_ms,
+    p.memory_limit_mb,
+    p.checker,
+    p.created_at,
+    u.username AS writer_username
+FROM problems p
+JOIN contest_problems cp ON p.id = cp.problem_id
+JOIN users u ON u.id = p.writer_id;

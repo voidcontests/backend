@@ -43,14 +43,9 @@ func (p *Postgres) Create(ctx context.Context, entryID int, problemID int, code 
 
 func (p *Postgres) GetProblemStatus(ctx context.Context, entryID int, problemID int) (string, error) {
 	query := `
-		SELECT
-			CASE
-				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
-				WHEN COUNT(*) > 0 THEN 'tried'
-				ELSE NULL
-			END AS status
-		FROM submissions s
-		WHERE s.entry_id = $1 AND s.problem_id = $2
+		SELECT status
+		FROM problem_statuses
+		WHERE entry_id = $1 AND problem_id = $2
 	`
 
 	var status sql.NullString
@@ -68,15 +63,10 @@ func (p *Postgres) GetProblemStatus(ctx context.Context, entryID int, problemID 
 func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int) (map[int]string, error) {
 	query := `
 		SELECT
-			s.problem_id,
-			CASE
-				WHEN COUNT(*) FILTER (WHERE s.verdict = 'ok') > 0 THEN 'accepted'
-				WHEN COUNT(*) > 0 THEN 'tried'
-				ELSE NULL
-			END AS status
-		FROM submissions s
-		WHERE s.entry_id = $1
-		GROUP BY s.problem_id
+			problem_id,
+			status
+		FROM problem_statuses
+		WHERE entry_id = $1
 	`
 
 	rows, err := p.conn.Query(ctx, query, entryID)
