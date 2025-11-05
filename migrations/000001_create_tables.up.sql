@@ -21,8 +21,6 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TYPE award_type AS ENUM ('no', 'pool', 'sponsored');
-
 -- TODO: add unique index on `contests.wallet_id`
 -- TODO: encrypt the mnemonic before saving
 CREATE TABLE wallets (
@@ -31,6 +29,8 @@ CREATE TABLE wallets (
     mnemonic TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
+
+CREATE TYPE award_type AS ENUM ('no', 'pool', 'sponsored');
 
 CREATE TABLE contests (
     id SERIAL PRIMARY KEY,
@@ -47,12 +47,14 @@ CREATE TABLE contests (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
+CREATE TYPE difficulty AS ENUM ('easy', 'mid', 'hard');
+
 CREATE TABLE problems (
     id SERIAL PRIMARY KEY,
     writer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(64) NOT NULL,
     statement TEXT NOT NULL,
-    difficulty VARCHAR(10) NOT NULL CHECK (difficulty IN ('easy', 'mid', 'hard')),
+    difficulty difficulty NOT NULL,
     time_limit_ms INTEGER DEFAULT 2000 NOT NULL CHECK (time_limit_ms >= 0),
     memory_limit_mb INTEGER DEFAULT 128 NOT NULL CHECK (memory_limit_mb >= 0),
     checker VARCHAR(10) NOT NULL DEFAULT 'tokens',

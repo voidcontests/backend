@@ -9,4 +9,5 @@ DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 
-DROP TYPE IF EXISTS contest_award_type;
+DROP TYPE IF EXISTS award_type;
+DROP TYPE IF EXISTS difficulty;
