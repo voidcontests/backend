@@ -20,6 +20,7 @@ var (
 	ErrApplicationTimeOver = errors.New("application time is over")
 	ErrEntryAlreadyExists  = errors.New("user already has entry for this contest")
 	ErrEntryNotFound       = errors.New("entry not found")
+	ErrEntryNotPaid        = errors.New("entry not paid")
 
 	// problem
 	ErrUserBanned            = errors.New("you are banned from creating problems")

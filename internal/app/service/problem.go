@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/models/award"
 	"github.com/voidcontests/api/internal/storage/repository"
 )
 
@@ -173,6 +174,10 @@ func (s *ProblemService) GetContestProblem(ctx context.Context, contestID int, u
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to get entry: %w", op, err)
+	}
+
+	if contest.AwardType == award.Pool && !entry.IsPaid {
+		return nil, ErrEntryNotPaid
 	}
 
 	problem, err := s.repo.Problem.Get(ctx, contestID, charcode)

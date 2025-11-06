@@ -117,6 +117,8 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 	details, err := h.service.Problem.GetContestProblem(ctx, contestID, claims.UserID, charcode)
 	if err != nil {
 		switch {
+		case errors.Is(err, service.ErrEntryNotPaid):
+			return Error(http.StatusForbidden, "entry not paid")
 		case errors.Is(err, service.ErrInvalidCharcode):
 			return Error(http.StatusBadRequest, "problem charcode couldn't be longer than 2 characters")
 		case errors.Is(err, service.ErrContestNotFound):
