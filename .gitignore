@@ -10,3 +10,5 @@ build
 # Ignore TODO
 TODO
 buffer
+
+migrations/999999_*.sql

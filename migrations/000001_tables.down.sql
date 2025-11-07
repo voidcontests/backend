@@ -1,3 +1,6 @@
+DROP INDEX IF EXISTS unique_user_address;
+DROP INDEX IF EXISTS unique_contest_wallet_id;
+
 DROP TABLE IF EXISTS testing_reports;
 DROP TABLE IF EXISTS submissions;
 DROP TABLE IF EXISTS entries;
