@@ -32,7 +32,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
 
-	slog.Info("scheduler: started", slog.Duration("interval", s.interval))
+	slog.Info("scheduler: started", slog.String("interval", s.interval.String()))
 
 	if err := s.task(ctx); err != nil {
 		slog.Error("scheduler: task execution failed", sl.Err(err))

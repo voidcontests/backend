@@ -87,7 +87,7 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 			return 0, err
 		}
 
-		address := w.Address.String()
+		address := w.Address().String()
 		mnemonic := strings.Join(w.Mnemonic, " ")
 
 		err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {

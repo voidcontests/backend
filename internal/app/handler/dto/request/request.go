@@ -16,6 +16,11 @@ type CreateSession struct {
 	Password string `json:"password" required:"true"`
 }
 
+type UpdateAccount struct {
+	Username *string `json:"username"`
+	Address  *string `json:"address"`
+}
+
 type CreateContest struct {
 	Title              string    `json:"title" required:"true"`
 	Description        string    `json:"description"`

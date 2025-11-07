@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/voidcontests/api/internal/config"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -14,12 +15,13 @@ import (
 )
 
 type Client struct {
-	api tonutils.APIClientWrapped
+	api     tonutils.APIClientWrapped
+	testnet bool
 }
 
-func NewClient(ctx context.Context) (*Client, error) {
+func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
 	client := liteclient.NewConnectionPool()
-	err := client.AddConnectionsFromConfigUrl(ctx, "https://ton.org/testnet-global.config.json")
+	err := client.AddConnectionsFromConfigUrl(ctx, c.ConfigURL)
 	if err != nil {
 		return nil, err
 	}
@@ -35,14 +37,16 @@ func NewClient(ctx context.Context) (*Client, error) {
 	api.SetTrustedBlock(block)
 
 	return &Client{
-		api: api,
+		api:     api,
+		testnet: c.IsTestnet,
 	}, nil
 }
 
 type Wallet struct {
-	Address  *address.Address
+	address  *address.Address
 	Mnemonic []string
 	Instance *wallet.Wallet
+	testnet  bool
 }
 
 func (c *Client) CreateWallet() (*Wallet, error) {
@@ -57,9 +61,10 @@ func (c *Client) WalletWithSeed(mnemonic string) (*Wallet, error) {
 	}
 
 	return &Wallet{
-		Address:  w.WalletAddress(),
+		address:  w.WalletAddress(),
 		Mnemonic: words,
 		Instance: w,
+		testnet:  c.testnet,
 	}, nil
 }
 
@@ -153,4 +158,8 @@ func (c *Client) LookupTx(ctx context.Context, from *address.Address, to *addres
 	}
 
 	return "", false
+}
+
+func (w *Wallet) Address() *address.Address {
+	return w.address.Testnet(w.testnet)
 }

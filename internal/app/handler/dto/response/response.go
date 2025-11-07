@@ -38,8 +38,9 @@ type Role struct {
 }
 
 type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
+	ID       int     `json:"id"`
+	Username string  `json:"username"`
+	Address  *string `json:"address,omitempty"`
 }
 
 type ContestDetailed struct {

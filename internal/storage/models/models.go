@@ -18,6 +18,11 @@ type User struct {
 	CreatedAt    time.Time `db:"created_at"`
 }
 
+type UpdateUserParams struct {
+	Username *string
+	Address  *string
+}
+
 type Role struct {
 	ID                   int       `db:"id"`
 	Name                 string    `db:"name"`

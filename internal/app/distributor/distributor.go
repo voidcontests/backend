@@ -60,7 +60,7 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return err
 	}
 
-	nanos, err := tc.GetBalance(ctx, wallet.Address)
+	nanos, err := tc.GetBalance(ctx, wallet.Address())
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 
 	slog.Info("award distributed", slog.Any("contest_id", c.ID), slog.String("tx", tx))
 
-	paymentID, err := r.Payment.Create(ctx, tx, wallet.Address.String(), recepient.String(), amount.Nano().Uint64(), false)
+	paymentID, err := r.Payment.Create(ctx, tx, wallet.Address().String(), recepient.String(), amount.Nano().Uint64(), false)
 	if err != nil {
 		return err
 	}

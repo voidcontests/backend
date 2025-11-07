@@ -78,7 +78,7 @@ func (a *App) Run() {
 
 	repo := repository.New(db)
 	brok := broker.New(rc)
-	tc, err := ton.NewClient(ctx)
+	tc, err := ton.NewClient(ctx, &a.config.Ton)
 	if err != nil {
 		slog.Error("ton: could not establish connection", sl.Err(err))
 		return

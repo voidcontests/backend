@@ -81,6 +81,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		api.POST("/account", r.handler.CreateAccount)
+		api.PATCH("/account", r.handler.UpdateAccount, r.handler.MustIdentify())
 		api.POST("/session", r.handler.CreateSession)
 
 		// DONE: make this endpoints as filter to general endpoint, like:

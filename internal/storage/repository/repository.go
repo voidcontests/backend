@@ -39,7 +39,6 @@ func New(pool *pgxpool.Pool) *Repository {
 	}
 }
 
-// TxRepository provides repository instances within a transaction
 type TxRepository struct {
 	User       User
 	Contest    Contest
@@ -50,7 +49,6 @@ type TxRepository struct {
 	Payment    Payment
 }
 
-// NewTxRepository creates repository instances that use the provided transaction
 func NewTxRepository(tx pgx.Tx) *TxRepository {
 	return &TxRepository{
 		Contest:    contest.New(tx),
@@ -68,9 +66,11 @@ type User interface {
 	Create(ctx context.Context, username string, passwordHash string) (models.User, error)
 	Exists(ctx context.Context, username string) (bool, error)
 	GetByID(ctx context.Context, id int) (models.User, error)
+	GetByUsername(ctx context.Context, username string) (models.User, error)
 	GetRole(ctx context.Context, userID int) (models.Role, error)
 	GetCreatedProblemsCount(ctx context.Context, userID int) (int, error)
 	GetCreatedContestsCount(ctx context.Context, userID int) (int, error)
+	UpdateUser(ctx context.Context, userID int, params models.UpdateUserParams) (models.User, error)
 }
 
 type Contest interface {

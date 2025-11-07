@@ -94,3 +94,28 @@ func (s *AccountService) GetAccount(ctx context.Context, userID int) (*AccountIn
 		Role: role,
 	}, nil
 }
+
+func (s *AccountService) UpdateAccount(ctx context.Context, userID int, params models.UpdateUserParams) (*models.User, error) {
+	op := "service.AccountService.UpdateAccount"
+
+	if params.Username != nil {
+		existingUser, err := s.repo.User.GetByUsername(ctx, *params.Username)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%s: failed to check username availability: %w", op, err)
+		}
+
+		if err == nil && existingUser.ID != userID {
+			return nil, ErrUserAlreadyExists
+		}
+	}
+
+	user, err := s.repo.User.UpdateUser(ctx, userID, params)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrInvalidToken
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to update user: %w", op, err)
+	}
+
+	return &user, nil
+}

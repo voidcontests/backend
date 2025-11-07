@@ -13,6 +13,7 @@ import (
 	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/jwt"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
@@ -80,6 +81,43 @@ func (h *Handler) GetAccount(c echo.Context) error {
 			CreatedProblemsLimit: accountInfo.Role.CreatedProblemsLimit,
 			CreatedContestsLimit: accountInfo.Role.CreatedContestsLimit,
 		},
+	})
+}
+
+func (h *Handler) UpdateAccount(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	var body request.UpdateAccount
+	if err := validate.Bind(c, &body); err != nil {
+		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	if body.Username == nil && body.Address == nil {
+		return Error(http.StatusBadRequest, "at least one field must be provided")
+	}
+
+	params := models.UpdateUserParams{
+		Username: body.Username,
+		Address:  body.Address,
+	}
+
+	user, err := h.service.Account.UpdateAccount(ctx, claims.UserID, params)
+	if err != nil {
+		if errors.Is(err, service.ErrUserAlreadyExists) {
+			return Error(http.StatusConflict, "username already taken")
+		}
+		if errors.Is(err, service.ErrInvalidToken) {
+			return Error(http.StatusUnauthorized, "invalid or expired token")
+		}
+		return err
+	}
+
+	return c.JSON(http.StatusOK, response.User{
+		ID:       user.ID,
+		Username: user.Username,
+		Address:  user.Address,
 	})
 }
 
