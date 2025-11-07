@@ -1,4 +1,4 @@
-CREATE VIEW scores AS
+CREATE MATERIALIZED VIEW scores AS
 SELECT
     e.contest_id,
     u.id AS user_id,
@@ -25,8 +25,12 @@ LEFT JOIN (
 LEFT JOIN problems p ON s.problem_id = p.id
 GROUP BY e.contest_id, u.id, u.username;
 
+CREATE UNIQUE INDEX idx_scores_contest_user ON scores(contest_id, user_id);
+CREATE INDEX idx_scores_contest_id ON scores(contest_id);
+CREATE INDEX idx_scores_user_id ON scores(user_id);
 
-CREATE VIEW contests_view AS
+
+CREATE MATERIALIZED VIEW contests_view AS
 SELECT
     c.id,
     c.creator_id,
@@ -48,6 +52,8 @@ FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
 GROUP BY c.id, u.username;
+
+CREATE UNIQUE INDEX idx_contests_view_id ON contests_view(id);
 
 
 CREATE VIEW problems_view AS
