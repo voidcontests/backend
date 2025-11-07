@@ -86,7 +86,7 @@ func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) 
 		return EntryDetails{}, fmt.Errorf("%s: failed to get entry: %w", op, err)
 	}
 
-	if entry.IsPaid {
+	if entry.PaymentID != nil {
 		return EntryDetails{
 			Entry:      entry,
 			IsAdmitted: true,
@@ -153,13 +153,17 @@ func (s *EntryService) GetEntry(ctx context.Context, contestID int, userID int) 
 		}, nil
 	}
 
-	err = s.repo.Entry.MarkAsPaid(ctx, entry.ID, tx)
+	paymentID, err := s.repo.Payment.Create(ctx, tx, from.String(), to.String(), amount.Nano().Uint64(), true)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to create payment: %w", op, err)
+	}
+
+	err = s.repo.Entry.SetPaymentID(ctx, entry.ID, paymentID)
 	if err != nil {
 		return EntryDetails{}, fmt.Errorf("%s: failed to mark entry as paid: %w", op, err)
 	}
 
-	entry.IsPaid = true
-	entry.TxHash = tx
+	entry.PaymentID = &paymentID
 
 	return EntryDetails{
 		Entry:      entry,

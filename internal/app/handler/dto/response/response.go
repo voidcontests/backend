@@ -173,7 +173,7 @@ type Entry struct {
 	ContestID  int       `json:"contest_id"`
 	UserID     int       `json:"user_id"`
 	IsPaid     bool      `json:"is_paid"`
-	TxHash     string    `json:"tx_hash,omitempty"`
+	PaymentID  int       `json:"payment_id,omitempty"`
 	IsAdmitted bool      `json:"is_admitted"`
 	Message    string    `json:"message,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`

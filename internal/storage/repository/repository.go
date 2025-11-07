@@ -10,6 +10,7 @@ import (
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/contest"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/entry"
+	"github.com/voidcontests/api/internal/storage/repository/postgres/payment"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/problem"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/submission"
 	"github.com/voidcontests/api/internal/storage/repository/postgres/user"
@@ -22,6 +23,7 @@ type Repository struct {
 	Problem    Problem
 	Entry      Entry
 	Submission Submission
+	Payment    Payment
 	TxManager  *postgres.TxManager
 }
 
@@ -32,6 +34,7 @@ func New(pool *pgxpool.Pool) *Repository {
 		Problem:    problem.New(pool),
 		Entry:      entry.New(pool),
 		Submission: submission.New(pool),
+		Payment:    payment.New(pool),
 		TxManager:  postgres.NewTxManager(pool),
 	}
 }
@@ -44,6 +47,7 @@ type TxRepository struct {
 	Entry      Entry
 	Submission Submission
 	Wallet     Wallet
+	Payment    Payment
 }
 
 // NewTxRepository creates repository instances that use the provided transaction
@@ -55,6 +59,7 @@ func NewTxRepository(tx pgx.Tx) *TxRepository {
 		Entry:      entry.New(tx),
 		Submission: submission.New(tx),
 		Problem:    problem.New(tx),
+		Payment:    payment.New(tx),
 	}
 }
 
@@ -78,7 +83,7 @@ type Contest interface {
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
 	GetWallet(ctx context.Context, walletID int) (models.Wallet, error)
-	SetAwardDistributed(ctx context.Context, contestID int) error
+	SetDistributionPaymentID(ctx context.Context, contestID int, paymentID int) error
 	GetWithUndistributedAwards(ctx context.Context) ([]models.Contest, error)
 	GetWinnerID(ctx context.Context, contestID int) (int, error)
 }
@@ -101,7 +106,7 @@ type Problem interface {
 type Entry interface {
 	Create(ctx context.Context, contestID int, userID int) (int, error)
 	Get(ctx context.Context, contestID int, userID int) (models.Entry, error)
-	MarkAsPaid(ctx context.Context, entryID int, txHash string) error
+	SetPaymentID(ctx context.Context, entryID int, paymentID int) error
 }
 
 type Submission interface {
@@ -111,4 +116,10 @@ type Submission interface {
 	GetByID(ctx context.Context, submissionID int) (models.Submission, error)
 	ListByProblem(ctx context.Context, entryID int, charcode string, limit int, offset int) (items []models.Submission, total int, err error)
 	GetTestingReport(ctx context.Context, submissionID int) (models.TestingReport, error)
+}
+
+type Payment interface {
+	Create(ctx context.Context, txHash, fromAddress, toAddress string, amountTonNanos uint64, isIncoming bool) (int, error)
+	GetByID(ctx context.Context, paymentID int) (models.Payment, error)
+	GetByTxHash(ctx context.Context, txHash string) (models.Payment, error)
 }

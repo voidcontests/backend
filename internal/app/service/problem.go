@@ -23,7 +23,6 @@ func NewProblemService(repo *repository.Repository) *ProblemService {
 	}
 }
 
-// CreateProblemParams contains parameters for creating a problem
 type CreateProblemParams struct {
 	UserID        int
 	Title         string
@@ -176,7 +175,7 @@ func (s *ProblemService) GetContestProblem(ctx context.Context, contestID int, u
 		return nil, fmt.Errorf("%s: failed to get entry: %w", op, err)
 	}
 
-	if contest.AwardType == award.Pool && !entry.IsPaid {
+	if contest.AwardType == award.Pool && entry.PaymentID == nil {
 		return nil, ErrEntryNotPaid
 	}
 

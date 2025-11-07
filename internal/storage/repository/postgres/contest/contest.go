@@ -63,13 +63,13 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, 
 	query := `
 SELECT
 	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
-	max_entries, allow_late_join, wallet_id, award_distributed, participants_count, created_at
+	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 WHERE id = $1`
 	err := p.conn.QueryRow(ctx, query, contestID).Scan(
 		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.Title, &contest.Description, &contest.AwardType, &contest.EntryPriceTonNanos, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
-		&contest.WalletID, &contest.AwardDistributed, &contest.ParticipantsCount, &contest.CreatedAt)
+		&contest.WalletID, &contest.DistributionPaymentID, &contest.ParticipantsCount, &contest.CreatedAt)
 	return contest, err
 }
 
@@ -140,7 +140,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters m
 	query := fmt.Sprintf(`
 SELECT
 	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, award_distributed, participants_count, created_at
+	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 %s
 ORDER BY id ASC
@@ -183,7 +183,7 @@ LIMIT $1 OFFSET $2
 		if err := rows.Scan(
 			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.AwardDistributed, &c.ParticipantsCount, &c.CreatedAt,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()
@@ -210,7 +210,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, o
 	batch.Queue(`
 SELECT
 	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, award_distributed, participants_count, created_at
+	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 WHERE creator_id = $1
 ORDER BY id ASC
@@ -233,7 +233,7 @@ LIMIT $2 OFFSET $3
 		if err := rows.Scan(
 			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.AwardDistributed, &c.ParticipantsCount, &c.CreatedAt,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()
@@ -307,11 +307,11 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 	return leaderboard, total, nil
 }
 
-func (p *Postgres) SetAwardDistributed(ctx context.Context, contestID int) error {
-	query := `UPDATE contests SET award_distributed = true WHERE id = $1`
-	_, err := p.conn.Exec(ctx, query, contestID)
+func (p *Postgres) SetDistributionPaymentID(ctx context.Context, contestID int, paymentID int) error {
+	query := `UPDATE contests SET distribution_payment_id = $1 WHERE id = $2`
+	_, err := p.conn.Exec(ctx, query, paymentID, contestID)
 	if err != nil {
-		return fmt.Errorf("set award_distributed failed: %w", err)
+		return fmt.Errorf("set distribution_payment_id failed: %w", err)
 	}
 	return nil
 }
@@ -320,9 +320,9 @@ func (p *Postgres) GetWithUndistributedAwards(ctx context.Context) ([]models.Con
 	query := `
 SELECT
 	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
-	max_entries, allow_late_join, wallet_id, award_distributed, participants_count, created_at
+	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
-WHERE award_distributed = false AND end_time < now() AND awart_type <> 'no'
+WHERE distribution_payment_id IS NULL AND end_time < now() AND award_type <> 'no'
 ORDER BY end_time ASC`
 
 	rows, err := p.conn.Query(ctx, query)
@@ -337,7 +337,7 @@ ORDER BY end_time ASC`
 		if err := rows.Scan(
 			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.AwardDistributed, &c.ParticipantsCount, &c.CreatedAt,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan failed: %w", err)
 		}

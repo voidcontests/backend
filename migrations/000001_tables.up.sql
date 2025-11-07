@@ -22,12 +22,24 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
+CREATE UNIQUE INDEX unique_user_address ON users(address) WHERE address IS NOT NULL;
+
 -- TODO: add unique index on `contests.wallet_id`
 -- TODO: encrypt the mnemonic before saving
 CREATE TABLE wallets (
     id SERIAL PRIMARY KEY,
-    address VARCHAR(100) NOT NULL,
+    address VARCHAR(100) UNIQUE NOT NULL,
     mnemonic TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+CREATE TABLE payments (
+    id SERIAL PRIMARY KEY,
+    tx_hash VARCHAR(64) UNIQUE NOT NULL,
+    from_address VARCHAR(100) NOT NULL,
+    to_address VARCHAR(100) NOT NULL,
+    amount_ton_nanos BIGINT NOT NULL CHECK (amount_ton_nanos >= 0),
+    is_incoming BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
@@ -40,7 +52,7 @@ CREATE TABLE contests (
     description VARCHAR(300) DEFAULT '' NOT NULL,
     award_type award_type NOT NULL,
     entry_price_ton_nanos BIGINT DEFAULT 0 NOT NULL,
-    award_distributed BOOLEAN DEFAULT false NOT NULL,
+    distribution_payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL CHECK (duration_mins >= 0),
@@ -49,6 +61,8 @@ CREATE TABLE contests (
     wallet_id INTEGER REFERENCES wallets(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
+
+CREATE UNIQUE INDEX unique_contest_wallet_id ON contests(wallet_id) WHERE wallet_id IS NOT NULL;
 
 CREATE TYPE difficulty AS ENUM ('easy', 'mid', 'hard');
 
@@ -86,8 +100,7 @@ CREATE TABLE entries (
     id SERIAL PRIMARY KEY,
     contest_id INTEGER NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    is_paid BOOLEAN DEFAULT false NOT NULL,
-    tx_hash VARCHAR(64) NOT NULL DEFAULT '',
+    payment_id INTEGER REFERENCES payments(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL,
     UNIQUE (contest_id, user_id)
 );

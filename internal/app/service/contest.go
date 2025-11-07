@@ -170,11 +170,11 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 	}
 
 	now := time.Now()
-	if contest.EndTime.Before(now) {
-		if !authenticated || userID != contest.CreatorID {
-			return nil, ErrContestFinished
-		}
-	}
+	// if contest.EndTime.Before(now) {
+	// 	if !authenticated || userID != contest.CreatorID {
+	// 		return nil, ErrContestFinished
+	// 	}
+	// }
 
 	problems, err := s.repo.Contest.GetProblemset(ctx, contestID)
 	if err != nil {

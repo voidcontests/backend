@@ -6,8 +6,8 @@ SELECT
     COALESCE(SUM(
         CASE
             WHEN p.difficulty = 'easy' THEN 1
-            WHEN p.difficulty = 'mid' THEN 3
-            WHEN p.difficulty = 'hard' THEN 5
+            WHEN p.difficulty = 'mid' THEN 2
+            WHEN p.difficulty = 'hard' THEN 3
             ELSE 0
         END
     ), 0) AS points
@@ -35,7 +35,7 @@ SELECT
     c.description,
     c.award_type,
     c.entry_price_ton_nanos,
-    c.award_distributed,
+    c.distribution_payment_id,
     c.start_time,
     c.end_time,
     c.duration_mins,

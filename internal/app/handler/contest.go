@@ -93,7 +93,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		DurationMins:       contest.DurationMins,
 		MaxEntries:         contest.MaxEntries,
 		AllowLateJoin:      contest.AllowLateJoin,
-		AwardDistributed:   contest.AwardDistributed,
+		AwardDistributed:   contest.DistributionPaymentID != nil,
 		IsParticipant:      details.IsParticipant,
 		SubmissionDeadline: details.SubmissionDeadline,
 		Prizes: response.Prizes{
@@ -160,7 +160,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			DurationMins:       contest.DurationMins,
 			MaxEntries:         contest.MaxEntries,
 			Participants:       contest.ParticipantsCount,
-			AwardDistributed:   contest.AwardDistributed,
+			AwardDistributed:   contest.DistributionPaymentID != nil,
 			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)
@@ -225,7 +225,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			DurationMins:       contest.DurationMins,
 			MaxEntries:         contest.MaxEntries,
 			Participants:       contest.ParticipantsCount,
-			AwardDistributed:   contest.AwardDistributed,
+			AwardDistributed:   contest.DistributionPaymentID != nil,
 			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)

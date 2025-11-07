@@ -62,12 +62,18 @@ func (h *Handler) GetEntry(c echo.Context) error {
 
 	entry := details.Entry
 
+	// TODO: put an entire payment (?)
+	var pid int
+	if entry.PaymentID != nil {
+		pid = *entry.PaymentID
+	}
+
 	return c.JSON(http.StatusOK, response.Entry{
 		ID:         entry.ID,
 		ContestID:  entry.ContestID,
 		UserID:     entry.UserID,
-		IsPaid:     entry.IsPaid,
-		TxHash:     entry.TxHash,
+		IsPaid:     entry.PaymentID != nil,
+		PaymentID:  pid,
 		IsAdmitted: details.IsAdmitted,
 		Message:    details.Message,
 		CreatedAt:  entry.CreatedAt,
