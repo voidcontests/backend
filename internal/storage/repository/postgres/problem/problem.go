@@ -65,7 +65,7 @@ func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (mod
 SELECT
 	problem_id, charcode, writer_id, writer_username, title, statement,
 	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
-FROM contest_problemsets
+FROM contest_problems_view
 WHERE contest_id = $1 AND charcode = $2`
 
 	row := p.conn.QueryRow(ctx, query, contestID, charcode)
@@ -83,7 +83,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, 
 	query := `SELECT
 			id, writer_id, writer_username, title, statement,
 			difficulty, time_limit_ms, memory_limit_mb, checker, created_at
-		FROM problem_details
+		FROM problems_view
 		WHERE id = $1`
 
 	row := p.conn.QueryRow(ctx, query, problemID)
@@ -143,7 +143,7 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 SELECT
 	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
 	memory_limit_mb, checker, created_at
-FROM problem_details`
+FROM problems_view`
 
 	rows, err := p.conn.Query(ctx, query)
 	if err != nil {
@@ -173,13 +173,13 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, off
 SELECT
 	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
 	memory_limit_mb, checker, created_at
-FROM problem_details
+FROM problems_view
 WHERE writer_id = $1
 ORDER BY id ASC
 LIMIT $2 OFFSET $3
 	`, writerID, limit, offset)
 
-	batch.Queue(`SELECT COUNT(*) FROM problem_details WHERE writer_id = $1`, writerID)
+	batch.Queue(`SELECT COUNT(*) FROM problems_view WHERE writer_id = $1`, writerID)
 
 	br := p.conn.SendBatch(ctx, batch)
 

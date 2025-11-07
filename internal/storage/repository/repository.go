@@ -78,6 +78,9 @@ type Contest interface {
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
 	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
 	GetWallet(ctx context.Context, walletID int) (models.Wallet, error)
+	SetAwardDistributed(ctx context.Context, contestID int) error
+	GetWithUndistributedAwards(ctx context.Context) ([]models.Contest, error)
+	GetWinnerID(ctx context.Context, contestID int) (int, error)
 }
 
 type Wallet interface {

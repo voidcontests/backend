@@ -35,7 +35,7 @@ func (p *Postgres) Create(ctx context.Context, entryID int, problemID int, code 
 	}
 
 	selectQuery := `SELECT id, entry_id, contest_id, problem_id, user_id, username, status, verdict, code, language, created_at
-		FROM submission_details WHERE id = $1`
+		FROM submissions_view WHERE id = $1`
 
 	var submission models.Submission
 	err = p.conn.QueryRow(ctx, selectQuery, submissionID).Scan(
@@ -118,7 +118,7 @@ func (p *Postgres) GetProblemStatuses(ctx context.Context, entryID int) (map[int
 
 func (p *Postgres) GetByID(ctx context.Context, submissionID int) (models.Submission, error) {
 	query := `SELECT id, entry_id, contest_id, problem_id, user_id, username, status, verdict, code, language, created_at
-		FROM submission_details WHERE id = $1`
+		FROM submissions_view WHERE id = $1`
 
 	var s models.Submission
 	err := p.conn.QueryRow(ctx, query, submissionID).Scan(
@@ -145,7 +145,7 @@ func (p *Postgres) ListByProblem(ctx context.Context, entryID int, charcode stri
 
 	query := `
 		SELECT s.id, s.entry_id, s.contest_id, s.problem_id, s.user_id, s.username, s.status, s.verdict, s.code, s.language, s.created_at, COUNT(*) OVER() as total_count
-		FROM submission_details s
+		FROM submissions_view s
 		JOIN contest_problems cp ON cp.contest_id = s.contest_id AND cp.problem_id = s.problem_id
 		WHERE s.entry_id = $1 AND cp.charcode = $2
 		ORDER BY s.created_at DESC

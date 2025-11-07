@@ -42,6 +42,7 @@ type Contest struct {
 	AllowLateJoin      bool      `db:"allow_late_join"`
 	ParticipantsCount  int       `db:"participants"`
 	WalletID           *int      `db:"wallet_id"`
+	AwardDistributed   bool      `db:"award_distributed"`
 	CreatedAt          time.Time `db:"created_at"`
 }
 

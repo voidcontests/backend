@@ -40,6 +40,7 @@ CREATE TABLE contests (
     description VARCHAR(300) DEFAULT '' NOT NULL,
     award_type award_type NOT NULL,
     entry_price_ton_nanos BIGINT DEFAULT 0 NOT NULL,
+    award_distributed BOOLEAN DEFAULT false NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     duration_mins INTEGER NOT NULL CHECK (duration_mins >= 0),

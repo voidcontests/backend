@@ -1,4 +1,4 @@
-CREATE VIEW leaderboard AS
+CREATE VIEW scores AS
 SELECT
     e.contest_id,
     u.id AS user_id,
@@ -13,16 +13,20 @@ SELECT
     ), 0) AS points
 FROM users u
 JOIN entries e ON u.id = e.user_id
+JOIN contests c ON e.contest_id = c.id
 LEFT JOIN (
-    SELECT DISTINCT entry_id, problem_id
-    FROM submissions
-    WHERE verdict = 'ok'
+    SELECT DISTINCT s.entry_id, s.problem_id
+    FROM submissions s
+    JOIN entries e2 ON s.entry_id = e2.id
+    JOIN contests c2 ON e2.contest_id = c2.id
+    WHERE s.verdict = 'ok'
+      AND s.created_at <= c2.end_time
 ) s ON e.id = s.entry_id
 LEFT JOIN problems p ON s.problem_id = p.id
 GROUP BY e.contest_id, u.id, u.username;
 
 
-CREATE VIEW contest_details AS
+CREATE VIEW contests_view AS
 SELECT
     c.id,
     c.creator_id,
@@ -31,6 +35,7 @@ SELECT
     c.description,
     c.award_type,
     c.entry_price_ton_nanos,
+    c.award_distributed,
     c.start_time,
     c.end_time,
     c.duration_mins,
@@ -45,7 +50,7 @@ LEFT JOIN entries e ON e.contest_id = c.id
 GROUP BY c.id, u.username;
 
 
-CREATE VIEW problem_details AS
+CREATE VIEW problems_view AS
 SELECT
     p.id,
     p.writer_id,
@@ -73,7 +78,7 @@ FROM submissions s
 GROUP BY s.entry_id, s.problem_id;
 
 
-CREATE VIEW contest_problemsets AS
+CREATE VIEW contest_problems_view AS
 SELECT
     p.id AS problem_id,
     cp.charcode,
@@ -92,7 +97,7 @@ JOIN contest_problems cp ON p.id = cp.problem_id
 JOIN users u ON u.id = p.writer_id;
 
 
-CREATE VIEW submission_details AS
+CREATE VIEW submissions_view AS
 SELECT
     s.id,
     s.entry_id,

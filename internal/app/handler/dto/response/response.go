@@ -56,6 +56,7 @@ type ContestDetailed struct {
 	MaxEntries         int                      `json:"max_entries,omitempty"`
 	Participants       int                      `json:"participants"`
 	AllowLateJoin      bool                     `json:"allow_late_join"`
+	AwardDistributed   bool                     `json:"award_distributed"`
 	IsParticipant      bool                     `json:"is_participant,omitempty"`
 	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
 	Problems           []ContestProblemListItem `json:"problems"`
@@ -78,6 +79,7 @@ type ContestListItem struct {
 	DurationMins       int       `json:"duration_mins"`
 	MaxEntries         int       `json:"max_entries,omitempty"`
 	Participants       int       `json:"participants"`
+	AwardDistributed   bool      `json:"award_distributed"`
 	CreatedAt          time.Time `json:"created_at"`
 }
 

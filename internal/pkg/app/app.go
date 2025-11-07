@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/lib/logger/prettyslog"
@@ -19,6 +21,7 @@ import (
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
 	"github.com/voidcontests/api/internal/version"
+	"github.com/voidcontests/api/pkg/scheduler"
 	"github.com/voidcontests/api/pkg/ton"
 )
 
@@ -104,6 +107,15 @@ func (a *App) Run() {
 	}()
 
 	slog.Info("api: started", slog.String("address", server.Addr))
+
+	interval := 1 * time.Minute
+	task := distributor.New(repo, tc)
+	scheduler := scheduler.New(interval, task)
+
+	go func() {
+		scheduler.Start(ctx)
+		defer scheduler.Stop()
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
