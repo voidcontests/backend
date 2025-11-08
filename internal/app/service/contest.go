@@ -150,9 +150,9 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 
 type ContestDetails struct {
 	Contest            models.Contest
+	IsRegistrationOpen bool
 	Problems           []models.Problem
 	IsParticipant      bool
-	SubmissionDeadline *time.Time
 	ProblemStatuses    map[int]string
 	WalletAddress      string
 	PrizeNanosTON      uint64
@@ -170,21 +170,21 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 		return nil, fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
-	now := time.Now()
-	// if contest.EndTime.Before(now) {
-	// 	if !authenticated || userID != contest.CreatorID {
-	// 		return nil, ErrContestFinished
-	// 	}
-	// }
-
 	problems, err := s.repo.Contest.GetProblemset(ctx, contestID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to get problemset: %w", op, err)
 	}
 
+	now := time.Now()
+
+	isRegistrationOpen := true
+	if contest.StartTime.Before(now) && contest.EndTime.After(now) && !contest.AllowLateJoin {
+		isRegistrationOpen = false
+	}
 	details := &ContestDetails{
-		Contest:  contest,
-		Problems: problems,
+		IsRegistrationOpen: isRegistrationOpen,
+		Contest:            contest,
+		Problems:           problems,
 	}
 
 	if contest.WalletID != nil && (contest.AwardType == award.Pool || contest.AwardType == award.Sponsored) {
@@ -221,11 +221,6 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 
 	details.IsParticipant = true
 
-	_, deadline := CalculateSubmissionWindow(contest, entry)
-	if contest.StartTime.Before(now) {
-		details.SubmissionDeadline = &deadline
-	}
-
 	statuses, err := s.repo.Submission.GetProblemStatuses(ctx, entry.ID)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to get problem statuses: %w", op, err)
@@ -237,6 +232,13 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 		return nil, fmt.Errorf("%s: failed to get entry details: %w", op, err)
 	}
 	details.EntryDetails = &entryDetails
+
+	if details.EntryDetails != nil {
+		_, deadline := CalculateSubmissionWindow(contest, entry)
+		if contest.StartTime.Before(now) {
+			details.EntryDetails.SubmissionDeadline = deadline
+		}
+	}
 
 	return details, nil
 }
@@ -302,10 +304,11 @@ func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limi
 }
 
 type EntryDetails struct {
-	Entry      models.Entry
-	IsAdmitted bool
-	Message    string
-	Payment    *models.Payment
+	Entry              models.Entry
+	IsAdmitted         bool
+	SubmissionDeadline time.Time
+	Message            string
+	Payment            *models.Payment
 }
 
 func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry, contest models.Contest) (EntryDetails, error) {

@@ -76,39 +76,38 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 	contest := details.Contest
 	n := len(details.Problems)
 	cdetailed := response.ContestDetailed{
-		ID:                 contest.ID,
-		Title:              contest.Title,
-		Description:        contest.Description,
-		AwardType:          contest.AwardType,
-		EntryPriceTonNanos: contest.EntryPriceTonNanos,
-		Address:            details.WalletAddress,
+		ID:          contest.ID,
+		Title:       contest.Title,
+		Description: contest.Description,
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
 		},
-		Problems:           make([]response.ContestProblemListItem, n, n),
-		Participants:       contest.ParticipantsCount,
+		Address:            details.WalletAddress,
 		StartTime:          contest.StartTime,
 		EndTime:            contest.EndTime,
 		DurationMins:       contest.DurationMins,
+		Participants:       contest.ParticipantsCount,
 		MaxEntries:         contest.MaxEntries,
-		AllowLateJoin:      contest.AllowLateJoin,
-		AwardDistributed:   contest.DistributionPaymentID != nil,
-		IsParticipant:      details.IsParticipant,
-		SubmissionDeadline: details.SubmissionDeadline,
-		Prizes: response.Prizes{
-			Nanos: details.PrizeNanosTON,
+		IsRegistrationOpen: details.IsRegistrationOpen,
+		EntryPriceTonNanos: contest.EntryPriceTonNanos,
+		Awards: response.Awards{
+			Kind:          contest.AwardType,
+			Nanocoins:     details.PrizeNanosTON,
+			IsDistributed: contest.DistributionPaymentID != nil,
 		},
+		Problems:  make([]response.ContestProblemListItem, n, n),
 		CreatedAt: contest.CreatedAt,
 	}
 
 	if details.EntryDetails != nil {
 		entryDetails := details.EntryDetails
 		contestEntry := response.Entry{
-			IsAdmitted: entryDetails.IsAdmitted,
-			Message:    entryDetails.Message,
-			IsPaid:     entryDetails.Entry.PaymentID != nil,
-			CreatedAt:  entryDetails.Entry.CreatedAt,
+			IsAdmitted:         entryDetails.IsAdmitted,
+			SubmissionDeadline: entryDetails.SubmissionDeadline,
+			Message:            entryDetails.Message,
+			IsPaid:             entryDetails.Entry.PaymentID != nil,
+			CreatedAt:          entryDetails.Entry.CreatedAt,
 		}
 
 		if entryDetails.Payment != nil {

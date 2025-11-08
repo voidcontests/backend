@@ -47,31 +47,34 @@ type ContestDetailed struct {
 	ID                 int                      `json:"id"`
 	Title              string                   `json:"title"`
 	Description        string                   `json:"description"`
-	AwardType          string                   `json:"award_type"`
-	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos"`
-	Address            string                   `json:"address,omitempty"`
 	Creator            User                     `json:"creator"`
+	Address            string                   `json:"address,omitempty"`
 	StartTime          time.Time                `json:"start_time"`
 	EndTime            time.Time                `json:"end_time"`
 	DurationMins       int                      `json:"duration_mins"`
-	MaxEntries         int                      `json:"max_entries,omitempty"`
 	Participants       int                      `json:"participants"`
-	AllowLateJoin      bool                     `json:"allow_late_join"`
-	AwardDistributed   bool                     `json:"award_distributed"`
-	IsParticipant      bool                     `json:"is_participant,omitempty"`
-	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
+	MaxEntries         int                      `json:"max_entries,omitempty"`
+	IsRegistrationOpen bool                     `json:"is_registration_open"`
+	EntryPriceTonNanos uint64                   `json:"entry_price_ton_nanos"`
 	Entry              *Entry                   `json:"entry,omitempty"`
+	Awards             Awards                   `json:"awards"`
 	Problems           []ContestProblemListItem `json:"problems"`
-	Prizes             Prizes                   `json:"prizes"`
 	CreatedAt          time.Time                `json:"created_at"`
 }
 
+type Awards struct {
+	Kind          string `json:"kind"`
+	Nanocoins     uint64 `json:"nanocoins"`
+	IsDistributed bool   `json:"is_distributed"`
+}
+
 type Entry struct {
-	IsAdmitted bool            `json:"is_admitted"`
-	Message    string          `json:"message,omitempty"`
-	IsPaid     bool            `json:"is_paid"`
-	Payment    *PaymentDetails `json:"payment,omitempty"`
-	CreatedAt  time.Time       `json:"created_at"`
+	IsAdmitted         bool            `json:"is_admitted"`
+	SubmissionDeadline time.Time       `json:"submission_deadline"`
+	Message            string          `json:"message,omitempty"`
+	IsPaid             bool            `json:"is_paid"`
+	Payment            *PaymentDetails `json:"payment,omitempty"`
+	CreatedAt          time.Time       `json:"created_at"`
 }
 
 type PaymentDetails struct {
