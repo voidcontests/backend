@@ -63,9 +63,10 @@ type ContestDetailed struct {
 }
 
 type Awards struct {
-	Kind          string `json:"kind"`
-	Nanocoins     uint64 `json:"nanocoins"`
-	IsDistributed bool   `json:"is_distributed"`
+	Kind               string `json:"kind"`
+	Nanocoins          uint64 `json:"nanocoins"`
+	IsDistributed      bool   `json:"is_distributed"`
+	DistributionTxHash string `json:"distribution_tx_hash,omitempty"`
 }
 
 type Entry struct {

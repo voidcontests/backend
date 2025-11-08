@@ -150,14 +150,15 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 }
 
 type ContestDetails struct {
-	Contest            models.Contest
-	IsRegistrationOpen bool
-	Problems           []models.Problem
-	IsParticipant      bool
-	ProblemStatuses    map[int]string
-	WalletAddress      string
-	PrizeNanosTON      uint64
-	EntryDetails       *EntryDetails
+	Contest             models.Contest
+	IsRegistrationOpen  bool
+	Problems            []models.Problem
+	IsParticipant       bool
+	ProblemStatuses     map[int]string
+	WalletAddress       string
+	PrizeNanosTON       uint64
+	EntryDetails        *EntryDetails
+	DistributionPayment *models.Payment
 }
 
 func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID int, authenticated bool) (*ContestDetails, error) {
@@ -206,6 +207,14 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			// TODO: maybe on this error, just return balance = 0 (?)
 			return nil, fmt.Errorf("%s: failed to get wallet balance: %w", op, err)
 		}
+	}
+
+	if contest.DistributionPaymentID != nil {
+		payment, err := s.repo.Payment.GetByID(ctx, *contest.DistributionPaymentID)
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to get distribution payment: %w", op, err)
+		}
+		details.DistributionPayment = &payment
 	}
 
 	if !authenticated {
@@ -277,13 +286,13 @@ func (s *ContestService) ListAllContests(ctx context.Context, limit, offset int,
 	}, nil
 }
 
-type LeaderboardResult struct {
-	Leaderboard []models.LeaderboardEntry
-	Total       int
+type ScoresResult struct {
+	Scores []models.ScoresEntry
+	Total  int
 }
 
-func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limit, offset int) (*LeaderboardResult, error) {
-	op := "service.ContestService.GetLeaderboard"
+func (s *ContestService) GetScores(ctx context.Context, contestID int, limit, offset int) (*ScoresResult, error) {
+	op := "service.ContestService.GetScores"
 
 	_, err := s.repo.Contest.GetByID(ctx, contestID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -293,14 +302,14 @@ func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limi
 		return nil, fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
-	leaderboard, total, err := s.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)
+	scores, total, err := s.repo.Contest.GetScores(ctx, contestID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to get leaderboard: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to get scores: %w", op, err)
 	}
 
-	return &LeaderboardResult{
-		Leaderboard: leaderboard,
-		Total:       total,
+	return &ScoresResult{
+		Scores: scores,
+		Total:  total,
 	}, nil
 }
 

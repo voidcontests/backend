@@ -75,6 +75,15 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 
 	contest := details.Contest
 	n := len(details.Problems)
+	awards := response.Awards{
+		Kind:          contest.AwardType,
+		Nanocoins:     details.PrizeNanosTON,
+		IsDistributed: contest.DistributionPaymentID != nil,
+	}
+	if details.DistributionPayment != nil {
+		awards.DistributionTxHash = details.DistributionPayment.TxHash
+	}
+
 	cdetailed := response.ContestDetailed{
 		ID:          contest.ID,
 		Title:       contest.Title,
@@ -91,13 +100,9 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		MaxEntries:         contest.MaxEntries,
 		IsRegistrationOpen: details.IsRegistrationOpen,
 		EntryPriceTonNanos: contest.EntryPriceTonNanos,
-		Awards: response.Awards{
-			Kind:          contest.AwardType,
-			Nanocoins:     details.PrizeNanosTON,
-			IsDistributed: contest.DistributionPaymentID != nil,
-		},
-		Problems:  make([]response.ContestProblemListItem, n, n),
-		CreatedAt: contest.CreatedAt,
+		Awards:             awards,
+		Problems:           make([]response.ContestProblemListItem, n, n),
+		CreatedAt:          contest.CreatedAt,
 	}
 
 	if details.EntryDetails != nil {
@@ -261,7 +266,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 	})
 }
 
-func (h *Handler) GetLeaderboard(c echo.Context) error {
+func (h *Handler) GetScores(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	contestID, ok := ExtractParamInt(c, "cid")
@@ -279,7 +284,7 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 		offset = 0
 	}
 
-	result, err := h.service.Contest.GetLeaderboard(ctx, contestID, limit, offset)
+	result, err := h.service.Contest.GetScores(ctx, contestID, limit, offset)
 	if err != nil {
 		if errors.Is(err, service.ErrContestNotFound) {
 			return Error(http.StatusNotFound, "contest not found")
@@ -287,7 +292,7 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, response.Pagination[models.LeaderboardEntry]{
+	return c.JSON(http.StatusOK, response.Pagination[models.ScoresEntry]{
 		Meta: response.Meta{
 			Total:   result.Total,
 			Limit:   limit,
@@ -295,6 +300,6 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
-		Items: result.Leaderboard,
+		Items: result.Scores,
 	})
 }

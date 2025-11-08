@@ -81,7 +81,7 @@ type Contest interface {
 	GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error)
 	GetEntriesCount(ctx context.Context, contestID int) (int, error)
 	IsTitleOccupied(ctx context.Context, title string) (bool, error)
-	GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error)
+	GetScores(ctx context.Context, contestID, limit, offset int) (scores []models.ScoresEntry, total int, err error)
 	GetWallet(ctx context.Context, walletID int) (models.Wallet, error)
 	SetDistributionPaymentID(ctx context.Context, contestID int, paymentID int) error
 	GetWithUndistributedAwards(ctx context.Context) ([]models.Contest, error)

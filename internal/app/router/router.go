@@ -96,7 +96,7 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
-		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
+		api.GET("/contests/:cid/scores", r.handler.GetScores)
 
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())

@@ -140,7 +140,7 @@ type TestingReport struct {
 	CreatedAt             time.Time `db:"created_at"`
 }
 
-type LeaderboardEntry struct {
+type ScoresEntry struct {
 	UserID   int    `db:"user_id" json:"user_id"`
 	Username string `db:"username" json:"username"`
 	Points   int    `db:"points" json:"points"`

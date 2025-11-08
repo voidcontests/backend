@@ -276,7 +276,7 @@ func (p *Postgres) GetWinnerID(ctx context.Context, contestID int) (int, error) 
 	return userID, err
 }
 
-func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error) {
+func (p *Postgres) GetScores(ctx context.Context, contestID, limit, offset int) (scores []models.ScoresEntry, total int, err error) {
 	query := `
 		SELECT user_id, username, points, COUNT(*) OVER() AS total
 		FROM scores
@@ -287,24 +287,24 @@ func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset 
 
 	rows, err := p.conn.Query(ctx, query, contestID, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("leaderboard query failed: %w", err)
+		return nil, 0, fmt.Errorf("scores query failed: %w", err)
 	}
 	defer rows.Close()
 
-	leaderboard = make([]models.LeaderboardEntry, 0)
+	scores = make([]models.ScoresEntry, 0)
 	for rows.Next() {
-		var entry models.LeaderboardEntry
+		var entry models.ScoresEntry
 		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points, &total); err != nil {
 			return nil, 0, err
 		}
-		leaderboard = append(leaderboard, entry)
+		scores = append(scores, entry)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
 
-	return leaderboard, total, nil
+	return scores, total, nil
 }
 
 func (p *Postgres) SetDistributionPaymentID(ctx context.Context, contestID int, paymentID int) error {
