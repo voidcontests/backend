@@ -84,11 +84,8 @@ func (r *Router) InitRoutes() *echo.Echo {
 		api.PATCH("/account", r.handler.UpdateAccount, r.handler.MustIdentify())
 		api.POST("/session", r.handler.CreateSession)
 
-		// DONE: make this endpoints as filter to general endpoint, like:
-		// GET /contests?creator_id=69
-		// GET /problems?writer_id=420
-		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
-		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
+		api.GET("/account/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
+		api.GET("/account/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
 		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
 
@@ -99,7 +96,6 @@ func (r *Router) InitRoutes() *echo.Echo {
 
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
 		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
-		api.GET("/contests/:cid/entry", r.handler.GetEntry, r.handler.MustIdentify())
 		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
 
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())

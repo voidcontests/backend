@@ -9,7 +9,6 @@ import (
 
 type Service struct {
 	Account    *AccountService
-	Entry      *EntryService
 	Submission *SubmissionService
 	Problem    *ProblemService
 	Contest    *ContestService
@@ -18,7 +17,6 @@ type Service struct {
 func New(cfg *config.Security, repo *repository.Repository, broker broker.Broker, tc *ton.Client) *Service {
 	return &Service{
 		Account:    NewAccountService(cfg, repo),
-		Entry:      NewEntryService(repo, tc),
 		Submission: NewSubmissionService(repo, broker),
 		Problem:    NewProblemService(repo),
 		Contest:    NewContestService(repo, tc),

@@ -60,9 +60,23 @@ type ContestDetailed struct {
 	AwardDistributed   bool                     `json:"award_distributed"`
 	IsParticipant      bool                     `json:"is_participant,omitempty"`
 	SubmissionDeadline *time.Time               `json:"submission_deadline,omitempty"`
+	Entry              *Entry                   `json:"entry,omitempty"`
 	Problems           []ContestProblemListItem `json:"problems"`
 	Prizes             Prizes                   `json:"prizes"`
 	CreatedAt          time.Time                `json:"created_at"`
+}
+
+type Entry struct {
+	IsAdmitted bool            `json:"is_admitted"`
+	Message    string          `json:"message,omitempty"`
+	IsPaid     bool            `json:"is_paid"`
+	Payment    *PaymentDetails `json:"payment,omitempty"`
+	CreatedAt  time.Time       `json:"created_at"`
+}
+
+type PaymentDetails struct {
+	TxHash    string    `json:"tx_hash"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Prizes struct {
@@ -167,15 +181,4 @@ type ProblemListItem struct {
 type TC struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
-}
-
-type Entry struct {
-	ID         int       `json:"id"`
-	ContestID  int       `json:"contest_id"`
-	UserID     int       `json:"user_id"`
-	IsPaid     bool      `json:"is_paid"`
-	PaymentID  int       `json:"payment_id,omitempty"`
-	IsAdmitted bool      `json:"is_admitted"`
-	Message    string    `json:"message,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
 }

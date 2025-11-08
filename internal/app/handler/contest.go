@@ -102,6 +102,25 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		CreatedAt: contest.CreatedAt,
 	}
 
+	if details.EntryDetails != nil {
+		entryDetails := details.EntryDetails
+		contestEntry := response.Entry{
+			IsAdmitted: entryDetails.IsAdmitted,
+			Message:    entryDetails.Message,
+			IsPaid:     entryDetails.Entry.PaymentID != nil,
+			CreatedAt:  entryDetails.Entry.CreatedAt,
+		}
+
+		if entryDetails.Payment != nil {
+			contestEntry.Payment = &response.PaymentDetails{
+				TxHash:    entryDetails.Payment.TxHash,
+				CreatedAt: entryDetails.Payment.CreatedAt,
+			}
+		}
+
+		cdetailed.Entry = &contestEntry
+	}
+
 	for i := range n {
 		p := details.Problems[i]
 		cdetailed.Problems[i] = response.ContestProblemListItem{

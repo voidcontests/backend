@@ -156,6 +156,7 @@ type ContestDetails struct {
 	ProblemStatuses    map[int]string
 	WalletAddress      string
 	PrizeNanosTON      uint64
+	EntryDetails       *EntryDetails
 }
 
 func (s *ContestService) GetContestByID(ctx context.Context, contestID int, userID int, authenticated bool) (*ContestDetails, error) {
@@ -231,6 +232,12 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 	}
 	details.ProblemStatuses = statuses
 
+	entryDetails, err := s.getEntryDetails(ctx, entry, contest)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get entry details: %w", op, err)
+	}
+	details.EntryDetails = &entryDetails
+
 	return details, nil
 }
 
@@ -292,4 +299,82 @@ func (s *ContestService) GetLeaderboard(ctx context.Context, contestID int, limi
 		Leaderboard: leaderboard,
 		Total:       total,
 	}, nil
+}
+
+type EntryDetails struct {
+	Entry      models.Entry
+	IsAdmitted bool
+	Message    string
+	Payment    *models.Payment
+}
+
+func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry, contest models.Contest) (EntryDetails, error) {
+	op := "service.ContestService.getEntryDetails"
+
+	if entry.PaymentID != nil {
+		payment, err := s.repo.Payment.GetByID(ctx, *entry.PaymentID)
+		if err != nil {
+			return EntryDetails{}, fmt.Errorf("%s: failed to get payment: %w", op, err)
+		}
+
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: true,
+			Payment:    &payment,
+		}, nil
+	}
+
+	if contest.AwardType != award.Pool {
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: true,
+		}, nil
+	}
+
+	return EntryDetails{
+		Entry:      entry,
+		IsAdmitted: false,
+		Message:    "payment required to participate in this contest",
+	}, nil
+}
+
+func (s *ContestService) CreateEntry(ctx context.Context, contestID int, userID int) error {
+	op := "service.ContestService.CreateEntry"
+
+	contest, err := s.repo.Contest.GetByID(ctx, contestID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrContestNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("%s: failed to get contest: %w", op, err)
+	}
+
+	entriesCount, err := s.repo.Contest.GetEntriesCount(ctx, contestID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to get entries count: %w", op, err)
+	}
+
+	if contest.MaxEntries != 0 && entriesCount >= contest.MaxEntries {
+		return ErrMaxSlotsReached
+	}
+
+	now := time.Now()
+	if contest.EndTime.Before(now) || (contest.StartTime.Before(now) && !contest.AllowLateJoin) {
+		return ErrApplicationTimeOver
+	}
+
+	_, err = s.repo.Entry.Get(ctx, contestID, userID)
+	if err == nil {
+		return ErrEntryAlreadyExists
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%s: failed to check existing entry: %w", op, err)
+	}
+
+	_, err = s.repo.Entry.Create(ctx, contestID, userID)
+	if err != nil {
+		return fmt.Errorf("%s: failed to create entry: %w", op, err)
+	}
+
+	return nil
 }
