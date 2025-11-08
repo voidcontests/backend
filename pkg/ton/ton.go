@@ -163,3 +163,7 @@ func (c *Client) LookupTx(ctx context.Context, from *address.Address, to *addres
 func (w *Wallet) Address() *address.Address {
 	return w.address.Testnet(w.testnet)
 }
+
+func (c *Client) GetAddressString(addr *address.Address) string {
+	return addr.Testnet(c.testnet).String()
+}

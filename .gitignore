@@ -11,4 +11,4 @@ build
 TODO
 buffer
 
-migrations/999999_*.sql
+migrations/data.up.sql

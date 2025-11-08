@@ -13,6 +13,7 @@ import (
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/pkg/ton"
 	"github.com/xssnick/tonutils-go/address"
+	"github.com/xssnick/tonutils-go/tlb"
 )
 
 type ContestService struct {
@@ -334,10 +335,65 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		}, nil
 	}
 
+	user, err := s.repo.User.GetByID(ctx, entry.UserID)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to get user: %w", op, err)
+	}
+
+	if user.Address == nil {
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: false,
+			Message:    "address connected required to user account, to check payment",
+		}, nil
+	}
+
+	from, err := address.ParseAddr(*user.Address)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to parse user address: %w", op, err)
+	}
+
+	wallet, err := s.repo.Contest.GetWallet(ctx, contest.ID)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to get wallet: %w", op, err)
+	}
+
+	to, err := address.ParseAddr(wallet.Address)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to parse user address: %w", op, err)
+	}
+
+	amount := tlb.FromNanoTONU(contest.EntryPriceTonNanos)
+	tx, exists := s.ton.LookupTx(ctx, from, to, amount)
+	if !exists {
+		return EntryDetails{
+			Entry:      entry,
+			IsAdmitted: false,
+			Message:    "payment required to participate in this contest",
+		}, nil
+	}
+
+	pid, err := s.repo.Payment.Create(ctx, tx, s.ton.GetAddressString(from), wallet.Address, contest.EntryPriceTonNanos, true)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to create payment: %w", op, err)
+	}
+
+	err = s.repo.Entry.SetPaymentID(ctx, entry.ID, pid)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to set payment ID for entry: %w", op, err)
+	}
+	entry.PaymentID = &pid
+
+	payment, err := s.repo.Payment.GetByID(ctx, pid)
+	if err != nil {
+		return EntryDetails{}, fmt.Errorf("%s: failed to get payment by ID: %w", op, err)
+	}
+
 	return EntryDetails{
 		Entry:      entry,
 		IsAdmitted: false,
 		Message:    "payment required to participate in this contest",
+		Payment:    &payment,
 	}, nil
 }
 
