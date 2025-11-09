@@ -31,6 +31,7 @@ SELECT
     c.id,
     c.creator_id,
     u.username AS creator_username,
+    u.address AS creator_address,
     c.title,
     c.description,
     c.award_type,
@@ -47,7 +48,7 @@ SELECT
 FROM contests c
 JOIN users u ON u.id = c.creator_id
 LEFT JOIN entries e ON e.contest_id = c.id
-GROUP BY c.id, u.username;
+GROUP BY c.id, u.username, u.address;
 
 
 CREATE VIEW problems_view AS
@@ -55,6 +56,7 @@ SELECT
     p.id,
     p.writer_id,
     u.username AS writer_username,
+    u.address AS writer_address,
     p.title,
     p.statement,
     p.difficulty,
@@ -85,6 +87,7 @@ SELECT
     cp.contest_id,
     p.writer_id,
     u.username AS writer_username,
+    u.address AS writer_address,
     p.title,
     p.statement,
     p.difficulty,

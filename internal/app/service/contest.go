@@ -349,7 +349,7 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		return EntryDetails{}, fmt.Errorf("%s: failed to get user: %w", op, err)
 	}
 
-	if user.Address == nil {
+	if user.Address == "" {
 		return EntryDetails{
 			Entry:      entry,
 			IsAdmitted: false,
@@ -357,7 +357,7 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		}, nil
 	}
 
-	from, err := address.ParseAddr(*user.Address)
+	from, err := address.ParseAddr(user.Address)
 	if err != nil {
 		return EntryDetails{}, fmt.Errorf("%s: failed to parse user address: %w", op, err)
 	}

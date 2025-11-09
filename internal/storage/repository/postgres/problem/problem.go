@@ -63,7 +63,7 @@ func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []
 func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
 	query := `
 SELECT
-	problem_id, charcode, writer_id, writer_username, title, statement,
+	problem_id, charcode, writer_id, writer_username, writer_address, title, statement,
 	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 FROM contest_problems_view
 WHERE contest_id = $1 AND charcode = $2`
@@ -72,7 +72,7 @@ WHERE contest_id = $1 AND charcode = $2`
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
 	)
 
@@ -81,7 +81,7 @@ WHERE contest_id = $1 AND charcode = $2`
 
 func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, error) {
 	query := `SELECT
-			id, writer_id, writer_username, title, statement,
+			id, writer_id, writer_username, writer_address, title, statement,
 			difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 		FROM problems_view
 		WHERE id = $1`
@@ -90,7 +90,7 @@ func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, 
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
 	)
 
@@ -141,7 +141,7 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	query := `
 SELECT
-	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
+	id, writer_id, writer_username, writer_address, title, statement, difficulty, time_limit_ms,
 	memory_limit_mb, checker, created_at
 FROM problems_view`
 
@@ -155,7 +155,7 @@ FROM problems_view`
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.WriterUsername, &p.Title, &p.Statement, &p.Difficulty,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.WriterAddress, &p.Title, &p.Statement, &p.Difficulty,
 			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -171,7 +171,7 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, off
 
 	batch.Queue(`
 SELECT
-	id, writer_id, writer_username, title, statement, difficulty, time_limit_ms,
+	id, writer_id, writer_username, writer_address, title, statement, difficulty, time_limit_ms,
 	memory_limit_mb, checker, created_at
 FROM problems_view
 WHERE writer_id = $1
@@ -193,7 +193,7 @@ LIMIT $2 OFFSET $3
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.WriterUsername, &p.Title, &p.Statement, &p.Difficulty,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.WriterAddress, &p.Title, &p.Statement, &p.Difficulty,
 			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			rows.Close()

@@ -86,6 +86,7 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 			Writer: response.User{
 				ID:       p.WriterID,
 				Username: p.WriterUsername,
+				Address:  p.WriterAddress,
 			},
 		}
 	}
@@ -160,6 +161,7 @@ func (h *Handler) GetContestProblem(c echo.Context) error {
 		Writer: response.User{
 			ID:       p.WriterID,
 			Username: p.WriterUsername,
+			Address:  p.WriterAddress,
 		},
 	}
 
@@ -215,6 +217,7 @@ func (h *Handler) GetProblemByID(c echo.Context) error {
 		Writer: response.User{
 			ID:       problem.WriterID,
 			Username: problem.WriterUsername,
+			Address:  problem.WriterAddress,
 		},
 	}
 

@@ -28,6 +28,7 @@ type Token struct {
 type Account struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
+	Address  string `json:"address,omitempty"`
 	Role     Role   `json:"role"`
 }
 
@@ -38,9 +39,9 @@ type Role struct {
 }
 
 type User struct {
-	ID       int     `json:"id"`
-	Username string  `json:"username"`
-	Address  *string `json:"address,omitempty"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Address  string `json:"address,omitempty"`
 }
 
 type ContestDetailed struct {

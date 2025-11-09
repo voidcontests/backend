@@ -76,6 +76,7 @@ func (h *Handler) GetAccount(c echo.Context) error {
 	return c.JSON(http.StatusOK, response.Account{
 		ID:       accountInfo.User.ID,
 		Username: accountInfo.User.Username,
+		Address:  accountInfo.User.Address,
 		Role: response.Role{
 			Name:                 accountInfo.Role.Name,
 			CreatedProblemsLimit: accountInfo.Role.CreatedProblemsLimit,

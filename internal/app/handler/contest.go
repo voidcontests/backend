@@ -91,6 +91,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
+			Address:  contest.CreatorAddress,
 		},
 		Address:            details.WalletAddress,
 		StartTime:          contest.StartTime,
@@ -133,6 +134,7 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 			Writer: response.User{
 				ID:       p.WriterID,
 				Username: p.WriterUsername,
+				Address:  p.WriterAddress,
 			},
 			Title:         p.Title,
 			Difficulty:    p.Difficulty,
@@ -174,6 +176,7 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 			Creator: response.User{
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
+				Address:  contest.CreatorAddress,
 			},
 			Title:              contest.Title,
 			AwardType:          contest.AwardType,
@@ -239,6 +242,7 @@ func (h *Handler) GetContests(c echo.Context) error {
 			Creator: response.User{
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
+				Address:  contest.CreatorAddress,
 			},
 			Title:              contest.Title,
 			AwardType:          contest.AwardType,

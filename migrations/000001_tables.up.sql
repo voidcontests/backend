@@ -18,12 +18,12 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
-    address VARCHAR(48),
+    address VARCHAR(48) DEFAULT '' NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
 CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE UNIQUE INDEX unique_user_address ON users(address) WHERE address IS NOT NULL;
+CREATE UNIQUE INDEX unique_user_address ON users(address) WHERE address <> '';
 
 -- TODO: encrypt the mnemonic before saving
 CREATE TABLE wallets (

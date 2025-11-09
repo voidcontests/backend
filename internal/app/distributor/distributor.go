@@ -51,11 +51,11 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return err
 	}
 
-	if winner.Address == nil {
+	if winner.Address == "" {
 		return fmt.Errorf("user has no wallet")
 	}
 
-	recepient, err := address.ParseAddr(*winner.Address)
+	recepient, err := address.ParseAddr(winner.Address)
 	if err != nil {
 		return err
 	}

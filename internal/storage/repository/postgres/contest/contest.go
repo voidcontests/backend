@@ -62,12 +62,12 @@ func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, 
 	var contest models.Contest
 	query := `
 SELECT
-	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
 	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 WHERE id = $1`
 	err := p.conn.QueryRow(ctx, query, contestID).Scan(
-		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.Title, &contest.Description, &contest.AwardType, &contest.EntryPriceTonNanos, &contest.StartTime,
+		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.CreatorAddress, &contest.Title, &contest.Description, &contest.AwardType, &contest.EntryPriceTonNanos, &contest.StartTime,
 		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
 		&contest.WalletID, &contest.DistributionPaymentID, &contest.ParticipantsCount, &contest.CreatedAt)
 	return contest, err
@@ -87,7 +87,7 @@ WHERE w.id = $1`
 func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
 	query := `
 SELECT
-	problem_id, charcode, writer_id, writer_username, title, statement,
+	problem_id, charcode, writer_id, writer_username, writer_address, title, statement,
 	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
 FROM contest_problems_view
 WHERE contest_id = $1 ORDER BY charcode ASC`
@@ -101,7 +101,7 @@ WHERE contest_id = $1 ORDER BY charcode ASC`
 	var problems []models.Problem
 	for rows.Next() {
 		var problem models.Problem
-		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt); err != nil {
+		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt); err != nil {
 			return nil, err
 		}
 		problems = append(problems, problem)
@@ -139,7 +139,7 @@ func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters m
 
 	query := fmt.Sprintf(`
 SELECT
-	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
 	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 %s
@@ -181,7 +181,7 @@ LIMIT $1 OFFSET $2
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
 			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
@@ -209,7 +209,7 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, o
 	batch := &pgx.Batch{}
 	batch.Queue(`
 SELECT
-	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
 	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 WHERE creator_id = $1
@@ -231,7 +231,7 @@ LIMIT $2 OFFSET $3
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
 			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
@@ -319,7 +319,7 @@ func (p *Postgres) SetDistributionPaymentID(ctx context.Context, contestID int, 
 func (p *Postgres) GetWithUndistributedAwards(ctx context.Context) ([]models.Contest, error) {
 	query := `
 SELECT
-	id, creator_id, creator_username, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
 	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
 FROM contests_view
 WHERE distribution_payment_id IS NULL AND end_time < now() AND award_type <> 'no'
@@ -335,7 +335,7 @@ ORDER BY end_time ASC`
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
 			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {

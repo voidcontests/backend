@@ -14,7 +14,7 @@ type User struct {
 	Username     string    `db:"username"`
 	PasswordHash string    `db:"password_hash"`
 	RoleID       int       `db:"role_id"`
-	Address      *string   `db:"address"`
+	Address      string    `db:"address"`
 	CreatedAt    time.Time `db:"created_at"`
 }
 
@@ -36,6 +36,7 @@ type Contest struct {
 	ID                    int       `db:"id"`
 	CreatorID             int       `db:"creator_id"`
 	CreatorUsername       string    `db:"creator_username"`
+	CreatorAddress        string    `db:"creator_address"`
 	Title                 string    `db:"title"`
 	Description           string    `db:"description"`
 	AwardType             string    `db:"award_type"`
@@ -83,6 +84,7 @@ type Problem struct {
 	Charcode       string    `db:"charcode"`
 	WriterID       int       `db:"writer_id"`
 	WriterUsername string    `db:"writer_username"`
+	WriterAddress  string    `db:"writer_address"`
 	Title          string    `db:"title"`
 	Statement      string    `db:"statement"`
 	Difficulty     string    `db:"difficulty"`
