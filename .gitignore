@@ -13,4 +13,4 @@ buffer
 
 migrations/data.up.sql
 
-.diff
+*.diff
