@@ -12,3 +12,5 @@ TODO
 buffer
 
 migrations/data.up.sql
+
+.diff
