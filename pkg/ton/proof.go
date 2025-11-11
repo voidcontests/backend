@@ -1,20 +1,20 @@
 package ton
 
 type Proof struct {
-	Address string    `json:"address" required:"true"`
-	Network string    `json:"network" required:"true"`
-	Proof   ProofData `json:"proof" required:"true"`
+	Address string    `json:"address"`
+	Network string    `json:"network"`
+	Proof   ProofData `json:"proof"`
 }
 
 type ProofData struct {
-	Timestamp int64  `json:"timestamp" required:"true"`
-	Domain    Domain `json:"domain" required:"true"`
-	Signature string `json:"signature" required:"true"`
-	Payload   string `json:"payload" required:"true"`
-	StateInit string `json:"state_init" required:"true"`
+	Timestamp int64  `json:"timestamp"`
+	Domain    Domain `json:"domain"`
+	Signature string `json:"signature"`
+	Payload   string `json:"payload"`
+	StateInit string `json:"state_init"`
 }
 
 type Domain struct {
-	LengthBytes int    `json:"lengthBytes" required:"true"`
-	Value       string `json:"value" required:"true"`
+	LengthBytes int    `json:"lengthBytes"`
+	Value       string `json:"value"`
 }

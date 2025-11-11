@@ -14,9 +14,18 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
+const (
+	MainnetID = "-239"
+	TestnetID = "-3"
+)
+
 type Client struct {
 	api     tonutils.APIClientWrapped
 	testnet bool
+}
+
+func (c *Client) API() tonutils.APIClientWrapped {
+	return c.api
 }
 
 func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {

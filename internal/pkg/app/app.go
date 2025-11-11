@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tonkeeper/tongo/liteapi"
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
@@ -92,15 +91,9 @@ func (a *App) Run() {
 		slog.Info("ton: ok (mainnet)")
 	}
 
-	var tcc *liteapi.Client
-	if a.config.Ton.IsTestnet {
-		tcc = ton.Testnet()
-	} else {
-		tcc = ton.Mainnet()
-	}
-
+	executor := ton.NewExecutorAdapter(tc.API())
 	tcs, err := tonconnect.NewTonConnect(
-		tcc,
+		executor,
 		a.config.Ton.Proof.PayloadSignatureKey,
 		tonconnect.WithLifeTimePayload(int64(a.config.Ton.Proof.PayloadLifetime.Seconds())),
 		tonconnect.WithLifeTimeProof(int64(a.config.Ton.Proof.ProofLifetime.Seconds())),
