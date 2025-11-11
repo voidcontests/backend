@@ -12,7 +12,6 @@ import (
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/jwt"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
@@ -137,7 +136,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 
 			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 			if authHeader == "" {
-				log.Debug("auth header is empty, skipping check")
 				if skiperr {
 					return next(c)
 				} else {
@@ -165,7 +163,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 			})
 
 			if err != nil {
-				log.Debug("token parsing failed", sl.Err(err))
 				if skiperr {
 					return next(c)
 				} else {
@@ -174,7 +171,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 			}
 
 			if !token.Valid {
-				log.Debug("invalid token")
 				if skiperr {
 					return next(c)
 				} else {
@@ -184,7 +180,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 
 			claims, ok := token.Claims.(*jwt.CustomClaims)
 			if !ok {
-				log.Debug("invalid token claims")
 				if skiperr {
 					return next(c)
 				} else {
