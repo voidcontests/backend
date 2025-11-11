@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/tonkeeper/tongo/tonconnect"
+	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/ton"
 	"github.com/voidcontests/api/pkg/validate"
@@ -37,7 +38,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		return Error(http.StatusUnauthorized, "user not authenticated")
 	}
 
-	var tp ton.Proof
+	var tp request.TonProof
 	if err := validate.Bind(c, &tp); err != nil {
 		return Error(http.StatusBadRequest, "invalid request body")
 	}

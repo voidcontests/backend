@@ -24,10 +24,6 @@ type Client struct {
 	testnet bool
 }
 
-func (c *Client) API() tonutils.APIClientWrapped {
-	return c.api
-}
-
 func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
 	client := liteclient.NewConnectionPool()
 	err := client.AddConnectionsFromConfigUrl(ctx, c.ConfigURL)
@@ -175,4 +171,8 @@ func (w *Wallet) Address() *address.Address {
 
 func (c *Client) GetAddressString(addr *address.Address) string {
 	return addr.Testnet(c.testnet).String()
+}
+
+func (c *Client) API() tonutils.APIClientWrapped {
+	return c.api
 }

@@ -91,9 +91,8 @@ func (a *App) Run() {
 		slog.Info("ton: ok (mainnet)")
 	}
 
-	executor := ton.NewExecutorAdapter(tc.API())
 	tcs, err := tonconnect.NewTonConnect(
-		executor,
+		tc,
 		a.config.Ton.Proof.PayloadSignatureKey,
 		tonconnect.WithLifeTimePayload(int64(a.config.Ton.Proof.PayloadLifetime.Seconds())),
 		tonconnect.WithLifeTimeProof(int64(a.config.Ton.Proof.ProofLifetime.Seconds())),
