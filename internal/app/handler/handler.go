@@ -18,8 +18,6 @@ type Handler struct {
 	repo    *repository.Repository
 	broker  broker.Broker
 	service *service.Service
-	// temporary:
-	tc *ton.Client
 }
 
 func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Handler {
@@ -28,7 +26,6 @@ func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Cl
 		repo:    r,
 		broker:  b,
 		service: service.New(&c.Security, r, b, tc),
-		tc:      tc,
 	}
 }
 

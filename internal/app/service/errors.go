@@ -37,4 +37,7 @@ var (
 	ErrSubmissionWindowClosed = errors.New("submission window is currently closed")
 	ErrSubmissionNotFound     = errors.New("submission not found")
 	ErrInvalidCharcode        = errors.New("problem's charcode couldn't be longer than 2 characters")
+
+	// tonproof
+	ErrTonProofFailed = errors.New("tonproof verification failed")
 )

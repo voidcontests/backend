@@ -12,6 +12,7 @@ type Service struct {
 	Submission *SubmissionService
 	Problem    *ProblemService
 	Contest    *ContestService
+	TonProof   *TonProofService
 }
 
 func New(cfg *config.Security, repo *repository.Repository, broker broker.Broker, tc *ton.Client) *Service {
@@ -20,5 +21,6 @@ func New(cfg *config.Security, repo *repository.Repository, broker broker.Broker
 		Submission: NewSubmissionService(repo, broker),
 		Problem:    NewProblemService(repo),
 		Contest:    NewContestService(repo, tc),
+		TonProof:   NewTonProofService(repo, tc),
 	}
 }
