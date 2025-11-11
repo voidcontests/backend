@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/handler"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
@@ -23,8 +24,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Router {
-	h := handler.New(c, r, b, tc)
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, tcs *tonconnect.Server) *Router {
+	h := handler.New(c, r, b, tc, tcs)
 	return &Router{config: c, handler: h}
 }
 
@@ -78,6 +79,10 @@ func (r *Router) InitRoutes() *echo.Echo {
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
+
+		tonproof := api.Group("/tonproof")
+		tonproof.POST("/payload", r.handler.GeneratePayload)
+		tonproof.POST("/check", r.handler.CheckProof, r.handler.MustIdentify())
 
 		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
 		api.POST("/account", r.handler.CreateAccount)

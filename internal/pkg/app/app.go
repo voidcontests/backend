@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/tonkeeper/tongo/liteapi"
+	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
 	"github.com/voidcontests/api/internal/config"
@@ -84,9 +86,37 @@ func (a *App) Run() {
 		return
 	}
 
-	slog.Info("ton: ok")
+	if a.config.Ton.IsTestnet {
+		slog.Info("ton: ok (testnet)")
+	} else {
+		slog.Info("ton: ok (mainnet)")
+	}
 
-	r := router.New(a.config, repo, brok, tc)
+	var tcc *liteapi.Client
+	if a.config.Ton.IsTestnet {
+		tcc = ton.Testnet()
+	} else {
+		tcc = ton.Mainnet()
+	}
+
+	tcs, err := tonconnect.NewTonConnect(
+		tcc,
+		a.config.Ton.Proof.PayloadSignatureKey,
+		tonconnect.WithLifeTimePayload(int64(a.config.Ton.Proof.PayloadLifetime.Seconds())),
+		tonconnect.WithLifeTimeProof(int64(a.config.Ton.Proof.ProofLifetime.Seconds())),
+	)
+	if err != nil {
+		slog.Error("tonconnect: could not initialize", sl.Err(err))
+		return
+	}
+
+	if a.config.Ton.IsTestnet {
+		slog.Info("tonconnect: ok (testnet)")
+	} else {
+		slog.Info("tonconnect: ok (mainnet)")
+	}
+
+	r := router.New(a.config, repo, brok, tc, tcs)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,

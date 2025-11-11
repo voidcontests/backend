@@ -53,8 +53,15 @@ type Redis struct {
 }
 
 type Ton struct {
-	IsTestnet bool   `yaml:"is_testnet"`
-	ConfigURL string `yaml:"config_url"`
+	IsTestnet bool     `yaml:"is_testnet"`
+	ConfigURL string   `yaml:"config_url"`
+	Proof     TonProof `yaml:"proof"`
+}
+
+type TonProof struct {
+	PayloadSignatureKey string        `yaml:"payload_signature_key" env-required:"true"`
+	PayloadLifetime     time.Duration `yaml:"payload_lifetime" env-default:"600s"`
+	ProofLifetime       time.Duration `yaml:"proof_lifetime" env-default:"600s"`
 }
 
 // MustLoad loads config to a new Config instance and return it
