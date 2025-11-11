@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/config"
@@ -17,12 +19,22 @@ import (
 const (
 	MainnetID = "-239"
 	TestnetID = "-3"
+
+	// balanceCacheTTL is the time-to-live for cached balance entries
+	balanceCacheTTL = 5 * time.Minute
 )
 
+// balanceCacheEntry stores a cached balance with its expiration time
+type balanceCacheEntry struct {
+	balance   uint64
+	expiresAt time.Time
+}
+
 type Client struct {
-	api        tonutils.APIClientWrapped
-	testnet    bool
-	TonConnect *tonconnect.Server
+	api          tonutils.APIClientWrapped
+	testnet      bool
+	TonConnect   *tonconnect.Server
+	balanceCache sync.Map // map[string]*balanceCacheEntry, key is address string
 }
 
 func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
@@ -83,24 +95,6 @@ func (c *Client) WalletWithSeed(mnemonic string) (*Wallet, error) {
 	}, nil
 }
 
-func (c *Client) GetBalance(ctx context.Context, address *address.Address) (uint64, error) {
-	block, err := c.api.CurrentMasterchainInfo(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get masterchain info: %w", err)
-	}
-
-	account, err := c.api.GetAccount(ctx, block, address)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get account: %w", err)
-	}
-
-	if !account.IsActive {
-		return 0, nil
-	}
-
-	return account.State.Balance.Nano().Uint64(), nil
-}
-
 func FromNano(nano uint64) string {
 	return tlb.FromNanoTONU(nano).String()
 }
@@ -148,10 +142,6 @@ func (c *Client) LookupTx(ctx context.Context, from *address.Address, to *addres
 
 func (c *Client) IsTestnet() bool {
 	return c.testnet
-}
-
-func (c *Client) GetAddressString(addr *address.Address) string {
-	return addr.Testnet(c.testnet).String()
 }
 
 func (c *Client) API() tonutils.APIClientWrapped {

@@ -202,7 +202,7 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			return nil, fmt.Errorf("%s: failed to parse wallet address: %w", op, err)
 		}
 
-		details.PrizeNanosTON, err = s.ton.GetBalance(ctx, addr)
+		details.PrizeNanosTON, err = s.ton.GetBalanceCached(ctx, addr)
 		if err != nil {
 			// TODO: maybe on this error, just return balance = 0 (?)
 			return nil, fmt.Errorf("%s: failed to get wallet balance: %w", op, err)
@@ -382,7 +382,7 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		}, nil
 	}
 
-	pid, err := s.repo.Payment.Create(ctx, tx, s.ton.GetAddressString(from), wallet.Address, contest.EntryPriceTonNanos, true)
+	pid, err := s.repo.Payment.Create(ctx, tx, s.ton.GetAddress(from), wallet.Address, contest.EntryPriceTonNanos, true)
 	if err != nil {
 		return EntryDetails{}, fmt.Errorf("%s: failed to create payment: %w", op, err)
 	}
