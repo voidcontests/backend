@@ -32,8 +32,9 @@ type Server struct {
 }
 
 type Security struct {
-	SignatureKey string `yaml:"signature_key" env-required:"true"`
-	Salt         string `yaml:"salt" env-required:"true"`
+	SignatureKey      string `yaml:"signature_key" env-required:"true"`
+	Salt              string `yaml:"salt" env-required:"true"`
+	WalletEncryptKey  string `yaml:"wallet_encrypt_key" env-required:"true"`
 }
 
 type Postgres struct {

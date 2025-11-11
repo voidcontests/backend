@@ -9,6 +9,13 @@ import (
 	"github.com/xssnick/tonutils-go/address"
 )
 
+const balanceCacheTTL = 5 * time.Minute
+
+type balanceCacheEntry struct {
+	balance   uint64
+	expiresAt time.Time
+}
+
 func (c *Client) GetBalance(ctx context.Context, address *address.Address) (uint64, error) {
 	block, err := c.api.CurrentMasterchainInfo(ctx)
 	if err != nil {

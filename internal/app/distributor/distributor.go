@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/big"
 
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/pkg/ton"
@@ -13,7 +14,7 @@ import (
 	"github.com/xssnick/tonutils-go/tlb"
 )
 
-func New(r *repository.Repository, tc *ton.Client) func(ctx context.Context) error {
+func New(r *repository.Repository, tc *ton.Client, cipher crypto.Cipher) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		contests, err := r.Contest.GetWithUndistributedAwards(ctx)
 		if err != nil {
@@ -21,7 +22,7 @@ func New(r *repository.Repository, tc *ton.Client) func(ctx context.Context) err
 		}
 
 		for _, c := range contests {
-			err := distributeAwardForContest(ctx, r, tc, c)
+			err := distributeAwardForContest(ctx, r, tc, cipher, c)
 			if err != nil {
 				return err
 			}
@@ -30,13 +31,19 @@ func New(r *repository.Repository, tc *ton.Client) func(ctx context.Context) err
 	}
 }
 
-func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc *ton.Client, c models.Contest) error {
+func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc *ton.Client, cipher crypto.Cipher, c models.Contest) error {
 	w, err := r.Contest.GetWallet(ctx, *c.WalletID)
 	if err != nil {
 		return err
 	}
 
-	wallet, err := tc.WalletWithSeed(w.Mnemonic)
+	// Decrypt the mnemonic before using it
+	decryptedMnemonic, err := cipher.Decrypt(w.MnemonicEncrypted)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt mnemonic: %w", err)
+	}
+
+	wallet, err := tc.WalletWithSeed(decryptedMnemonic)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/models/award"
 	"github.com/voidcontests/api/internal/storage/repository"
@@ -17,14 +18,16 @@ import (
 )
 
 type ContestService struct {
-	repo *repository.Repository
-	ton  *ton.Client
+	repo   *repository.Repository
+	ton    *ton.Client
+	cipher crypto.Cipher
 }
 
-func NewContestService(repo *repository.Repository, tc *ton.Client) *ContestService {
+func NewContestService(repo *repository.Repository, tc *ton.Client, cipher crypto.Cipher) *ContestService {
 	return &ContestService{
-		repo: repo,
-		ton:  tc,
+		repo:   repo,
+		ton:    tc,
+		cipher: cipher,
 	}
 }
 
@@ -91,10 +94,16 @@ func (s *ContestService) CreateContest(ctx context.Context, params CreateContest
 		address := w.Address().String()
 		mnemonic := strings.Join(w.Mnemonic, " ")
 
+		// Encrypt the mnemonic before storing
+		encryptedMnemonic, err := s.cipher.Encrypt(mnemonic)
+		if err != nil {
+			return 0, fmt.Errorf("%s: failed to encrypt mnemonic: %w", op, err)
+		}
+
 		err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
 			repo := repository.NewTxRepository(tx)
 
-			walletID, err := repo.Wallet.Create(ctx, address, mnemonic)
+			walletID, err := repo.Wallet.Create(ctx, address, encryptedMnemonic)
 			if err != nil {
 				return fmt.Errorf("create wallet: %w", err)
 			}
@@ -195,6 +204,9 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			return nil, fmt.Errorf("%s: failed to get wallet: %w", op, err)
 		}
 
+		// Decrypt the mnemonic (not needed here, but keeping pattern consistent)
+		// The mnemonic is encrypted in the DB, but we only need the address for display
+
 		details.WalletAddress = wallet.Address
 
 		addr, err := address.ParseAddr(wallet.Address)
@@ -246,7 +258,7 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 	if details.EntryDetails != nil {
 		_, deadline := CalculateSubmissionWindow(contest, entry)
 		if contest.StartTime.Before(now) {
-			details.EntryDetails.SubmissionDeadline = deadline
+			details.EntryDetails.SubmissionDeadline = &deadline
 		}
 	}
 
@@ -316,7 +328,7 @@ func (s *ContestService) GetScores(ctx context.Context, contestID int, limit, of
 type EntryDetails struct {
 	Entry              models.Entry
 	IsAdmitted         bool
-	SubmissionDeadline time.Time
+	SubmissionDeadline *time.Time
 	Message            string
 	Payment            *models.Payment
 }
@@ -362,7 +374,11 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		return EntryDetails{}, fmt.Errorf("%s: failed to parse user address: %w", op, err)
 	}
 
-	wallet, err := s.repo.Contest.GetWallet(ctx, contest.ID)
+	if contest.WalletID == nil {
+		return EntryDetails{}, errors.New("prized contest has no wallet")
+	}
+
+	wallet, err := s.repo.Contest.GetWallet(ctx, *contest.WalletID)
 	if err != nil {
 		return EntryDetails{}, fmt.Errorf("%s: failed to get wallet: %w", op, err)
 	}

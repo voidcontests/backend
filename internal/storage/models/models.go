@@ -63,10 +63,10 @@ type ProblemCharcode struct {
 }
 
 type Wallet struct {
-	ID        int       `db:"id"`
-	Address   string    `db:"address"`
-	Mnemonic  string    `db:"mnemonic"`
-	CreatedAt time.Time `db:"created_at"`
+	ID                int       `db:"id"`
+	Address           string    `db:"address"`
+	MnemonicEncrypted string    `db:"mnemonic_encrypted"`
+	CreatedAt         time.Time `db:"created_at"`
 }
 
 type Payment struct {

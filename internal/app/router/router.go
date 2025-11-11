@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/voidcontests/api/internal/app/handler"
 	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
@@ -23,8 +24,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Router {
-	h := handler.New(c, r, b, tc)
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, cipher crypto.Cipher) *Router {
+	h := handler.New(c, r, b, tc, cipher)
 	return &Router{config: c, handler: h}
 }
 

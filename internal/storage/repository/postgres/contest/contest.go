@@ -77,10 +77,10 @@ func (p *Postgres) GetWallet(ctx context.Context, walletID int) (models.Wallet, 
 	var wallet models.Wallet
 	query := `
 SELECT
-	w.id, w.address, w.mnemonic, w.created_at
+	w.id, w.address, w.mnemonic_encrypted, w.created_at
 FROM wallets w
 WHERE w.id = $1`
-	err := p.conn.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.Mnemonic, &wallet.CreatedAt)
+	err := p.conn.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.MnemonicEncrypted, &wallet.CreatedAt)
 	return wallet, err
 }
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/config"
@@ -19,16 +18,7 @@ import (
 const (
 	MainnetID = "-239"
 	TestnetID = "-3"
-
-	// balanceCacheTTL is the time-to-live for cached balance entries
-	balanceCacheTTL = 5 * time.Minute
 )
-
-// balanceCacheEntry stores a cached balance with its expiration time
-type balanceCacheEntry struct {
-	balance   uint64
-	expiresAt time.Time
-}
 
 type Client struct {
 	api          tonutils.APIClientWrapped

@@ -15,6 +15,7 @@ import (
 	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
 	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	broker "github.com/voidcontests/api/internal/storage/broker/redis"
@@ -86,7 +87,9 @@ func (a *App) Run() {
 
 	slog.Info("ton: ok", slog.Bool("is_testnet", a.config.Ton.IsTestnet))
 
-	r := router.New(a.config, repo, brok, tonc)
+	cipher := crypto.NewCipher(a.config.Security.WalletEncryptKey)
+
+	r := router.New(a.config, repo, brok, tonc, cipher)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,
@@ -109,7 +112,7 @@ func (a *App) Run() {
 	slog.Info("api: started", slog.String("address", server.Addr))
 
 	interval := 1 * time.Minute
-	task := distributor.New(repo, tonc)
+	task := distributor.New(repo, tonc, cipher)
 	scheduler := scheduler.New(interval, task)
 
 	go func() {

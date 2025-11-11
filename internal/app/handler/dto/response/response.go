@@ -72,7 +72,7 @@ type Awards struct {
 
 type Entry struct {
 	IsAdmitted         bool            `json:"is_admitted"`
-	SubmissionDeadline time.Time       `json:"submission_deadline"`
+	SubmissionDeadline *time.Time      `json:"submission_deadline,omitempty"`
 	Message            string          `json:"message,omitempty"`
 	IsPaid             bool            `json:"is_paid"`
 	Payment            *PaymentDetails `json:"payment,omitempty"`
