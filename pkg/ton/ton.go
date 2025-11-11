@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -20,8 +21,9 @@ const (
 )
 
 type Client struct {
-	api     tonutils.APIClientWrapped
-	testnet bool
+	api        tonutils.APIClientWrapped
+	testnet    bool
+	TonConnect *tonconnect.Server
 }
 
 func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
@@ -32,7 +34,6 @@ func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
 	}
 
 	unsafeAPI := tonutils.NewAPIClient(client, tonutils.ProofCheckPolicyUnsafe)
-
 	block, err := unsafeAPI.GetMasterchainInfo(ctx)
 	if err != nil {
 		return nil, err
@@ -41,10 +42,27 @@ func NewClient(ctx context.Context, c *config.Ton) (*Client, error) {
 	api := tonutils.NewAPIClient(client, tonutils.ProofCheckPolicySecure).WithRetry()
 	api.SetTrustedBlock(block)
 
-	return &Client{
+	tc := &Client{
 		api:     api,
 		testnet: c.IsTestnet,
-	}, nil
+	}
+
+	payloadLifetime := int64(c.Proof.PayloadLifetime.Seconds())
+	proofLifetime := int64(c.Proof.ProofLifetime.Seconds())
+
+	tcserver, err := tonconnect.NewTonConnect(
+		tc,
+		c.Proof.PayloadSignatureKey,
+		tonconnect.WithLifeTimePayload(payloadLifetime),
+		tonconnect.WithLifeTimeProof(proofLifetime),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tonconnect: can't initialize: %w", err)
+	}
+
+	tc.TonConnect = tcserver
+
+	return tc, nil
 }
 
 type Wallet struct {

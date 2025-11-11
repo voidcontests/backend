@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
 	"github.com/voidcontests/api/internal/config"
@@ -79,36 +78,15 @@ func (a *App) Run() {
 
 	repo := repository.New(db)
 	brok := broker.New(rc)
-	tc, err := ton.NewClient(ctx, &a.config.Ton)
+	tonc, err := ton.NewClient(ctx, &a.config.Ton)
 	if err != nil {
 		slog.Error("ton: could not establish connection", sl.Err(err))
 		return
 	}
 
-	if a.config.Ton.IsTestnet {
-		slog.Info("ton: ok (testnet)")
-	} else {
-		slog.Info("ton: ok (mainnet)")
-	}
+	slog.Info("ton: ok", slog.Bool("is_testnet", a.config.Ton.IsTestnet))
 
-	tcs, err := tonconnect.NewTonConnect(
-		tc,
-		a.config.Ton.Proof.PayloadSignatureKey,
-		tonconnect.WithLifeTimePayload(int64(a.config.Ton.Proof.PayloadLifetime.Seconds())),
-		tonconnect.WithLifeTimeProof(int64(a.config.Ton.Proof.ProofLifetime.Seconds())),
-	)
-	if err != nil {
-		slog.Error("tonconnect: could not initialize", sl.Err(err))
-		return
-	}
-
-	if a.config.Ton.IsTestnet {
-		slog.Info("tonconnect: ok (testnet)")
-	} else {
-		slog.Info("tonconnect: ok (mainnet)")
-	}
-
-	r := router.New(a.config, repo, brok, tc, tcs)
+	r := router.New(a.config, repo, brok, tonc)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,
@@ -131,7 +109,7 @@ func (a *App) Run() {
 	slog.Info("api: started", slog.String("address", server.Addr))
 
 	interval := 1 * time.Minute
-	task := distributor.New(repo, tc)
+	task := distributor.New(repo, tonc)
 	scheduler := scheduler.New(interval, task)
 
 	go func() {

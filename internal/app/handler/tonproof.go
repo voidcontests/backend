@@ -20,7 +20,7 @@ func (h *Handler) GeneratePayload(c echo.Context) error {
 	// 0                                        32
 	// |                payload                 |
 
-	payload, err := h.tcs.GeneratePayload()
+	payload, err := h.tc.TonConnect.GeneratePayload()
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (h *Handler) CheckProof(c echo.Context) error {
 		},
 	}
 
-	verified, _, err := h.tcs.CheckProof(ctx, &proof, h.tcs.CheckPayload, tonconnect.StaticDomain(tp.Proof.Domain.Value))
+	verified, _, err := h.tc.TonConnect.CheckProof(ctx, &proof, h.tc.TonConnect.CheckPayload, tonconnect.StaticDomain(tp.Proof.Domain.Value))
 	if err != nil || !verified {
 		return Error(http.StatusUnauthorized, "tonproof verification failed")
 	}

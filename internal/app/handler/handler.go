@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/jwt"
@@ -19,16 +18,17 @@ type Handler struct {
 	repo    *repository.Repository
 	broker  broker.Broker
 	service *service.Service
-	tcs     *tonconnect.Server
+	// temporary:
+	tc *ton.Client
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, tcs *tonconnect.Server) *Handler {
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Handler {
 	return &Handler{
 		config:  c,
 		repo:    r,
 		broker:  b,
 		service: service.New(&c.Security, r, b, tc),
-		tcs:     tcs,
+		tc:      tc,
 	}
 }
 

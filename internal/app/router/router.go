@@ -7,7 +7,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/tonkeeper/tongo/tonconnect"
 	"github.com/voidcontests/api/internal/app/handler"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
@@ -24,8 +23,8 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, tcs *tonconnect.Server) *Router {
-	h := handler.New(c, r, b, tc, tcs)
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client) *Router {
+	h := handler.New(c, r, b, tc)
 	return &Router{config: c, handler: h}
 }
 
