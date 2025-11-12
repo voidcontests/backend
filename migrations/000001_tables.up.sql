@@ -25,11 +25,10 @@ CREATE TABLE users (
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE UNIQUE INDEX unique_user_address ON users(address) WHERE address <> '';
 
--- TODO: encrypt the mnemonic before saving
 CREATE TABLE wallets (
     id SERIAL PRIMARY KEY,
     address VARCHAR(48) UNIQUE NOT NULL,
-    mnemonic TEXT NOT NULL,
+    mnemonic_encrypted TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
