@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/voidcontests/api/internal/app/handler"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/lib/crypto"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/pkg/ratelimit"
@@ -32,27 +30,7 @@ func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Cl
 func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
-	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
-			c.JSON(http.StatusNotFound, map[string]string{
-				"message": "resource not found",
-			})
-			return
-		}
-
-		if ae, ok := err.(*handler.APIError); ok {
-			slog.Debug("responded with API error", sl.Err(err), slog.String("request_id", requestid.Get(c)))
-			c.JSON(ae.Status, map[string]any{
-				"message": ae.Message,
-			})
-			return
-		}
-
-		slog.Error("something went wrong", sl.Err(err), slog.String("request_id", requestid.Get(c)))
-		c.JSON(http.StatusInternalServerError, map[string]any{
-			"message": "internal server error",
-		})
-	}
+	router.HTTPErrorHandler = handler.ErorHTTP
 
 	router.Use(requestid.New)
 	router.Use(requestlog.Completed)

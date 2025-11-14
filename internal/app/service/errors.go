@@ -16,6 +16,7 @@ var (
 	// entry
 	ErrContestFinished     = errors.New("contest not found")
 	ErrContestNotFound     = errors.New("contest not found")
+	ErrCannotJoinOwnContest = errors.New("cannot join your own contest")
 	ErrMaxSlotsReached     = errors.New("max slots limit reached")
 	ErrApplicationTimeOver = errors.New("application time is over")
 	ErrEntryAlreadyExists  = errors.New("user already has entry for this contest")

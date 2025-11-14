@@ -433,6 +433,10 @@ func (s *ContestService) CreateEntry(ctx context.Context, contestID int, userID 
 		return fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
+	if contest.CreatorID == userID {
+		return ErrCannotJoinOwnContest
+	}
+
 	entriesCount, err := s.repo.Contest.GetEntriesCount(ctx, contestID)
 	if err != nil {
 		return fmt.Errorf("%s: failed to get entries count: %w", op, err)
