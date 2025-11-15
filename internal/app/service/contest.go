@@ -204,9 +204,6 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 			return nil, fmt.Errorf("%s: failed to get wallet: %w", op, err)
 		}
 
-		// Decrypt the mnemonic (not needed here, but keeping pattern consistent)
-		// The mnemonic is encrypted in the DB, but we only need the address for display
-
 		details.WalletAddress = wallet.Address
 
 		addr, err := address.ParseAddr(wallet.Address)
@@ -416,8 +413,7 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 
 	return EntryDetails{
 		Entry:      entry,
-		IsAdmitted: false,
-		Message:    "payment required to participate in this contest",
+		IsAdmitted: true,
 		Payment:    &payment,
 	}, nil
 }
