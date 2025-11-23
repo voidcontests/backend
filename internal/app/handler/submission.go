@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/app/service"
@@ -43,7 +42,6 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		case errors.Is(err, service.ErrContestNotFound):
 			return Error(http.StatusNotFound, "contest not found")
 		case errors.Is(err, service.ErrNoEntryForContest):
-			log.Debug("trying to create submission without entry")
 			return Error(http.StatusForbidden, "no entry for contest")
 		case errors.Is(err, service.ErrSubmissionWindowClosed):
 			return Error(http.StatusForbidden, "submission window is currently closed")
