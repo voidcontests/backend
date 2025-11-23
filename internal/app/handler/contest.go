@@ -41,6 +41,8 @@ func (h *Handler) CreateContest(c echo.Context) error {
 			return Error(http.StatusForbidden, "you are banned from creating contests")
 		case errors.Is(err, service.ErrContestsLimitExceeded):
 			return Error(http.StatusForbidden, "contests limit exceeded")
+		case errors.Is(err, service.ErrInvalidContestTiming):
+			return Error(http.StatusBadRequest, "invalid contest timing: check start time, end time, and duration")
 		default:
 			return err
 		}
@@ -155,12 +157,12 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 	claims, _ := ExtractClaims(c)
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 10
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
@@ -220,8 +222,8 @@ func (h *Handler) GetContests(c echo.Context) error {
 	filters := models.ContestFilters{}
 
 	if creatorID, ok := ExtractQueryParamInt(c, "creator_id"); ok {
-		if creatorID > 0 {
-			return Error(http.StatusBadRequest, "creator_id should be a valid integer, greater 0")
+		if creatorID <= 0 {
+			return Error(http.StatusBadRequest, "creator_id should be a valid integer, greater than 0")
 		}
 		filters.CreatorID = creatorID
 	}
@@ -279,12 +281,12 @@ func (h *Handler) GetScores(c echo.Context) error {
 	}
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 50
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 

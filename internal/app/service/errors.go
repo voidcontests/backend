@@ -11,7 +11,8 @@ var (
 	ErrInvalidToken       = errors.New("invalid or expired token")
 
 	// contest
-	ErrUnknownAwardType = errors.New("unknown award type")
+	ErrUnknownAwardType     = errors.New("unknown award type")
+	ErrInvalidContestTiming = errors.New("invalid contest timing")
 
 	// entry
 	ErrContestFinished     = errors.New("contest not found")
@@ -38,6 +39,7 @@ var (
 	ErrSubmissionWindowClosed = errors.New("submission window is currently closed")
 	ErrSubmissionNotFound     = errors.New("submission not found")
 	ErrInvalidCharcode        = errors.New("problem's charcode couldn't be longer than 2 characters")
+	ErrUnauthorizedAccess     = errors.New("unauthorized access to this resource")
 
 	// tonproof
 	ErrTonProofFailed = errors.New("tonproof verification failed")

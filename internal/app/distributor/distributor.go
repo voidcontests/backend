@@ -2,10 +2,12 @@ package distributor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/internal/storage/repository"
@@ -37,7 +39,6 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return err
 	}
 
-	// Decrypt the mnemonic before using it
 	decryptedMnemonic, err := cipher.Decrypt(w.MnemonicEncrypted)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt mnemonic: %w", err)
@@ -49,6 +50,10 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 	}
 
 	winnerID, err := r.Contest.GetWinnerID(ctx, c.ID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		slog.Info("no users that submitted at least one ok solution", slog.Int("contest_id", c.ID))
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -72,6 +77,7 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return err
 	}
 
+	// keep 2% for paying gas
 	factor := 1 - 0.02
 	amount := tlb.FromNanoTON(big.NewInt(int64(float64(nanos) * factor)))
 	tx, err := wallet.TransferTo(ctx, recepient, amount, fmt.Sprintf("contests.fckn.engineer: Prize for winning contest #%d", c.ID))
@@ -79,7 +85,7 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return err
 	}
 
-	slog.Info("award distributed", slog.Any("contest_id", c.ID), slog.String("tx", tx))
+	slog.Info("award distributed", slog.Int("contest_id", c.ID), slog.String("tx", tx))
 
 	paymentID, err := r.Payment.Create(ctx, tx, tc.GetAddress(wallet.Address()), tc.GetAddress(recepient), amount.Nano().Uint64(), false)
 	if err != nil {

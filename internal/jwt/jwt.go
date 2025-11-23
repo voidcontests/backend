@@ -13,9 +13,10 @@ type CustomClaims struct {
 }
 
 func GenerateToken(id int, secret string) (string, error) {
+	expiration := 7 * 24 * time.Hour // 7 days
 	claims := &CustomClaims{
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(100, 0, 0)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
 		},
 		id,
 	}

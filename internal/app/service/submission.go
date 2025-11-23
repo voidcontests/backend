@@ -96,7 +96,7 @@ type SubmissionDetails struct {
 	FailedTest    *models.TestCase
 }
 
-func (s *SubmissionService) GetSubmissionByID(ctx context.Context, submissionID int) (*SubmissionDetails, error) {
+func (s *SubmissionService) GetSubmissionByID(ctx context.Context, submissionID int, userID int) (*SubmissionDetails, error) {
 	op := "service.SubmissionService.GetSubmissionByID"
 
 	submission, err := s.repo.Submission.GetByID(ctx, submissionID)
@@ -105,6 +105,10 @@ func (s *SubmissionService) GetSubmissionByID(ctx context.Context, submissionID 
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to get submission: %w", op, err)
+	}
+
+	if submission.UserID != userID {
+		return nil, ErrUnauthorizedAccess
 	}
 
 	details := &SubmissionDetails{

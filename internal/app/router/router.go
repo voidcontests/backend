@@ -54,6 +54,14 @@ func (r *Router) InitRoutes() *echo.Echo {
 		})
 	}
 
+	// TODO: update rate limiting logic:
+	//   Current:
+	//     - request -> wait Ns -> request
+	//
+	//   Expected:
+	//     - [request -> request -> request] - in such window, forbid to make more than M requests
+	//       ^ 0s                       Ns ^
+
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
@@ -63,22 +71,22 @@ func (r *Router) InitRoutes() *echo.Echo {
 		tonproof.POST("/check", r.handler.CheckProof, r.handler.MustIdentify())
 
 		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
-		api.POST("/account", r.handler.CreateAccount)
+		api.POST("/account", r.handler.CreateAccount, ratelimit.WithTimeout(5*time.Second))
 		api.PATCH("/account", r.handler.UpdateAccount, r.handler.MustIdentify())
-		api.POST("/session", r.handler.CreateSession)
+		api.POST("/session", r.handler.CreateSession, ratelimit.WithTimeout(2*time.Second))
 
 		api.GET("/account/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
 		api.GET("/account/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
-		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
+		api.POST("/problems", r.handler.CreateProblem, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
 
 		api.GET("/problems/:pid", r.handler.GetProblemByID, r.handler.MustIdentify())
 
 		api.GET("/contests", r.handler.GetContests)
-		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
+		api.POST("/contests", r.handler.CreateContest, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
 
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
-		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
+		api.POST("/contests/:cid/entry", r.handler.CreateEntry, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
 		api.GET("/contests/:cid/scores", r.handler.GetScores)
 
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())

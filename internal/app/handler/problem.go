@@ -58,12 +58,12 @@ func (h *Handler) GetCreatedProblems(c echo.Context) error {
 	claims, _ := ExtractClaims(c)
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 10
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 

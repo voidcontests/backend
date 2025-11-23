@@ -49,7 +49,7 @@ func (h *Handler) CreateSession(c echo.Context) error {
 	token, err := h.service.Account.CreateSession(ctx, body.Username, body.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
-			return Error(http.StatusUnauthorized, "user not found")
+			return Error(http.StatusUnauthorized, "invalid credentials")
 		}
 		return err
 	}

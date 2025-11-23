@@ -18,7 +18,7 @@ func (h *Handler) CreateEntry(c echo.Context) error {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	err := h.service.Contest.CreateEntry(ctx, contestID, claims.UserID)
+	_, err := h.service.Contest.CreateEntry(ctx, contestID, claims.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrContestNotFound):

@@ -268,8 +268,9 @@ func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, err
 }
 
 func (p *Postgres) GetWinnerID(ctx context.Context, contestID int) (int, error) {
+	// TODO: tie-breaking rules
 	query := ` SELECT user_id FROM scores
-			WHERE contest_id = $1 ORDER BY points DESC LIMIT 1`
+		WHERE contest_id = $1 AND points > 0 ORDER BY points DESC LIMIT 1`
 
 	var userID int
 	err := p.conn.QueryRow(ctx, query, contestID).Scan(&userID)

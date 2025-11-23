@@ -2,20 +2,17 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
 	"github.com/voidcontests/api/internal/app/service"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
-	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateSubmission(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.CreateSubmission"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -29,7 +26,6 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 
 	var body request.CreateSubmission
 	if err := validate.Bind(c, &body); err != nil {
-		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
@@ -54,7 +50,6 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 		case errors.Is(err, service.ErrProblemNotFound):
 			return Error(http.StatusNotFound, "problem not found")
 		default:
-			log.Error("failed to create submission", sl.Err(err))
 			return err
 		}
 	}
@@ -70,24 +65,25 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 }
 
 func (h *Handler) GetSubmissionByID(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetSubmissionByID"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	// TODO: check if submission is submitted by request initiator
-	_, _ = ExtractClaims(c)
+	claims, _ := ExtractClaims(c)
 
 	submissionID, ok := ExtractParamInt(c, "sid")
 	if !ok {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
-	details, err := h.service.Submission.GetSubmissionByID(ctx, submissionID)
+	details, err := h.service.Submission.GetSubmissionByID(ctx, submissionID, claims.UserID)
 	if err != nil {
-		if errors.Is(err, service.ErrSubmissionNotFound) {
+		switch {
+		case errors.Is(err, service.ErrSubmissionNotFound):
 			return Error(http.StatusNotFound, "submission not found")
+		case errors.Is(err, service.ErrUnauthorizedAccess):
+			return Error(http.StatusNotFound, "submission not found")
+		default:
+			return err
 		}
-		log.Error("failed to get submission", sl.Err(err))
-		return err
 	}
 
 	submission := details.Submission
@@ -153,7 +149,6 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 }
 
 func (h *Handler) GetSubmissions(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetSubmissions"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -166,12 +161,12 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	charcode := c.Param("charcode")
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 10
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
@@ -183,7 +178,6 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 		case errors.Is(err, service.ErrNoEntryForContest):
 			return Error(http.StatusForbidden, "no entry for contest")
 		default:
-			log.Error("failed to list submissions", sl.Err(err))
 			return err
 		}
 	}

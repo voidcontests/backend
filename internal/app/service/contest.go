@@ -49,6 +49,22 @@ type CreateContestParams struct {
 func (s *ContestService) CreateContest(ctx context.Context, params CreateContestParams) (int, error) {
 	op := "service.ContestService.CreateContest"
 
+	now := time.Now()
+	if params.StartTime.Before(now) {
+		return 0, ErrInvalidContestTiming
+	}
+	if !params.StartTime.Before(params.EndTime) {
+		return 0, ErrInvalidContestTiming
+	}
+	if params.DurationMins < 0 {
+		return 0, ErrInvalidContestTiming
+	}
+
+	contestLengthMins := int(params.EndTime.Sub(params.StartTime).Minutes())
+	if params.DurationMins > 0 && params.DurationMins > contestLengthMins {
+		return 0, ErrInvalidContestTiming
+	}
+
 	userRole, err := s.repo.User.GetRole(ctx, params.UserID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: failed to get user role: %w", op, err)
@@ -188,8 +204,11 @@ func (s *ContestService) GetContestByID(ctx context.Context, contestID int, user
 
 	now := time.Now()
 
+	// Registration is closed if:
+	//   1. Contest has ended
+	//   2. Contest has started and late join is not allowed
 	isRegistrationOpen := true
-	if contest.StartTime.Before(now) && contest.EndTime.After(now) && !contest.AllowLateJoin {
+	if contest.EndTime.Before(now) || (contest.StartTime.Before(now) && !contest.AllowLateJoin) {
 		isRegistrationOpen = false
 	}
 	details := &ContestDetails{
@@ -386,7 +405,7 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 	}
 
 	amount := tlb.FromNanoTONU(contest.EntryPriceTonNanos)
-	tx, exists := s.ton.LookupTx(ctx, from, to, amount)
+	transaction, exists := s.ton.LookupTx(ctx, from, to, amount)
 	if !exists {
 		return EntryDetails{
 			Entry:      entry,
@@ -395,20 +414,31 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 		}, nil
 	}
 
-	pid, err := s.repo.Payment.Create(ctx, tx, s.ton.GetAddress(from), wallet.Address, contest.EntryPriceTonNanos, true)
-	if err != nil {
-		return EntryDetails{}, fmt.Errorf("%s: failed to create payment: %w", op, err)
-	}
+	var payment models.Payment
+	err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		repo := repository.NewTxRepository(tx)
 
-	err = s.repo.Entry.SetPaymentID(ctx, entry.ID, pid)
-	if err != nil {
-		return EntryDetails{}, fmt.Errorf("%s: failed to set payment ID for entry: %w", op, err)
-	}
-	entry.PaymentID = &pid
+		pid, err := repo.Payment.Create(ctx, transaction, s.ton.GetAddress(from), wallet.Address, contest.EntryPriceTonNanos, true)
+		if err != nil {
+			return fmt.Errorf("failed to create payment: %w", err)
+		}
 
-	payment, err := s.repo.Payment.GetByID(ctx, pid)
+		err = repo.Entry.SetPaymentID(ctx, entry.ID, pid)
+		if err != nil {
+			return fmt.Errorf("failed to set payment ID for entry: %w", err)
+		}
+		entry.PaymentID = &pid
+
+		payment, err = repo.Payment.GetByID(ctx, pid)
+		if err != nil {
+			return fmt.Errorf("failed to get payment by ID: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return EntryDetails{}, fmt.Errorf("%s: failed to get payment by ID: %w", op, err)
+		return EntryDetails{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return EntryDetails{
@@ -418,47 +448,58 @@ func (s *ContestService) getEntryDetails(ctx context.Context, entry models.Entry
 	}, nil
 }
 
-func (s *ContestService) CreateEntry(ctx context.Context, contestID int, userID int) error {
+func (s *ContestService) CreateEntry(ctx context.Context, contestID int, userID int) (int, error) {
 	op := "service.ContestService.CreateEntry"
 
 	contest, err := s.repo.Contest.GetByID(ctx, contestID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrContestNotFound
+		return 0, ErrContestNotFound
 	}
 	if err != nil {
-		return fmt.Errorf("%s: failed to get contest: %w", op, err)
+		return 0, fmt.Errorf("%s: failed to get contest: %w", op, err)
 	}
 
 	if contest.CreatorID == userID {
-		return ErrCannotJoinOwnContest
-	}
-
-	entriesCount, err := s.repo.Contest.GetEntriesCount(ctx, contestID)
-	if err != nil {
-		return fmt.Errorf("%s: failed to get entries count: %w", op, err)
-	}
-
-	if contest.MaxEntries != 0 && entriesCount >= contest.MaxEntries {
-		return ErrMaxSlotsReached
+		return 0, ErrCannotJoinOwnContest
 	}
 
 	now := time.Now()
 	if contest.EndTime.Before(now) || (contest.StartTime.Before(now) && !contest.AllowLateJoin) {
-		return ErrApplicationTimeOver
+		return 0, ErrApplicationTimeOver
 	}
 
-	_, err = s.repo.Entry.Get(ctx, contestID, userID)
-	if err == nil {
-		return ErrEntryAlreadyExists
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%s: failed to check existing entry: %w", op, err)
-	}
+	var entryID int
+	err = s.repo.TxManager.WithinTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		repo := repository.NewTxRepository(tx)
 
-	_, err = s.repo.Entry.Create(ctx, contestID, userID)
+		_, err := repo.Entry.Get(ctx, contestID, userID)
+		if err == nil {
+			return ErrEntryAlreadyExists
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("failed to check existing entry: %w", err)
+		}
+
+		entriesCount, err := repo.Contest.GetEntriesCount(ctx, contestID)
+		if err != nil {
+			return fmt.Errorf("failed to get entries count: %w", err)
+		}
+
+		if contest.MaxEntries != 0 && entriesCount >= contest.MaxEntries {
+			return ErrMaxSlotsReached
+		}
+
+		entryID, err = repo.Entry.Create(ctx, contestID, userID)
+		if err != nil {
+			return fmt.Errorf("failed to create entry: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("%s: failed to create entry: %w", op, err)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	return entryID, nil
 }
