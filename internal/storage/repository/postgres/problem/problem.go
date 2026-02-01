@@ -5,27 +5,21 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(conn postgres.Transactor) *Postgres {
+	return &Postgres{conn: conn}
 }
 
-func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string, tcs []models.TestCaseDTO) (int32, error) {
-	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("tx begin failed: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	var problemID int32
-	err = tx.QueryRow(ctx, `
+func (p *Postgres) Create(ctx context.Context, writerID int, title, statement, difficulty string, timeLimitMS, memoryLimitMB int, checker string) (int, error) {
+	var problemID int
+	err := p.conn.QueryRow(ctx, `
         INSERT INTO problems (writer_id, title, statement, difficulty, time_limit_ms, memory_limit_mb, checker)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
@@ -34,80 +28,79 @@ func (p *Postgres) CreateWithTCs(ctx context.Context, writerID int32, title, sta
 		return 0, fmt.Errorf("insert problem failed: %w", err)
 	}
 
-	if len(tcs) > 0 {
-		batch := &pgx.Batch{}
-		for i, tc := range tcs {
-			batch.Queue(`
-                INSERT INTO test_cases (problem_id, ordinal, input, output, is_example)
-                VALUES ($1, $2, $3, $4, $5)
-            `, problemID, i+1, tc.Input, tc.Output, tc.IsExample)
-		}
-
-		br := tx.SendBatch(ctx, batch)
-
-		for i := 0; i < batch.Len(); i++ {
-			if _, err := br.Exec(); err != nil {
-				br.Close()
-				return 0, fmt.Errorf("insert test case %d failed: %w", i, err)
-			}
-		}
-
-		if err := br.Close(); err != nil {
-			return 0, fmt.Errorf("batch close failed: %w", err)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit failed: %w", err)
-	}
-
 	return problemID, nil
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, charcode string) (models.Problem, error) {
-	query := `SELECT p.*, cp.charcode, u.username AS writer_username
-		FROM problems p
-		JOIN contest_problems cp ON p.id = cp.problem_id
-		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1 AND cp.charcode = $2`
+func (p *Postgres) AssociateTestCases(ctx context.Context, problemID int, tcs []models.TestCaseDTO) error {
+	if len(tcs) == 0 {
+		return nil
+	}
 
-	row := p.pool.QueryRow(ctx, query, contestID, charcode)
+	batch := &pgx.Batch{}
+	for i, tc := range tcs {
+		batch.Queue(`
+            INSERT INTO test_cases (problem_id, ordinal, input, output, is_example)
+            VALUES ($1, $2, $3, $4, $5)
+        `, problemID, i+1, tc.Input, tc.Output, tc.IsExample)
+	}
+
+	br := p.conn.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("insert test case %d (ordinal=%d, is_example=%v) failed: %w", i, i+1, tcs[i].IsExample, err)
+		}
+	}
+
+	if err := br.Close(); err != nil {
+		return fmt.Errorf("batch close failed: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Postgres) Get(ctx context.Context, contestID int, charcode string) (models.Problem, error) {
+	query := `
+SELECT
+	problem_id, charcode, writer_id, writer_username, writer_address, title, statement,
+	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
+FROM contest_problems_view
+WHERE contest_id = $1 AND charcode = $2`
+
+	row := p.conn.QueryRow(ctx, query, contestID, charcode)
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
-		&problem.Charcode, &problem.WriterUsername,
 	)
 
 	return problem, err
 }
 
-func (p *Postgres) GetByID(ctx context.Context, problemID int32) (models.Problem, error) {
+func (p *Postgres) GetByID(ctx context.Context, problemID int) (models.Problem, error) {
 	query := `SELECT
-			p.id, p.writer_id, p.title, p.statement,
-			p.difficulty, p.time_limit_ms, p.memory_limit_mb, p.checker, p.created_at,
-			u.username AS writer_username
-		FROM problems p
-		JOIN users u ON u.id = p.writer_id
-		WHERE p.id = $1`
+			id, writer_id, writer_username, writer_address, title, statement,
+			difficulty, time_limit_ms, memory_limit_mb, checker, created_at
+		FROM problems_view
+		WHERE id = $1`
 
-	row := p.pool.QueryRow(ctx, query, problemID)
+	row := p.conn.QueryRow(ctx, query, problemID)
 
 	var problem models.Problem
 	err := row.Scan(
-		&problem.ID, &problem.WriterID, &problem.Title, &problem.Statement,
+		&problem.ID, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement,
 		&problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt,
-		&problem.WriterUsername,
 	)
 
 	return problem, err
 }
 
-func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]models.TestCase, error) {
+func (p *Postgres) GetExampleCases(ctx context.Context, problemID int) ([]models.TestCase, error) {
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE problem_id = $1 AND is_example = true`
 
-	rows, err := p.pool.Query(ctx, query, problemID)
+	rows, err := p.conn.Query(ctx, query, problemID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +118,11 @@ func (p *Postgres) GetExampleCases(ctx context.Context, problemID int32) ([]mode
 	return tcs, rows.Err()
 }
 
-func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int32) (models.TestCase, error) {
+func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int) (models.TestCase, error) {
 	query := `SELECT id, problem_id, ordinal, input, output, is_example FROM test_cases WHERE id = $1`
 
 	var tc models.TestCase
-	err := p.pool.QueryRow(ctx, query, testCaseID).Scan(
+	err := p.conn.QueryRow(ctx, query, testCaseID).Scan(
 		&tc.ID,
 		&tc.ProblemID,
 		&tc.Ordinal,
@@ -146,9 +139,13 @@ func (p *Postgres) GetTestCaseByID(ctx context.Context, testCaseID int32) (model
 }
 
 func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
-	query := `SELECT problems.*, users.username AS writer_username FROM problems JOIN users ON users.id = problems.writer_id`
+	query := `
+SELECT
+	id, writer_id, writer_username, writer_address, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at
+FROM problems_view`
 
-	rows, err := p.pool.Query(ctx, query)
+	rows, err := p.conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +155,8 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.WriterAddress, &p.Title, &p.Statement, &p.Difficulty,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -169,23 +166,22 @@ func (p *Postgres) GetAll(ctx context.Context) ([]models.Problem, error) {
 	return problems, rows.Err()
 }
 
-func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, offset int) (problems []models.Problem, total int, err error) {
+func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int, limit, offset int) (problems []models.Problem, total int, err error) {
 	batch := &pgx.Batch{}
 
 	batch.Queue(`
-		SELECT problems.*, users.username AS writer_username
-		FROM problems
-		JOIN users ON users.id = problems.writer_id
-		WHERE writer_id = $1
-		ORDER BY problems.id ASC
-		LIMIT $2 OFFSET $3
+SELECT
+	id, writer_id, writer_username, writer_address, title, statement, difficulty, time_limit_ms,
+	memory_limit_mb, checker, created_at
+FROM problems_view
+WHERE writer_id = $1
+ORDER BY id ASC
+LIMIT $2 OFFSET $3
 	`, writerID, limit, offset)
 
-	batch.Queue(`
-		SELECT COUNT(*) FROM problems WHERE writer_id = $1
-	`, writerID)
+	batch.Queue(`SELECT COUNT(*) FROM problems_view WHERE writer_id = $1`, writerID)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {
@@ -197,8 +193,8 @@ func (p *Postgres) GetWithWriterID(ctx context.Context, writerID int32, limit, o
 	for rows.Next() {
 		var p models.Problem
 		if err := rows.Scan(
-			&p.ID, &p.WriterID, &p.Title, &p.Statement, &p.Difficulty,
-			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt, &p.WriterUsername,
+			&p.ID, &p.WriterID, &p.WriterUsername, &p.WriterAddress, &p.Title, &p.Statement, &p.Difficulty,
+			&p.TimeLimitMS, &p.MemoryLimitMB, &p.Checker, &p.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()

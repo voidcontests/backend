@@ -10,3 +10,7 @@ build
 # Ignore TODO
 TODO
 buffer
+
+migrations/data.up.sql
+
+*.diff

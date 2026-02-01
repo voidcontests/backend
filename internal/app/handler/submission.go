@@ -2,24 +2,16 @@ package handler
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
-	"strings"
-	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
-	"github.com/voidcontests/api/internal/storage/models"
-	"github.com/voidcontests/api/internal/storage/models/status"
-	"github.com/voidcontests/api/pkg/requestid"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateSubmission(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.CreateSubmission"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -30,66 +22,37 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 	}
 
 	charcode := c.Param("charcode")
-	if len(charcode) > 2 {
-		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
-	}
-	charcode = strings.ToUpper(charcode)
 
-	var body request.CreateSubmissionRequest
+	var body request.CreateSubmission
 	if err := validate.Bind(c, &body); err != nil {
-		log.Debug("can't decode request body", sl.Err(err))
 		return Error(http.StatusBadRequest, "invalid body")
 	}
 
-	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
+	result, err := h.service.Submission.CreateSubmission(ctx, service.CreateSubmissionParams{
+		ContestID: contestID,
+		UserID:    claims.UserID,
+		Charcode:  charcode,
+		Code:      body.Code,
+		Language:  body.Language,
+	})
 	if err != nil {
-		log.Error("can't get contest", sl.Err(err))
-		return err
+		switch {
+		case errors.Is(err, service.ErrInvalidCharcode):
+			return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
+		case errors.Is(err, service.ErrContestNotFound):
+			return Error(http.StatusNotFound, "contest not found")
+		case errors.Is(err, service.ErrNoEntryForContest):
+			return Error(http.StatusForbidden, "no entry for contest")
+		case errors.Is(err, service.ErrSubmissionWindowClosed):
+			return Error(http.StatusForbidden, "submission window is currently closed")
+		case errors.Is(err, service.ErrProblemNotFound):
+			return Error(http.StatusNotFound, "problem not found")
+		default:
+			return err
+		}
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		log.Debug("trying to create submission without entry")
-		return Error(http.StatusForbidden, "no entry for contest")
-	}
-	if err != nil {
-		log.Error("can't get entry", sl.Err(err))
-		return err
-	}
-
-	now := time.Now()
-	earliest, deadline := AllowSubmitAt(contest, entry)
-	if earliest.After(now) || deadline.Before(now) {
-		return Error(http.StatusForbidden, "submission window is currently closed")
-	}
-
-	problem, err := h.repo.Problem.Get(ctx, int32(contestID), charcode)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "problem not found")
-	}
-	if err != nil {
-		log.Error("can't get problem", sl.Err(err))
-		return err
-	}
-
-	s, err := h.repo.Submission.Create(ctx, entry.ID, problem.ID, body.Code, body.Language)
-	if err != nil {
-		log.Error("can't create submission", sl.Err(err))
-		return err
-	}
-
-	// TODO: create initial testing report in database
-
-	if err := h.broker.PublishSubmission(ctx, s); err != nil {
-		log.Error("can't publish submission", sl.Err(err))
-		// TODO: if we can't push submission into execution queue, try to save it to local memory, and try to push later (?)
-		//   - but is it really needed, after some time?
-		return err
-	}
-
+	s := result.Submission
 	return c.JSON(http.StatusCreated, response.Submission{
 		ID:        s.ID,
 		ProblemID: s.ProblemID,
@@ -100,53 +63,53 @@ func (h *Handler) CreateSubmission(c echo.Context) error {
 }
 
 func (h *Handler) GetSubmissionByID(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetSubmissionByID"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
-	// TODO: check if submission is submitted by request initiator
-	_, _ = ExtractClaims(c)
+	claims, _ := ExtractClaims(c)
 
 	submissionID, ok := ExtractParamInt(c, "sid")
 	if !ok {
 		return Error(http.StatusBadRequest, "submission ID should be an integer")
 	}
 
-	s, err := h.repo.Submission.GetByID(ctx, int32(submissionID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "submission not found")
-	}
+	details, err := h.service.Submission.GetSubmissionByID(ctx, submissionID, claims.UserID)
 	if err != nil {
-		log.Error("can't get submissions", sl.Err(err))
-		return err
+		switch {
+		case errors.Is(err, service.ErrSubmissionNotFound):
+			return Error(http.StatusNotFound, "submission not found")
+		case errors.Is(err, service.ErrUnauthorizedAccess):
+			return Error(http.StatusNotFound, "submission not found")
+		default:
+			return err
+		}
 	}
 
-	if s.Status != status.Success {
+	submission := details.Submission
+
+	// If no testing report, return basic submission info
+	if details.TestingReport == nil {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:        s.ID,
-			ProblemID: s.ProblemID,
-			Status:    s.Status,
-			Verdict:   s.Verdict,
-			Code:      s.Code,
-			Language:  s.Language,
-			CreatedAt: s.CreatedAt,
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Status:    submission.Status,
+			Verdict:   submission.Verdict,
+			Code:      submission.Code,
+			Language:  submission.Language,
+			CreatedAt: submission.CreatedAt,
 		})
-
 	}
 
-	tr, err := h.repo.Submission.GetTestingReport(ctx, s.ID)
-	if err != nil {
-		log.Error("can't get testing report", sl.Err(err))
-		return err
-	}
+	tr := details.TestingReport
 
-	if tr.FirstFailedTestID == nil {
+	// If no failed test, return with testing report
+	if details.FailedTest == nil {
 		return c.JSON(http.StatusOK, response.Submission{
-			ID:        s.ID,
-			ProblemID: s.ProblemID,
-			Status:    s.Status,
-			Verdict:   s.Verdict,
-			Code:      s.Code,
-			Language:  s.Language,
+			ID:        submission.ID,
+			ProblemID: submission.ProblemID,
+			Status:    submission.Status,
+			Verdict:   submission.Verdict,
+			Code:      submission.Code,
+			Language:  submission.Language,
 			TestingReport: &response.TestingReport{
 				ID:               tr.ID,
 				PassedTestsCount: tr.PassedTestsCount,
@@ -154,23 +117,19 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 				Stderr:           tr.Stderr,
 				CreatedAt:        tr.CreatedAt,
 			},
-			CreatedAt: s.CreatedAt,
+			CreatedAt: submission.CreatedAt,
 		})
 	}
 
-	ftc, err := h.repo.Problem.GetTestCaseByID(ctx, *tr.FirstFailedTestID)
-	if err != nil {
-		log.Error("can't get test case", sl.Err(err))
-		return err
-	}
-
+	// Return with full testing report including failed test
+	ftc := details.FailedTest
 	return c.JSON(http.StatusOK, response.Submission{
-		ID:        s.ID,
-		ProblemID: s.ProblemID,
-		Status:    s.Status,
-		Verdict:   s.Verdict,
-		Code:      s.Code,
-		Language:  s.Language,
+		ID:        submission.ID,
+		ProblemID: submission.ProblemID,
+		Status:    submission.Status,
+		Verdict:   submission.Verdict,
+		Code:      submission.Code,
+		Language:  submission.Language,
 		TestingReport: &response.TestingReport{
 			ID:               tr.ID,
 			PassedTestsCount: tr.PassedTestsCount,
@@ -183,12 +142,11 @@ func (h *Handler) GetSubmissionByID(c echo.Context) error {
 			Stderr:    tr.Stderr,
 			CreatedAt: tr.CreatedAt,
 		},
-		CreatedAt: s.CreatedAt,
+		CreatedAt: submission.CreatedAt,
 	})
 }
 
 func (h *Handler) GetSubmissions(c echo.Context) error {
-	log := slog.With(slog.String("op", "handler.GetSubmissions"), slog.String("request_id", requestid.Get(c)))
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
@@ -199,39 +157,32 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 	}
 
 	charcode := c.Param("charcode")
-	if len(charcode) > 2 {
-		return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
-	}
-	charcode = strings.ToUpper(charcode)
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 10
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
-	entry, err := h.repo.Entry.Get(ctx, int32(contestID), claims.UserID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusForbidden, "no entry for contest")
-	}
+	result, err := h.service.Submission.ListSubmissions(ctx, contestID, claims.UserID, charcode, limit, offset)
 	if err != nil {
-		log.Error("can't get entry", sl.Err(err))
-		return err
+		switch {
+		case errors.Is(err, service.ErrInvalidCharcode):
+			return Error(http.StatusBadRequest, "problem's `charcode` couldn't be longer than 2 characters")
+		case errors.Is(err, service.ErrNoEntryForContest):
+			return Error(http.StatusForbidden, "no entry for contest")
+		default:
+			return err
+		}
 	}
 
-	submissions, total, err := h.repo.Submission.ListByProblem(ctx, entry.ID, charcode, limit, offset)
-	if err != nil {
-		log.Error("can't get submissions", sl.Err(err))
-		return err
-	}
-
-	n := len(submissions)
+	n := len(result.Submissions)
 	items := make([]response.Submission, n, n)
-	for i, submission := range submissions {
+	for i, submission := range result.Submissions {
 		items[i] = response.Submission{
 			ID:        submission.ID,
 			ProblemID: submission.ProblemID,
@@ -243,32 +194,12 @@ func (h *Handler) GetSubmissions(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response.Pagination[response.Submission]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: items,
 	})
-}
-
-func AllowSubmitAt(contest models.Contest, entry models.Entry) (earliest time.Time, deadline time.Time) {
-	if contest.DurationMins == 0 {
-		return contest.StartTime, contest.EndTime
-	}
-
-	earliest = entry.CreatedAt
-	if contest.StartTime.After(earliest) {
-		earliest = contest.StartTime
-	}
-
-	personalDeadline := earliest.Add(time.Duration(contest.DurationMins) * time.Minute)
-	if personalDeadline.Before(contest.EndTime) {
-		deadline = personalDeadline
-	} else {
-		deadline = contest.EndTime
-	}
-
-	return earliest, deadline
 }

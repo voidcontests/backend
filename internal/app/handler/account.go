@@ -2,25 +2,22 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	jwtgo "github.com/golang-jwt/jwt/v4"
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
-	"github.com/voidcontests/api/internal/hasher"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/jwt"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateAccount(c echo.Context) error {
-	op := "handler.CreateAccount"
 	ctx := c.Request().Context()
 
 	var body request.CreateAccount
@@ -28,28 +25,20 @@ func (h *Handler) CreateAccount(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	exists, err := h.repo.User.Exists(ctx, body.Username)
+	id, err := h.service.Account.CreateAccount(ctx, body.Username, body.Password)
 	if err != nil {
-		return fmt.Errorf("%s: can't verify that user exists or not: %v", op, err)
-	}
-
-	if exists {
-		return Error(http.StatusConflict, "user already exists")
-	}
-
-	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
-	user, err := h.repo.User.Create(ctx, body.Username, passwordHash)
-	if err != nil {
-		return fmt.Errorf("%s: failed to create user: %v", op, err)
+		if errors.Is(err, service.ErrUserAlreadyExists) {
+			return Error(http.StatusConflict, "user already exists")
+		}
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
-		ID: user.ID,
+		ID: id,
 	})
 }
 
 func (h *Handler) CreateSession(c echo.Context) error {
-	op := "handler.CreateSession"
 	ctx := c.Request().Context()
 
 	var body request.CreateSession
@@ -57,18 +46,12 @@ func (h *Handler) CreateSession(c echo.Context) error {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	passwordHash := hasher.Sha256String([]byte(body.Password), []byte(h.config.Security.Salt))
-	user, err := h.repo.User.GetByCredentials(ctx, body.Username, passwordHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusUnauthorized, "user not found")
-	}
+	token, err := h.service.Account.CreateSession(ctx, body.Username, body.Password)
 	if err != nil {
-		return fmt.Errorf("%s: can't create user: %v", op, err)
-	}
-
-	token, err := jwt.GenerateToken(user.ID, h.config.Security.SignatureKey)
-	if err != nil {
-		return fmt.Errorf("%s: can't generate token: %v", op, err)
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			return Error(http.StatusUnauthorized, "invalid credentials")
+		}
+		return err
 	}
 
 	return c.JSON(http.StatusCreated, response.Token{
@@ -77,32 +60,64 @@ func (h *Handler) CreateSession(c echo.Context) error {
 }
 
 func (h *Handler) GetAccount(c echo.Context) error {
-	op := "handler.GetAccount"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
 
-	user, err := h.repo.User.GetByID(ctx, claims.UserID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusUnauthorized, "invalid or expired token")
-	}
+	accountInfo, err := h.service.Account.GetAccount(ctx, claims.UserID)
 	if err != nil {
-		return fmt.Errorf("%s: can't get user: %v", op, err)
-	}
-
-	role, err := h.repo.User.GetRole(ctx, claims.UserID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get role: %v", op, err)
+		if errors.Is(err, service.ErrInvalidToken) {
+			return Error(http.StatusUnauthorized, "invalid or expired token")
+		}
+		return err
 	}
 
 	return c.JSON(http.StatusOK, response.Account{
+		ID:       accountInfo.User.ID,
+		Username: accountInfo.User.Username,
+		Address:  accountInfo.User.Address,
+		Role: response.Role{
+			Name:                 accountInfo.Role.Name,
+			CreatedProblemsLimit: accountInfo.Role.CreatedProblemsLimit,
+			CreatedContestsLimit: accountInfo.Role.CreatedContestsLimit,
+		},
+	})
+}
+
+func (h *Handler) UpdateAccount(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	claims, _ := ExtractClaims(c)
+
+	var body request.UpdateAccount
+	if err := validate.Bind(c, &body); err != nil {
+		return Error(http.StatusBadRequest, "invalid body: missing required fields")
+	}
+
+	if body.Username == nil && body.Address == nil {
+		return Error(http.StatusBadRequest, "at least one field must be provided")
+	}
+
+	params := models.UpdateUserParams{
+		Username: body.Username,
+		Address:  body.Address,
+	}
+
+	user, err := h.service.Account.UpdateAccount(ctx, claims.UserID, params)
+	if err != nil {
+		if errors.Is(err, service.ErrUserAlreadyExists) {
+			return Error(http.StatusConflict, "username already taken")
+		}
+		if errors.Is(err, service.ErrInvalidToken) {
+			return Error(http.StatusUnauthorized, "invalid or expired token")
+		}
+		return err
+	}
+
+	return c.JSON(http.StatusOK, response.User{
 		ID:       user.ID,
 		Username: user.Username,
-		Role: response.Role{
-			Name:                 role.Name,
-			CreatedProblemsLimit: role.CreatedProblemsLimit,
-			CreatedContestsLimit: role.CreatedContestsLimit,
-		},
+		Address:  user.Address,
 	})
 }
 
@@ -121,7 +136,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 
 			authHeader := c.Request().Header.Get(echo.HeaderAuthorization)
 			if authHeader == "" {
-				log.Debug("auth header is empty, skipping check")
 				if skiperr {
 					return next(c)
 				} else {
@@ -149,7 +163,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 			})
 
 			if err != nil {
-				log.Debug("token parsing failed", sl.Err(err))
 				if skiperr {
 					return next(c)
 				} else {
@@ -158,7 +171,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 			}
 
 			if !token.Valid {
-				log.Debug("invalid token")
 				if skiperr {
 					return next(c)
 				} else {
@@ -168,7 +180,6 @@ func (h *Handler) UserIdentity(skiperr bool) echo.MiddlewareFunc {
 
 			claims, ok := token.Claims.(*jwt.CustomClaims)
 			if !ok {
-				log.Debug("invalid token claims")
 				if skiperr {
 					return next(c)
 				} else {

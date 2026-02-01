@@ -9,16 +9,21 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/voidcontests/api/internal/app/distributor"
 	"github.com/voidcontests/api/internal/app/router"
 	"github.com/voidcontests/api/internal/config"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/lib/logger/prettyslog"
 	"github.com/voidcontests/api/internal/lib/logger/sl"
 	broker "github.com/voidcontests/api/internal/storage/broker/redis"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/internal/storage/repository/postgres"
 	"github.com/voidcontests/api/internal/version"
+	"github.com/voidcontests/api/pkg/scheduler"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type App struct {
@@ -74,7 +79,17 @@ func (a *App) Run() {
 
 	repo := repository.New(db)
 	brok := broker.New(rc)
-	r := router.New(a.config, repo, brok)
+	tonc, err := ton.NewClient(ctx, &a.config.Ton)
+	if err != nil {
+		slog.Error("ton: could not establish connection", sl.Err(err))
+		return
+	}
+
+	slog.Info("ton: ok", slog.Bool("is_testnet", a.config.Ton.IsTestnet))
+
+	cipher := crypto.NewCipher(a.config.Security.WalletEncryptKey)
+
+	r := router.New(a.config, repo, brok, tonc, cipher)
 
 	server := &http.Server{
 		Addr:         a.config.Server.Address,
@@ -95,6 +110,15 @@ func (a *App) Run() {
 	}()
 
 	slog.Info("api: started", slog.String("address", server.Addr))
+
+	interval := 1 * time.Minute
+	task := distributor.New(repo, tonc, cipher)
+	scheduler := scheduler.New(interval, task)
+
+	go func() {
+		scheduler.Start(ctx)
+		defer scheduler.Stop()
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)

@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -9,12 +8,13 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/voidcontests/api/internal/app/handler"
 	"github.com/voidcontests/api/internal/config"
-	"github.com/voidcontests/api/internal/lib/logger/sl"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
 	"github.com/voidcontests/api/pkg/ratelimit"
 	"github.com/voidcontests/api/pkg/requestid"
 	"github.com/voidcontests/api/pkg/requestlog"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type Router struct {
@@ -22,35 +22,15 @@ type Router struct {
 	handler *handler.Handler
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker) *Router {
-	h := handler.New(c, r, b)
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, cipher crypto.Cipher) *Router {
+	h := handler.New(c, r, b, tc, cipher)
 	return &Router{config: c, handler: h}
 }
 
 func (r *Router) InitRoutes() *echo.Echo {
 	router := echo.New()
 
-	router.HTTPErrorHandler = func(err error, c echo.Context) {
-		if he, ok := err.(*echo.HTTPError); ok && (he.Code == http.StatusNotFound || he.Code == http.StatusMethodNotAllowed) {
-			c.JSON(http.StatusNotFound, map[string]string{
-				"message": "resource not found",
-			})
-			return
-		}
-
-		if ae, ok := err.(*handler.APIError); ok {
-			slog.Debug("responded with API error", sl.Err(err), slog.String("request_id", requestid.Get(c)))
-			c.JSON(ae.Status, map[string]any{
-				"message": ae.Message,
-			})
-			return
-		}
-
-		slog.Error("something went wrong", sl.Err(err), slog.String("request_id", requestid.Get(c)))
-		c.JSON(http.StatusInternalServerError, map[string]any{
-			"message": "internal server error",
-		})
-	}
+	router.HTTPErrorHandler = handler.ErorHTTP
 
 	router.Use(requestid.New)
 	router.Use(requestlog.Completed)
@@ -74,30 +54,40 @@ func (r *Router) InitRoutes() *echo.Echo {
 		})
 	}
 
+	// TODO: update rate limiting logic:
+	//   Current:
+	//     - request -> wait Ns -> request
+	//
+	//   Expected:
+	//     - [request -> request -> request] - in such window, forbid to make more than M requests
+	//       ^ 0s                       Ns ^
+
 	api := router.Group("/api")
 	{
 		api.GET("/healthcheck", r.handler.Healthcheck)
 
+		tonproof := api.Group("/tonproof")
+		tonproof.POST("/payload", r.handler.GeneratePayload)
+		tonproof.POST("/check", r.handler.CheckProof, r.handler.MustIdentify())
+
 		api.GET("/account", r.handler.GetAccount, r.handler.MustIdentify())
-		api.POST("/account", r.handler.CreateAccount)
-		api.POST("/session", r.handler.CreateSession)
+		api.POST("/account", r.handler.CreateAccount, ratelimit.WithTimeout(5*time.Second))
+		api.PATCH("/account", r.handler.UpdateAccount, r.handler.MustIdentify())
+		api.POST("/session", r.handler.CreateSession, ratelimit.WithTimeout(2*time.Second))
 
-		// TODO: make this endpoints as filter to general endpoint, like:
-		// GET /contests?creator_id=69
-		// GET /problems?writer_id=420
-		api.GET("/creator/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
-		api.GET("/creator/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
+		api.GET("/account/contests", r.handler.GetCreatedContests, r.handler.MustIdentify())
+		api.GET("/account/problems", r.handler.GetCreatedProblems, r.handler.MustIdentify())
 
-		api.POST("/problems", r.handler.CreateProblem, r.handler.MustIdentify())
+		api.POST("/problems", r.handler.CreateProblem, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
 
 		api.GET("/problems/:pid", r.handler.GetProblemByID, r.handler.MustIdentify())
 
 		api.GET("/contests", r.handler.GetContests)
-		api.POST("/contests", r.handler.CreateContest, r.handler.MustIdentify())
+		api.POST("/contests", r.handler.CreateContest, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
 
 		api.GET("/contests/:cid", r.handler.GetContestByID, r.handler.TryIdentify())
-		api.POST("/contests/:cid/entry", r.handler.CreateEntry, r.handler.MustIdentify())
-		api.GET("/contests/:cid/leaderboard", r.handler.GetLeaderboard)
+		api.POST("/contests/:cid/entry", r.handler.CreateEntry, ratelimit.WithTimeout(3*time.Second), r.handler.MustIdentify())
+		api.GET("/contests/:cid/scores", r.handler.GetScores)
 
 		api.GET("/contests/:cid/problems/:charcode", r.handler.GetContestProblem, r.handler.MustIdentify())
 		api.GET("/contests/:cid/problems/:charcode/submissions", r.handler.GetSubmissions, r.handler.MustIdentify())

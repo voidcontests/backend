@@ -16,18 +16,25 @@ type CreateSession struct {
 	Password string `json:"password" required:"true"`
 }
 
-type CreateContestRequest struct {
-	Title         string    `json:"title" required:"true"`
-	Description   string    `json:"description"`
-	ProblemsIDs   []int32   `json:"problems_ids" required:"true"`
-	StartTime     time.Time `json:"start_time" required:"true"`
-	EndTime       time.Time `json:"end_time" required:"true"`
-	DurationMins  int32     `json:"duration_mins" requried:"true"`
-	MaxEntries    int32     `json:"max_entries"`
-	AllowLateJoin bool      `json:"allow_late_join"`
+type UpdateAccount struct {
+	Username *string `json:"username"`
+	Address  *string `json:"address"`
 }
 
-type CreateProblemRequest struct {
+type CreateContest struct {
+	Title              string    `json:"title" required:"true"`
+	Description        string    `json:"description"`
+	AwardType          string    `json:"award_type"`
+	EntryPriceTonNanos uint64    `json:"entry_price_ton_nanos"`
+	ProblemsIDs        []int     `json:"problems_ids" required:"true"`
+	StartTime          time.Time `json:"start_time" required:"true"`
+	EndTime            time.Time `json:"end_time" required:"true"`
+	DurationMins       int       `json:"duration_mins" requried:"true"`
+	MaxEntries         int       `json:"max_entries"`
+	AllowLateJoin      bool      `json:"allow_late_join"`
+}
+
+type CreateProblem struct {
 	Title         string               `json:"title" required:"true"`
 	Statement     string               `json:"statement" required:"true"`
 	Difficulty    string               `json:"difficulty" required:"true"`
@@ -37,7 +44,26 @@ type CreateProblemRequest struct {
 	TestCases     []models.TestCaseDTO `json:"test_cases"`
 }
 
-type CreateSubmissionRequest struct {
+type CreateSubmission struct {
 	Code     string `json:"code"`
 	Language string `json:"language"`
+}
+
+type TonProof struct {
+	Address string    `json:"address"`
+	Network string    `json:"network"`
+	Proof   ProofData `json:"proof"`
+}
+
+type ProofData struct {
+	Timestamp int64  `json:"timestamp"`
+	Domain    Domain `json:"domain"`
+	Signature string `json:"signature"`
+	Payload   string `json:"payload"`
+	StateInit string `json:"state_init"`
+}
+
+type Domain struct {
+	LengthBytes int    `json:"lengthBytes"`
+	Value       string `json:"value"`
 }

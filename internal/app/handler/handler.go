@@ -5,23 +5,28 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/config"
 	"github.com/voidcontests/api/internal/jwt"
+	"github.com/voidcontests/api/internal/lib/crypto"
 	"github.com/voidcontests/api/internal/storage/broker"
 	"github.com/voidcontests/api/internal/storage/repository"
+	"github.com/voidcontests/api/pkg/ton"
 )
 
 type Handler struct {
-	config *config.Config
-	repo   *repository.Repository
-	broker broker.Broker
+	config  *config.Config
+	repo    *repository.Repository
+	broker  broker.Broker
+	service *service.Service
 }
 
-func New(c *config.Config, r *repository.Repository, b broker.Broker) *Handler {
+func New(c *config.Config, r *repository.Repository, b broker.Broker, tc *ton.Client, cipher crypto.Cipher) *Handler {
 	return &Handler{
-		config: c,
-		repo:   r,
-		broker: b,
+		config:  c,
+		repo:    r,
+		broker:  b,
+		service: service.New(&c.Security, r, b, tc, cipher),
 	}
 }
 

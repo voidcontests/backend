@@ -2,61 +2,58 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/voidcontests/api/internal/app/handler/dto/request"
 	"github.com/voidcontests/api/internal/app/handler/dto/response"
+	"github.com/voidcontests/api/internal/app/service"
 	"github.com/voidcontests/api/internal/storage/models"
 	"github.com/voidcontests/api/pkg/validate"
 )
 
 func (h *Handler) CreateContest(c echo.Context) error {
-	op := "handler.CreateContest"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
 
-	var body request.CreateContestRequest
+	var body request.CreateContest
 	if err := validate.Bind(c, &body); err != nil {
 		return Error(http.StatusBadRequest, "invalid body: missing required fields")
 	}
 
-	userrole, err := h.repo.User.GetRole(ctx, claims.UserID)
+	id, err := h.service.Contest.CreateContest(ctx, service.CreateContestParams{
+		UserID:             claims.UserID,
+		Title:              body.Title,
+		Description:        body.Description,
+		AwardType:          body.AwardType,
+		EntryPriceTonNanos: body.EntryPriceTonNanos,
+		StartTime:          body.StartTime,
+		EndTime:            body.EndTime,
+		DurationMins:       body.DurationMins,
+		MaxEntries:         body.MaxEntries,
+		AllowLateJoin:      body.AllowLateJoin,
+		ProblemIDs:         body.ProblemsIDs,
+	})
 	if err != nil {
-		return fmt.Errorf("%s: can't get role: %v", op, err)
-	}
-
-	if userrole.Name == models.RoleBanned {
-		return Error(http.StatusForbidden, "you are banned from creating contests")
-	}
-
-	if userrole.Name == models.RoleLimited {
-		cscount, err := h.repo.User.GetCreatedContestsCount(ctx, claims.UserID)
-		if err != nil {
-			return fmt.Errorf("%s: can't get created contests count: %v", op, err)
-		}
-
-		if cscount >= int(userrole.CreatedContestsLimit) {
+		switch {
+		case errors.Is(err, service.ErrUserBanned):
+			return Error(http.StatusForbidden, "you are banned from creating contests")
+		case errors.Is(err, service.ErrContestsLimitExceeded):
 			return Error(http.StatusForbidden, "contests limit exceeded")
+		case errors.Is(err, service.ErrInvalidContestTiming):
+			return Error(http.StatusBadRequest, "invalid contest timing: check start time, end time, and duration")
+		default:
+			return err
 		}
-	}
-
-	contestID, err := h.repo.Contest.CreateWithProblemIDs(ctx, claims.UserID, body.Title, body.Description, body.StartTime, body.EndTime, body.DurationMins, body.MaxEntries, body.AllowLateJoin, body.ProblemsIDs)
-	if err != nil {
-		return fmt.Errorf("%s: can't create contest: %v", op, err)
 	}
 
 	return c.JSON(http.StatusCreated, response.ID{
-		ID: contestID,
+		ID: id,
 	})
 }
 
 func (h *Handler) GetContestByID(c echo.Context) error {
-	op := "handler.GetContestByID"
 	ctx := c.Request().Context()
 
 	claims, authenticated := ExtractClaims(c)
@@ -66,141 +63,143 @@ func (h *Handler) GetContestByID(c echo.Context) error {
 		return Error(http.StatusBadRequest, "contest ID should be an integer")
 	}
 
-	contest, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
+	details, err := h.service.Contest.GetContestByID(ctx, contestID, claims.UserID, authenticated)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contest: %v", op, err)
-	}
-
-	if contest.EndTime.Before(time.Now()) {
-		if (authenticated && claims.UserID != contest.CreatorID) || !authenticated {
+		switch {
+		case errors.Is(err, service.ErrContestNotFound):
 			return Error(http.StatusNotFound, "contest not found")
+		case errors.Is(err, service.ErrContestFinished):
+			return Error(http.StatusNotFound, "contest not found")
+		default:
+			return err
 		}
 	}
 
-	problems, err := h.repo.Contest.GetProblemset(ctx, contest.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get problemset: %v", op, err)
+	contest := details.Contest
+	n := len(details.Problems)
+	awards := response.Awards{
+		Kind:          contest.AwardType,
+		Nanocoins:     details.PrizeNanosTON,
+		IsDistributed: contest.DistributionPaymentID != nil,
+	}
+	if details.DistributionPayment != nil {
+		awards.DistributionTxHash = details.DistributionPayment.TxHash
 	}
 
-	n := len(problems)
 	cdetailed := response.ContestDetailed{
 		ID:          contest.ID,
 		Title:       contest.Title,
 		Description: contest.Description,
-		Problems:    make([]response.ContestProblemListItem, n, n),
 		Creator: response.User{
 			ID:       contest.CreatorID,
 			Username: contest.CreatorUsername,
+			Address:  contest.CreatorAddress,
 		},
-		Participants:  contest.Participants,
-		StartTime:     contest.StartTime,
-		EndTime:       contest.EndTime,
-		DurationMins:  contest.DurationMins,
-		MaxEntries:    contest.MaxEntries,
-		AllowLateJoin: contest.AllowLateJoin,
-		CreatedAt:     contest.CreatedAt,
+		Address:            details.WalletAddress,
+		StartTime:          contest.StartTime,
+		EndTime:            contest.EndTime,
+		DurationMins:       contest.DurationMins,
+		Participants:       contest.ParticipantsCount,
+		MaxEntries:         contest.MaxEntries,
+		IsRegistrationOpen: details.IsRegistrationOpen,
+		EntryPriceTonNanos: contest.EntryPriceTonNanos,
+		Awards:             awards,
+		Problems:           make([]response.ContestProblemListItem, n, n),
+		CreatedAt:          contest.CreatedAt,
 	}
 
-	for i := range n {
-		cdetailed.Problems[i] = response.ContestProblemListItem{
-			ID:       problems[i].ID,
-			Charcode: problems[i].Charcode,
-			Writer: response.User{
-				ID:       problems[i].WriterID,
-				Username: problems[i].WriterUsername,
-			},
-			Title:         problems[i].Title,
-			Difficulty:    problems[i].Difficulty,
-			TimeLimitMS:   problems[i].TimeLimitMS,
-			MemoryLimitMB: problems[i].MemoryLimitMB,
-			Checker:       problems[i].Checker,
-			CreatedAt:     problems[i].CreatedAt,
+	if details.EntryDetails != nil {
+		entryDetails := details.EntryDetails
+		contestEntry := response.Entry{
+			IsAdmitted:         entryDetails.IsAdmitted,
+			SubmissionDeadline: entryDetails.SubmissionDeadline,
+			Message:            entryDetails.Message,
+			IsPaid:             entryDetails.Entry.PaymentID != nil,
+			CreatedAt:          entryDetails.Entry.CreatedAt,
 		}
-	}
 
-	// NOTE: Return contest without problem submissions
-	// statuses if user is not authenticated
-	if !authenticated {
-		return c.JSON(http.StatusOK, cdetailed)
-	}
+		if entryDetails.Payment != nil {
+			contestEntry.Payment = &response.PaymentDetails{
+				TxHash:    entryDetails.Payment.TxHash,
+				CreatedAt: entryDetails.Payment.CreatedAt,
+			}
+		}
 
-	entry, err := h.repo.Entry.Get(ctx, contest.ID, claims.UserID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("%s: can't get entry: %v", op, err)
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return c.JSON(http.StatusOK, cdetailed)
-	}
-
-	cdetailed.IsParticipant = true
-
-	_, deadline := AllowSubmitAt(contest, entry)
-	if contest.StartTime.Before(time.Now()) {
-		cdetailed.SubmissionDeadline = &deadline
-	}
-
-	statuses, err := h.repo.Submission.GetProblemStatuses(ctx, entry.ID)
-	if err != nil {
-		return fmt.Errorf("%s: can't get submissions: %v", op, err)
+		cdetailed.Entry = &contestEntry
 	}
 
 	for i := range n {
-		problemID := cdetailed.Problems[i].ID
-		cdetailed.Problems[i].Status = statuses[problemID]
+		p := details.Problems[i]
+		cdetailed.Problems[i] = response.ContestProblemListItem{
+			ID:       p.ID,
+			Charcode: p.Charcode,
+			Writer: response.User{
+				ID:       p.WriterID,
+				Username: p.WriterUsername,
+				Address:  p.WriterAddress,
+			},
+			Title:         p.Title,
+			Difficulty:    p.Difficulty,
+			TimeLimitMS:   p.TimeLimitMS,
+			MemoryLimitMB: p.MemoryLimitMB,
+			Checker:       p.Checker,
+			CreatedAt:     p.CreatedAt,
+			Status:        details.ProblemStatuses[p.ID],
+		}
 	}
 
 	return c.JSON(http.StatusOK, cdetailed)
 }
 
 func (h *Handler) GetCreatedContests(c echo.Context) error {
-	op := "handler.GetCreatedContests"
 	ctx := c.Request().Context()
 
 	claims, _ := ExtractClaims(c)
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 10
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
-	contests, total, err := h.repo.Contest.GetWithCreatorID(ctx, claims.UserID, limit, offset)
+	result, err := h.service.Contest.ListCreatedContests(ctx, claims.UserID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get created contests: %v", op, err)
+		return err
 	}
 
 	items := make([]response.ContestListItem, 0)
-	for _, contest := range contests {
+	for _, contest := range result.Contests {
 		item := response.ContestListItem{
 			ID: contest.ID,
 			Creator: response.User{
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
+				Address:  contest.CreatorAddress,
 			},
-			Title:        contest.Title,
-			StartTime:    contest.StartTime,
-			EndTime:      contest.EndTime,
-			DurationMins: contest.DurationMins,
-			MaxEntries:   contest.MaxEntries,
-			Participants: contest.Participants,
-			CreatedAt:    contest.CreatedAt,
+			Title:              contest.Title,
+			AwardType:          contest.AwardType,
+			EntryPriceTonNanos: contest.EntryPriceTonNanos,
+			StartTime:          contest.StartTime,
+			EndTime:            contest.EndTime,
+			DurationMins:       contest.DurationMins,
+			MaxEntries:         contest.MaxEntries,
+			Participants:       contest.ParticipantsCount,
+			AwardDistributed:   contest.DistributionPaymentID != nil,
+			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)
 	}
 
 	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: items,
@@ -208,7 +207,6 @@ func (h *Handler) GetCreatedContests(c echo.Context) error {
 }
 
 func (h *Handler) GetContests(c echo.Context) error {
-	op := "handler.GetContests"
 	ctx := c.Request().Context()
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
@@ -221,44 +219,60 @@ func (h *Handler) GetContests(c echo.Context) error {
 		offset = 0
 	}
 
-	contests, total, err := h.repo.Contest.ListAll(ctx, limit, offset)
+	filters := models.ContestFilters{}
+
+	if creatorID, ok := ExtractQueryParamInt(c, "creator_id"); ok {
+		if creatorID <= 0 {
+			return Error(http.StatusBadRequest, "creator_id should be a valid integer, greater than 0")
+		}
+		filters.CreatorID = creatorID
+	}
+
+	if title := c.QueryParam("title"); title != "" {
+		filters.Title = title
+	}
+
+	result, err := h.service.Contest.ListAllContests(ctx, limit, offset, filters)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contests: %w", op, err)
+		return err
 	}
 
 	items := make([]response.ContestListItem, 0)
-	for _, contest := range contests {
+	for _, contest := range result.Contests {
 		item := response.ContestListItem{
 			ID: contest.ID,
 			Creator: response.User{
 				ID:       contest.CreatorID,
 				Username: contest.CreatorUsername,
+				Address:  contest.CreatorAddress,
 			},
-			Title:        contest.Title,
-			StartTime:    contest.StartTime,
-			EndTime:      contest.EndTime,
-			DurationMins: contest.DurationMins,
-			MaxEntries:   contest.MaxEntries,
-			Participants: contest.Participants,
-			CreatedAt:    contest.CreatedAt,
+			Title:              contest.Title,
+			AwardType:          contest.AwardType,
+			EntryPriceTonNanos: contest.EntryPriceTonNanos,
+			StartTime:          contest.StartTime,
+			EndTime:            contest.EndTime,
+			DurationMins:       contest.DurationMins,
+			MaxEntries:         contest.MaxEntries,
+			Participants:       contest.ParticipantsCount,
+			AwardDistributed:   contest.DistributionPaymentID != nil,
+			CreatedAt:          contest.CreatedAt,
 		}
 		items = append(items, item)
 	}
 
 	return c.JSON(http.StatusOK, response.Pagination[response.ContestListItem]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
 		Items: items,
 	})
 }
 
-func (h *Handler) GetLeaderboard(c echo.Context) error {
-	op := "handler.GetLeaderboard"
+func (h *Handler) GetScores(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	contestID, ok := ExtractParamInt(c, "cid")
@@ -267,36 +281,31 @@ func (h *Handler) GetLeaderboard(c echo.Context) error {
 	}
 
 	limit, ok := ExtractQueryParamInt(c, "limit")
-	if !ok {
+	if !ok || limit < 0 {
 		limit = 50
 	}
 
 	offset, ok := ExtractQueryParamInt(c, "offset")
-	if !ok {
+	if !ok || offset < 0 {
 		offset = 0
 	}
 
-	_, err := h.repo.Contest.GetByID(ctx, int32(contestID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Error(http.StatusNotFound, "contest not found")
-	}
+	result, err := h.service.Contest.GetScores(ctx, contestID, limit, offset)
 	if err != nil {
-		return fmt.Errorf("%s: can't get contest: %v", op, err)
+		if errors.Is(err, service.ErrContestNotFound) {
+			return Error(http.StatusNotFound, "contest not found")
+		}
+		return err
 	}
 
-	leaderboard, total, err := h.repo.Contest.GetLeaderboard(ctx, contestID, limit, offset)
-	if err != nil {
-		return fmt.Errorf("%s: can't get leaderboard: %v", op, err)
-	}
-
-	return c.JSON(http.StatusOK, response.Pagination[models.LeaderboardEntry]{
+	return c.JSON(http.StatusOK, response.Pagination[models.ScoresEntry]{
 		Meta: response.Meta{
-			Total:   total,
+			Total:   result.Total,
 			Limit:   limit,
 			Offset:  offset,
-			HasNext: offset+limit < total,
+			HasNext: offset+limit < result.Total,
 			HasPrev: offset > 0,
 		},
-		Items: leaderboard,
+		Items: result.Scores,
 	})
 }

@@ -1,0 +1,30 @@
+DROP INDEX IF EXISTS idx_testing_reports_first_failed_test_id;
+DROP INDEX IF EXISTS idx_testing_reports_submission_id;
+DROP INDEX IF EXISTS idx_submissions_problem_id;
+DROP INDEX IF EXISTS idx_submissions_entry_id;
+DROP INDEX IF EXISTS idx_entries_payment_id;
+DROP INDEX IF EXISTS idx_entries_user_id;
+DROP INDEX IF EXISTS idx_entries_contest_id;
+DROP INDEX IF EXISTS idx_test_cases_problem_id;
+DROP INDEX IF EXISTS idx_problems_writer_id;
+DROP INDEX IF EXISTS unique_contest_wallet_id;
+DROP INDEX IF EXISTS idx_contests_wallet_id;
+DROP INDEX IF EXISTS idx_contests_distribution_payment_id;
+DROP INDEX IF EXISTS idx_contests_creator_id;
+DROP INDEX IF EXISTS unique_user_address;
+DROP INDEX IF EXISTS idx_users_role_id;
+
+DROP TABLE IF EXISTS testing_reports;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS entries;
+DROP TABLE IF EXISTS contest_problems;
+DROP TABLE IF EXISTS test_cases;
+DROP TABLE IF EXISTS problems;
+DROP TABLE IF EXISTS contests;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+
+DROP TYPE IF EXISTS difficulty;
+DROP TYPE IF EXISTS award_type;

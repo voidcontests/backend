@@ -7,99 +7,92 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 const defaultLimit = 20
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(txr postgres.Transactor) *Postgres {
+	return &Postgres{conn: txr}
 }
 
-func (p *Postgres) Create(ctx context.Context, creatorID int32, title, description string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool) (int32, error) {
-	var id int32
-	query := `INSERT INTO contests (creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	err := p.pool.QueryRow(ctx, query, creatorID, title, description, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&id)
-	return id, err
-}
+func (p *Postgres) Create(ctx context.Context, creatorID int, title, desc, awardType string, entryPriceTonNanos uint64, startTime, endTime time.Time, durationMins, maxEntries int, allowLateJoin bool, problems []models.ProblemCharcode, walletID *int) (int, error) {
+	var contestID int
+	var err error
 
-func (p *Postgres) CreateWithProblemIDs(ctx context.Context, creatorID int32, title, desc string, startTime, endTime time.Time, durationMins, maxEntries int32, allowLateJoin bool, problemIDs []int32) (int32, error) {
-	charcodes := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	if len(problemIDs) > len(charcodes) {
-		return 0, fmt.Errorf("not enough charcodes for the number of problems")
-	}
+	err = p.conn.QueryRow(ctx, `
+INSERT INTO contests (creator_id, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries, allow_late_join, wallet_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
+`, creatorID, title, desc, awardType, entryPriceTonNanos, startTime, endTime, durationMins, maxEntries, allowLateJoin, walletID).Scan(&contestID)
 
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	var contestID int32
-	err = tx.QueryRow(ctx, `
-		INSERT INTO contests
-		(creator_id, title, description, start_time, end_time, duration_mins, max_entries, allow_late_join)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id
-	`, creatorID, title, desc, startTime, endTime, durationMins, maxEntries, allowLateJoin).Scan(&contestID)
 	if err != nil {
 		return 0, fmt.Errorf("insert contest failed: %w", err)
 	}
 
-	batch := &pgx.Batch{}
-	for i, pid := range problemIDs {
-		batch.Queue(`
-			INSERT INTO contest_problems (contest_id, problem_id, charcode)
-			VALUES ($1, $2, $3)
-		`, contestID, pid, string(charcodes[i]))
-	}
-
-	br := tx.SendBatch(ctx, batch)
-
-	for i := 0; i < len(problemIDs); i++ {
-		if _, err := br.Exec(); err != nil {
-			br.Close()
-			return 0, fmt.Errorf("insert contest_problem %d failed: %w", i, err)
+	if len(problems) > 0 {
+		batch := &pgx.Batch{}
+		for _, p := range problems {
+			batch.Queue(`INSERT INTO contest_problems (contest_id, problem_id, charcode) VALUES ($1, $2, $3)`,
+				contestID, p.ProblemID, p.Charcode)
 		}
-	}
 
-	if err := br.Close(); err != nil {
-		return 0, fmt.Errorf("batch close failed: %w", err)
-	}
+		br := p.conn.SendBatch(ctx, batch)
 
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit failed: %w", err)
+		for i := 0; i < len(problems); i++ {
+			if _, err := br.Exec(); err != nil {
+				br.Close()
+				return 0, fmt.Errorf("insert contest_problem %d (problem_id=%d, charcode=%s) failed: %w", i, problems[i].ProblemID, problems[i].Charcode, err)
+			}
+		}
+
+		if err := br.Close(); err != nil {
+			return 0, fmt.Errorf("batch close failed: %w", err)
+		}
 	}
 
 	return contestID, nil
 }
 
-func (p *Postgres) GetByID(ctx context.Context, contestID int32) (models.Contest, error) {
+func (p *Postgres) GetByID(ctx context.Context, contestID int) (models.Contest, error) {
 	var contest models.Contest
-	query := `SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.id = $1
-		GROUP BY contests.id, users.username`
-	err := p.pool.QueryRow(ctx, query, contestID).Scan(&contest.ID, &contest.CreatorID, &contest.Title, &contest.Description, &contest.StartTime, &contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin, &contest.CreatedAt, &contest.CreatorUsername, &contest.Participants)
+	query := `
+SELECT
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
+FROM contests_view
+WHERE id = $1`
+	err := p.conn.QueryRow(ctx, query, contestID).Scan(
+		&contest.ID, &contest.CreatorID, &contest.CreatorUsername, &contest.CreatorAddress, &contest.Title, &contest.Description, &contest.AwardType, &contest.EntryPriceTonNanos, &contest.StartTime,
+		&contest.EndTime, &contest.DurationMins, &contest.MaxEntries, &contest.AllowLateJoin,
+		&contest.WalletID, &contest.DistributionPaymentID, &contest.ParticipantsCount, &contest.CreatedAt)
 	return contest, err
 }
 
-func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models.Problem, error) {
-	query := `SELECT cp.charcode, p.*, u.username AS writer_username
-		FROM problems p
-		JOIN contest_problems cp ON p.id = cp.problem_id
-		JOIN users u ON u.id = p.writer_id
-		WHERE cp.contest_id = $1 ORDER BY charcode ASC`
+func (p *Postgres) GetWallet(ctx context.Context, walletID int) (models.Wallet, error) {
+	var wallet models.Wallet
+	query := `
+SELECT
+	w.id, w.address, w.mnemonic_encrypted, w.created_at
+FROM wallets w
+WHERE w.id = $1`
+	err := p.conn.QueryRow(ctx, query, walletID).Scan(&wallet.ID, &wallet.Address, &wallet.MnemonicEncrypted, &wallet.CreatedAt)
+	return wallet, err
+}
 
-	rows, err := p.pool.Query(ctx, query, contestID)
+func (p *Postgres) GetProblemset(ctx context.Context, contestID int) ([]models.Problem, error) {
+	query := `
+SELECT
+	problem_id, charcode, writer_id, writer_username, writer_address, title, statement,
+	difficulty, time_limit_ms, memory_limit_mb, checker, created_at
+FROM contest_problems_view
+WHERE contest_id = $1 ORDER BY charcode ASC`
+
+	rows, err := p.conn.Query(ctx, query, contestID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +101,7 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models
 	var problems []models.Problem
 	for rows.Next() {
 		var problem models.Problem
-		if err := rows.Scan(&problem.Charcode, &problem.ID, &problem.WriterID, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt, &problem.WriterUsername); err != nil {
+		if err := rows.Scan(&problem.ID, &problem.Charcode, &problem.WriterID, &problem.WriterUsername, &problem.WriterAddress, &problem.Title, &problem.Statement, &problem.Difficulty, &problem.TimeLimitMS, &problem.MemoryLimitMB, &problem.Checker, &problem.CreatedAt); err != nil {
 			return nil, err
 		}
 		problems = append(problems, problem)
@@ -116,78 +109,91 @@ func (p *Postgres) GetProblemset(ctx context.Context, contestID int32) ([]models
 	return problems, nil
 }
 
-func (p *Postgres) ListAll(ctx context.Context, limit int, offset int) (contests []models.Contest, total int, err error) {
-	if limit < 0 {
+func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) ([]models.Contest, int, error) {
+	if limit <= 0 {
 		limit = defaultLimit
 	}
-
-	batch := &pgx.Batch{}
-	batch.Queue(`
-		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.end_time >= now()
-		GROUP BY contests.id, users.username
-		ORDER BY contests.id ASC
-		LIMIT $1 OFFSET $2
-	`, limit, offset)
-
-	batch.Queue(`SELECT COUNT(*) FROM contests WHERE contests.end_time >= now()`)
-
-	br := p.pool.SendBatch(ctx, batch)
-
-	rows, err := br.Query()
-	if err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("contests query failed: %w", err)
+	if offset < 0 {
+		offset = 0
 	}
 
-	contests = make([]models.Contest, 0)
+	args := []interface{}{}
+	whereClauses := []string{"end_time >= now()"}
+	argIndex := 1
+
+	if filters.CreatorID != 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("creator_id = $%d", argIndex))
+		args = append(args, filters.CreatorID)
+		argIndex++
+	}
+
+	if filters.Title != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("LOWER(title) LIKE LOWER($%d)", argIndex))
+		args = append(args, "%"+filters.Title+"%")
+		argIndex++
+	}
+
+	whereClause := strings.Join(whereClauses, " AND ")
+
+	query := fmt.Sprintf(`
+SELECT
+	id, creator_id, creator_username, creator_address, title, description,
+	award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	max_entries, allow_late_join, wallet_id, distribution_payment_id,
+	participants_count, created_at,
+	COUNT(*) OVER() AS total
+FROM contests_view
+WHERE %s
+ORDER BY id ASC
+LIMIT $%d OFFSET $%d
+`, whereClause, argIndex, argIndex+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := p.conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("contests query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var contests []models.Contest
+	var total int
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.Title, &c.Description,
-			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
-			&c.CreatorUsername, &c.Participants,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress,
+			&c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.StartTime, &c.EndTime, &c.DurationMins, &c.MaxEntries,
+			&c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID,
+			&c.ParticipantsCount, &c.CreatedAt, &total,
 		); err != nil {
-			rows.Close()
-			br.Close()
 			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		contests = append(contests, c)
 	}
-	rows.Close()
 
-	if err := br.QueryRow().Scan(&total); err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("count query failed: %w", err)
-	}
-
-	if err := br.Close(); err != nil {
-		return nil, 0, fmt.Errorf("batch close failed: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows iteration failed: %w", err)
 	}
 
 	return contests, total, nil
 }
 
-func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit, offset int) (contests []models.Contest, total int, err error) {
+func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int, limit, offset int) (contests []models.Contest, total int, err error) {
 	batch := &pgx.Batch{}
 	batch.Queue(`
-		SELECT contests.*, users.username AS creator_username, COUNT(entries.id) AS participants
-		FROM contests
-		JOIN users ON users.id = contests.creator_id
-		LEFT JOIN entries ON entries.contest_id = contests.id
-		WHERE contests.creator_id = $1
-		GROUP BY contests.id, users.username
-		ORDER BY contests.id ASC
-		LIMIT $2 OFFSET $3
+SELECT
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
+	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
+FROM contests_view
+WHERE creator_id = $1
+ORDER BY id ASC
+LIMIT $2 OFFSET $3
 	`, creatorID, limit, offset)
 
-	batch.Queue(`SELECT COUNT(*) FROM contests WHERE creator_id = $1`, creatorID)
+	batch.Queue(`SELECT COUNT(*) FROM contests_view WHERE creator_id = $1`, creatorID)
 
-	br := p.pool.SendBatch(ctx, batch)
+	br := p.conn.SendBatch(ctx, batch)
 
 	rows, err := br.Query()
 	if err != nil {
@@ -199,10 +205,9 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.Title, &c.Description,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
 			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.CreatedAt,
-			&c.CreatorUsername, &c.Participants,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
 		); err != nil {
 			rows.Close()
 			br.Close()
@@ -224,79 +229,99 @@ func (p *Postgres) GetWithCreatorID(ctx context.Context, creatorID int32, limit,
 	return contests, total, nil
 }
 
-func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int32) (int32, error) {
-	var count int32
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM entries WHERE contest_id = $1`, contestID).Scan(&count)
+func (p *Postgres) GetEntriesCount(ctx context.Context, contestID int) (int, error) {
+	var count int
+	err := p.conn.QueryRow(ctx, `SELECT COUNT(*) FROM entries WHERE contest_id = $1`, contestID).Scan(&count)
 	return count, err
 }
 
 func (p *Postgres) IsTitleOccupied(ctx context.Context, title string) (bool, error) {
 	var count int
-	err := p.pool.QueryRow(ctx, `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`, strings.ToLower(title)).Scan(&count)
+	err := p.conn.QueryRow(ctx, `SELECT COUNT(*) FROM contests WHERE LOWER(title) = $1`, strings.ToLower(title)).Scan(&count)
 	return count > 0, err
 }
 
-func (p *Postgres) GetLeaderboard(ctx context.Context, contestID, limit, offset int) (leaderboard []models.LeaderboardEntry, total int, err error) {
-	batch := &pgx.Batch{}
-	batch.Queue(`
-		SELECT u.id AS user_id, u.username, COALESCE(SUM(
-			CASE
-				WHEN p.difficulty = 'easy' THEN 1
-				WHEN p.difficulty = 'mid' THEN 3
-				WHEN p.difficulty = 'hard' THEN 5
-				ELSE 0
-			END
-		), 0) AS points
-		FROM users u
-		JOIN entries e ON u.id = e.user_id
-		JOIN contests c ON e.contest_id = c.id
-		LEFT JOIN (
-			SELECT DISTINCT entry_id, problem_id
-			FROM submissions
-			WHERE verdict = 'ok'
-		) s ON e.id = s.entry_id
-		LEFT JOIN problems p ON s.problem_id = p.id
-		WHERE c.id = $1
-		GROUP BY u.id, u.username
+func (p *Postgres) GetWinnerID(ctx context.Context, contestID int) (int, error) {
+	// TODO: tie-breaking rules
+	query := ` SELECT user_id FROM scores
+		WHERE contest_id = $1 AND points > 0 ORDER BY points DESC LIMIT 1`
+
+	var userID int
+	err := p.conn.QueryRow(ctx, query, contestID).Scan(&userID)
+	return userID, err
+}
+
+func (p *Postgres) GetScores(ctx context.Context, contestID, limit, offset int) (scores []models.ScoresEntry, total int, err error) {
+	query := `
+		SELECT user_id, username, points, COUNT(*) OVER() AS total
+		FROM scores
+		WHERE contest_id = $1
 		ORDER BY points DESC
 		LIMIT $2 OFFSET $3
-	`, contestID, limit, offset)
+	`
 
-	batch.Queue(`
-		SELECT COUNT(DISTINCT u.id)
-		FROM users u
-		JOIN entries e ON u.id = e.user_id
-		WHERE e.contest_id = $1
-	`, contestID)
-
-	br := p.pool.SendBatch(ctx, batch)
-
-	rows, err := br.Query()
+	rows, err := p.conn.Query(ctx, query, contestID, limit, offset)
 	if err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("leaderboard query failed: %w", err)
+		return nil, 0, fmt.Errorf("scores query failed: %w", err)
 	}
+	defer rows.Close()
 
-	leaderboard = make([]models.LeaderboardEntry, 0)
+	scores = make([]models.ScoresEntry, 0)
 	for rows.Next() {
-		var entry models.LeaderboardEntry
-		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points); err != nil {
-			rows.Close()
-			br.Close()
+		var entry models.ScoresEntry
+		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Points, &total); err != nil {
 			return nil, 0, err
 		}
-		leaderboard = append(leaderboard, entry)
-	}
-	rows.Close()
-
-	if err := br.QueryRow().Scan(&total); err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("total count query failed: %w", err)
+		scores = append(scores, entry)
 	}
 
-	if err := br.Close(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, 0, err
 	}
 
-	return leaderboard, total, nil
+	return scores, total, nil
+}
+
+func (p *Postgres) SetDistributionPaymentID(ctx context.Context, contestID int, paymentID int) error {
+	query := `UPDATE contests SET distribution_payment_id = $1 WHERE id = $2`
+	_, err := p.conn.Exec(ctx, query, paymentID, contestID)
+	if err != nil {
+		return fmt.Errorf("set distribution_payment_id failed: %w", err)
+	}
+	return nil
+}
+
+func (p *Postgres) GetWithUndistributedAwards(ctx context.Context) ([]models.Contest, error) {
+	query := `
+SELECT
+	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	max_entries, allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
+FROM contests_view
+WHERE distribution_payment_id IS NULL AND end_time < now() AND award_type <> 'no'
+ORDER BY end_time ASC`
+
+	rows, err := p.conn.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query contests with undistributed awards failed: %w", err)
+	}
+	defer rows.Close()
+
+	contests := make([]models.Contest, 0)
+	for rows.Next() {
+		var c models.Contest
+		if err := rows.Scan(
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.StartTime, &c.EndTime, &c.DurationMins,
+			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan failed: %w", err)
+		}
+		contests = append(contests, c)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration failed: %w", err)
+	}
+
+	return contests, nil
 }

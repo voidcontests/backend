@@ -22,6 +22,7 @@ type Config struct {
 	Security Security `yaml:"security" env-required:"true"`
 	Postgres Postgres `yaml:"postgres" env-required:"true"`
 	Redis    Redis    `yaml:"redis" env-required:"true"`
+	Ton      Ton      `yaml:"ton" env-required:"true"`
 }
 
 type Server struct {
@@ -31,8 +32,9 @@ type Server struct {
 }
 
 type Security struct {
-	SignatureKey string `yaml:"signature_key" env-required:"true"`
-	Salt         string `yaml:"salt" env-required:"true"`
+	SignatureKey     string `yaml:"signature_key" env-required:"true"`
+	Salt             string `yaml:"salt" env-required:"true"`
+	WalletEncryptKey string `yaml:"wallet_encrypt_key" env-required:"true"`
 }
 
 type Postgres struct {
@@ -49,6 +51,18 @@ type Redis struct {
 	Port     string `yaml:"port"`
 	Password string `yaml:"password"`
 	Db       int    `yaml:"db"`
+}
+
+type Ton struct {
+	IsTestnet bool     `yaml:"is_testnet"`
+	ConfigURL string   `yaml:"config_url"`
+	Proof     TonProof `yaml:"proof"`
+}
+
+type TonProof struct {
+	PayloadSignatureKey string        `yaml:"payload_signature_key" env-required:"true"`
+	PayloadLifetime     time.Duration `yaml:"payload_lifetime" env-default:"600s"`
+	ProofLifetime       time.Duration `yaml:"proof_lifetime" env-default:"600s"`
 }
 
 // MustLoad loads config to a new Config instance and return it

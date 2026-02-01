@@ -3,42 +3,49 @@ package entry
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/voidcontests/api/internal/storage/models"
+	"github.com/voidcontests/api/internal/storage/repository/postgres"
 )
 
 type Postgres struct {
-	pool *pgxpool.Pool
+	conn postgres.Transactor
 }
 
-func New(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{pool}
+func New(conn postgres.Transactor) *Postgres {
+	return &Postgres{conn}
 }
 
-func (p *Postgres) Create(ctx context.Context, contestID int32, userID int32) (int, error) {
+func (p *Postgres) Create(ctx context.Context, contestID int, userID int) (int, error) {
 	query := `INSERT INTO entries (contest_id, user_id) VALUES ($1, $2) RETURNING id`
 
 	var id int
-	err := p.pool.QueryRow(ctx, query, contestID, userID).Scan(&id)
+	err := p.conn.QueryRow(ctx, query, contestID, userID).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 	return id, nil
 }
 
-func (p *Postgres) Get(ctx context.Context, contestID int32, userID int32) (models.Entry, error) {
-	query := `SELECT id, contest_id, user_id, created_at FROM entries
+func (p *Postgres) Get(ctx context.Context, contestID int, userID int) (models.Entry, error) {
+	query := `SELECT id, contest_id, user_id, payment_id, created_at FROM entries
 	WHERE contest_id = $1 AND user_id = $2`
 
 	var entry models.Entry
-	err := p.pool.QueryRow(ctx, query, contestID, userID).Scan(
+	err := p.conn.QueryRow(ctx, query, contestID, userID).Scan(
 		&entry.ID,
 		&entry.ContestID,
 		&entry.UserID,
+		&entry.PaymentID,
 		&entry.CreatedAt,
 	)
 	if err != nil {
 		return models.Entry{}, err
 	}
 	return entry, nil
+}
+
+func (p *Postgres) SetPaymentID(ctx context.Context, entryID int, paymentID int) error {
+	query := `UPDATE entries SET payment_id = $1 WHERE id = $2`
+	_, err := p.conn.Exec(ctx, query, paymentID, entryID)
+	return err
 }
