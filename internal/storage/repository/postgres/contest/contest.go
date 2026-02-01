@@ -109,97 +109,71 @@ WHERE contest_id = $1 ORDER BY charcode ASC`
 	return problems, nil
 }
 
-func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) (contests []models.Contest, total int, err error) {
-	if limit < 0 {
+func (p *Postgres) ListAll(ctx context.Context, limit int, offset int, filters models.ContestFilters) ([]models.Contest, int, error) {
+	if limit <= 0 {
 		limit = defaultLimit
 	}
+	if offset < 0 {
+		offset = 0
+	}
 
-	batch := &pgx.Batch{}
-
+	args := []interface{}{}
 	whereClauses := []string{"end_time >= now()"}
-	queryArgs := []interface{}{limit, offset}
-	countArgs := []interface{}{}
-	paramIndex := 3
+	argIndex := 1
 
 	if filters.CreatorID != 0 {
-		whereClauses = append(whereClauses, fmt.Sprintf("creator_id = $%d", paramIndex))
-		queryArgs = append(queryArgs, filters.CreatorID)
-		countArgs = append(countArgs, filters.CreatorID)
-		paramIndex++
+		whereClauses = append(whereClauses, fmt.Sprintf("creator_id = $%d", argIndex))
+		args = append(args, filters.CreatorID)
+		argIndex++
 	}
 
 	if filters.Title != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("LOWER(title) LIKE LOWER($%d)", paramIndex))
-		queryArgs = append(queryArgs, "%"+filters.Title+"%")
-		countArgs = append(countArgs, "%"+filters.Title+"%")
-		paramIndex++
+		whereClauses = append(whereClauses, fmt.Sprintf("LOWER(title) LIKE LOWER($%d)", argIndex))
+		args = append(args, "%"+filters.Title+"%")
+		argIndex++
 	}
 
-	whereClause := "WHERE " + strings.Join(whereClauses, " AND ")
+	whereClause := strings.Join(whereClauses, " AND ")
 
 	query := fmt.Sprintf(`
 SELECT
-	id, creator_id, creator_username, creator_address, title, description, award_type, entry_price_ton_nanos, start_time, end_time, duration_mins, max_entries,
-	allow_late_join, wallet_id, distribution_payment_id, participants_count, created_at
+	id, creator_id, creator_username, creator_address, title, description,
+	award_type, entry_price_ton_nanos, start_time, end_time, duration_mins,
+	max_entries, allow_late_join, wallet_id, distribution_payment_id,
+	participants_count, created_at,
+	COUNT(*) OVER() AS total
 FROM contests_view
-%s
+WHERE %s
 ORDER BY id ASC
-LIMIT $1 OFFSET $2
-	`, whereClause)
+LIMIT $%d OFFSET $%d
+`, whereClause, argIndex, argIndex+1)
 
-	batch.Queue(query, queryArgs...)
+	args = append(args, limit, offset)
 
-	countWhereClauses := []string{"end_time >= now()"}
-	if filters.CreatorID != 0 {
-		countWhereClauses = append(countWhereClauses, "creator_id = $1")
-	}
-	if filters.Title != "" {
-		countParamIndex := 1
-		if filters.CreatorID != 0 {
-			countParamIndex = 2
-		}
-		countWhereClauses = append(countWhereClauses, fmt.Sprintf("LOWER(title) LIKE LOWER($%d)", countParamIndex))
-	}
-	countWhereClause := strings.Join(countWhereClauses, " AND ")
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM contests_view WHERE %s", countWhereClause)
-
-	if len(countArgs) > 0 {
-		batch.Queue(countQuery, countArgs...)
-	} else {
-		batch.Queue(countQuery)
-	}
-
-	br := p.conn.SendBatch(ctx, batch)
-
-	rows, err := br.Query()
+	rows, err := p.conn.Query(ctx, query, args...)
 	if err != nil {
-		br.Close()
 		return nil, 0, fmt.Errorf("contests query failed: %w", err)
 	}
+	defer rows.Close()
 
-	contests = make([]models.Contest, 0)
+	var contests []models.Contest
+	var total int
 	for rows.Next() {
 		var c models.Contest
 		if err := rows.Scan(
-			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress, &c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
-			&c.StartTime, &c.EndTime, &c.DurationMins,
-			&c.MaxEntries, &c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID, &c.ParticipantsCount, &c.CreatedAt,
+			&c.ID, &c.CreatorID, &c.CreatorUsername, &c.CreatorAddress,
+			&c.Title, &c.Description, &c.AwardType, &c.EntryPriceTonNanos,
+			&c.StartTime, &c.EndTime, &c.DurationMins, &c.MaxEntries,
+			&c.AllowLateJoin, &c.WalletID, &c.DistributionPaymentID,
+			&c.ParticipantsCount, &c.CreatedAt, &total,
 		); err != nil {
-			rows.Close()
-			br.Close()
 			return nil, 0, fmt.Errorf("scan failed: %w", err)
 		}
 		contests = append(contests, c)
 	}
-	rows.Close()
 
-	if err := br.QueryRow().Scan(&total); err != nil {
-		br.Close()
-		return nil, 0, fmt.Errorf("count query failed: %w", err)
-	}
-
-	if err := br.Close(); err != nil {
-		return nil, 0, fmt.Errorf("batch close failed: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows iteration failed: %w", err)
 	}
 
 	return contests, total, nil
