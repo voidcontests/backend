@@ -67,7 +67,7 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 		return fmt.Errorf("user has no wallet")
 	}
 
-	recepient, err := address.ParseAddr(winner.Address)
+	recipient, err := address.ParseAddr(winner.Address)
 	if err != nil {
 		return err
 	}
@@ -80,14 +80,14 @@ func distributeAwardForContest(ctx context.Context, r *repository.Repository, tc
 	// keep 2% for paying gas
 	factor := 1 - 0.02
 	amount := tlb.FromNanoTON(big.NewInt(int64(float64(nanos) * factor)))
-	tx, err := wallet.TransferTo(ctx, recepient, amount, fmt.Sprintf("contests.fckn.engineer: Prize for winning contest #%d", c.ID))
+	tx, err := wallet.TransferTo(ctx, recipient, amount, fmt.Sprintf("contests.fckn.engineer: Prize for winning contest #%d", c.ID))
 	if err != nil {
 		return err
 	}
 
 	slog.Info("award distributed", slog.Int("contest_id", c.ID), slog.String("tx", tx))
 
-	paymentID, err := r.Payment.Create(ctx, tx, tc.GetAddress(wallet.Address()), tc.GetAddress(recepient), amount.Nano().Uint64(), false)
+	paymentID, err := r.Payment.Create(ctx, tx, tc.GetAddress(wallet.Address()), tc.GetAddress(recipient), amount.Nano().Uint64(), false)
 	if err != nil {
 		return err
 	}
